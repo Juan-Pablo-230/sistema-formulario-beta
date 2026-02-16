@@ -1,4 +1,4 @@
-console.log('📚 material-historico.js cargado - Versión con filtro por año y mes');
+console.log('📚 material-historico.js cargado - Usando authSystem de formularios.js');
 
 class MaterialHistorico {
     constructor() {
@@ -20,13 +20,31 @@ class MaterialHistorico {
     async init() {
         console.log('🚀 Inicializando sistema de material histórico con filtro por año y mes...');
         
-        await this.esperarAuthSystem();
-        
-        if (!authSystem || !authSystem.isLoggedIn()) {
-            console.log('❌ Usuario no logueado');
-            this.mostrarMensaje('Debe iniciar sesión para solicitar material', 'error');
-            setTimeout(() => window.location.href = '/index.html', 2000);
+        try {
+            // Usar la función waitForAuthSystem de formularios.js
+            await waitForAuthSystem();
+            console.log('✅ authSystem listo para usar');
+            
+        } catch (error) {
+            console.error('❌ Error esperando por authSystem:', error);
+            this.mostrarMensaje('Error al cargar el sistema de autenticación', 'error');
             return;
+        }
+        
+        // Verificar autenticación usando isLoggedInSafe() de formularios.js
+        if (!isLoggedInSafe()) {
+            console.log('🔐 Usuario no logueado, mostrando modal de login...');
+            try {
+                await authSystem.showLoginModal();
+                console.log('✅ Usuario autenticado:', getCurrentUserSafe());
+            } catch (error) {
+                console.log('❌ Usuario canceló el login');
+                // Solo mostrar mensaje, NO redirigir
+                this.mostrarMensaje('Debe iniciar sesión para acceder al material histórico', 'error');
+                // Deshabilitar los controles
+                this.deshabilitarControles();
+                return;
+            }
         }
 
         this.configurarUI();
@@ -34,29 +52,54 @@ class MaterialHistorico {
         await this.cargarMisSolicitudes();
     }
 
-    async esperarAuthSystem() {
-        return new Promise((resolve) => {
-            const check = setInterval(() => {
-                if (typeof authSystem !== 'undefined' && authSystem.getCurrentUser) {
-                    clearInterval(check);
-                    console.log('✅ authSystem disponible');
-                    resolve();
-                }
-            }, 100);
-            
-            setTimeout(() => {
-                clearInterval(check);
-                console.log('⚠️ Timeout esperando authSystem');
-                resolve();
-            }, 5000);
+    deshabilitarControles() {
+        // Deshabilitar selects y botones si el usuario no está logueado
+        const selects = document.querySelectorAll('select');
+        const buttons = document.querySelectorAll('button');
+        
+        selects.forEach(select => select.disabled = true);
+        buttons.forEach(button => {
+            if (button.id !== 'logoutBtn') {
+                button.disabled = true;
+            }
         });
+        
+        // Mostrar mensaje en el área principal
+        const container = document.querySelector('.container');
+        if (container) {
+            const loginMessage = document.createElement('div');
+            loginMessage.className = 'login-required-message';
+            loginMessage.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 3em; margin-bottom: 20px;">🔐</div>
+                    <h3 style="color: var(--primary-color); margin-bottom: 15px;">Inicio de Sesión Requerido</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Para acceder al material histórico, por favor inicie sesión.
+                    </p>
+                    <button onclick="authSystem.showLoginModal()" class="back-btn" style="background: var(--primary-color);">
+                        Iniciar Sesión
+                    </button>
+                </div>
+            `;
+            container.prepend(loginMessage);
+        }
+    }
+
+    async esperarAuthSystem() {
+        // Este método ya no es necesario porque usamos waitForAuthSystem de formularios.js
+        // Lo dejamos como referencia pero no se usa
+        return waitForAuthSystem();
     }
 
     async cargarClasesHistoricas() {
         try {
             console.log('📥 Cargando clases históricas desde MongoDB...');
             
-            const user = authSystem.getCurrentUser();
+            const user = getCurrentUserSafe();
+            if (!user) {
+                throw new Error('Usuario no disponible');
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/clases-historicas`, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -346,7 +389,7 @@ class MaterialHistorico {
     }
 
     configurarUI() {
-        const usuario = authSystem.getCurrentUser();
+        const usuario = getCurrentUserSafe();
         console.log('👤 Usuario actual:', usuario);
         
         if (usuario && usuario.email) {
@@ -354,8 +397,7 @@ class MaterialHistorico {
         }
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            authSystem.logout();
-            window.location.href = '/index.html';
+            logoutSafe(); // Usar logoutSafe de formularios.js
         });
 
         document.getElementById('materialHistoricoForm').addEventListener('submit', async (e) => {
@@ -495,7 +537,7 @@ class MaterialHistorico {
 
     async guardarSolicitud(claseData) {
         try {
-            const user = authSystem.getCurrentUser();
+            const user = getCurrentUserSafe();
             
             const solicitudData = {
                 claseId: claseData.id,
@@ -509,7 +551,8 @@ class MaterialHistorico {
 
             console.log('📤 Guardando solicitud:', solicitudData);
             
-            const result = await authSystem.makeRequest('/material-historico/solicitudes', solicitudData);
+            // Usar makeRequestSafe de formularios.js
+            const result = await makeRequestSafe('/material-historico/solicitudes', solicitudData);
             
             if (result.success) {
                 console.log('✅ Solicitud guardada');
@@ -524,7 +567,7 @@ class MaterialHistorico {
 
     async cargarMisSolicitudes() {
         try {
-            const user = authSystem.getCurrentUser();
+            const user = getCurrentUserSafe();
             
             console.log('🔍 Cargando historial de solicitudes...');
             
@@ -556,7 +599,7 @@ class MaterialHistorico {
     }
 
     cargarSolicitudesLocal() {
-        const user = authSystem.getCurrentUser();
+        const user = getCurrentUserSafe();
         const storageKey = `material_historico_${user._id}`;
         const stored = localStorage.getItem(storageKey);
         this.solicitudes = stored ? JSON.parse(stored) : [];
@@ -646,6 +689,26 @@ class MaterialHistorico {
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM cargado, inicializando MaterialHistorico...');
-    window.materialHistorico = new MaterialHistorico();
+    console.log('📄 DOM cargado, esperando funciones de formularios.js...');
+    
+    // Verificar que las funciones existen antes de inicializar
+    if (typeof waitForAuthSystem === 'undefined') {
+        console.error('❌ funciones de formularios.js no disponibles');
+        // Mostrar mensaje de error
+        const container = document.querySelector('.container');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 3em; margin-bottom: 20px;">⚠️</div>
+                    <h3>Error de Carga</h3>
+                    <p>No se pudo cargar el sistema de autenticación.</p>
+                    <p style="color: #666; font-size: 0.9em;">Asegúrese de que formularios.js se cargue antes que material-historico.js</p>
+                    <button onclick="window.location.reload()" class="back-btn">Reintentar</button>
+                </div>
+            `;
+        }
+    } else {
+        console.log('✅ funciones de formularios.js disponibles, inicializando...');
+        window.materialHistorico = new MaterialHistorico();
+    }
 });
