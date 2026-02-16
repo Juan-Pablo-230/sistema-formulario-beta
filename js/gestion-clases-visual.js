@@ -109,165 +109,209 @@ class GestionClasesVisual {
     }
 
     async guardarClase() {
-    console.log('💾 Guardando clase...');
-    
-    // Obtener fecha y hora
-    const fecha = document.getElementById('claseFecha')?.value || '';
-    const hora = document.getElementById('claseHora')?.value || '10:00';
-    
-    // Combinar fecha y hora en formato ISO (YYYY-MM-DDTHH:mm)
-    const fechaCompleta = `${fecha}T${hora}:00`;
-    
-    const claseData = {
-        nombre: document.getElementById('claseNombre')?.value || '',
-        descripcion: document.getElementById('claseDescripcion')?.value || '',
-        fechaClase: fechaCompleta, // Enviar fecha completa con hora
-        enlaces: {
-            youtube: document.getElementById('claseYoutube')?.value || '',
-            powerpoint: document.getElementById('clasePowerpoint')?.value || ''
-        },
-        activa: document.getElementById('claseActiva')?.checked || true,
-        instructores: document.getElementById('claseInstructores')?.value 
-            ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()) 
-            : []
-    };
-    
-    // Validaciones básicas
-    if (!claseData.nombre) {
-        this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
-        return;
-    }
-    
-    if (!claseData.fechaClase) {
-        this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
-        return;
-    }
-    
-    try {
-        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
-            const result = await authSystem.makeRequest('/clases-historicas', claseData);
-            
-            if (result.success) {
-                this.mostrarMensaje('✅ Clase guardada correctamente', 'success');
-                this.limpiarFormulario();
-                await this.cargarClases();
-            } else {
-                throw new Error(result.message || 'Error al guardar');
-            }
-        } else {
-            throw new Error('Sistema de autenticación no disponible');
-        }
+        console.log('💾 Guardando clase...');
         
-    } catch (error) {
-        console.error('❌ Error guardando clase:', error);
-        this.mostrarMensaje('❌ Error al guardar la clase: ' + error.message, 'error');
+        try {
+            // Verificar que los métodos existen
+            if (typeof this.limpiarFormulario !== 'function') {
+                console.error('❌ Método limpiarFormulario no está definido');
+                this.mostrarMensaje('Error interno: método no disponible', 'error');
+                return;
+            }
+            
+            // Obtener fecha y hora
+            const fecha = document.getElementById('claseFecha')?.value || '';
+            const hora = document.getElementById('claseHora')?.value || '10:00';
+            
+            // Validar fecha
+            if (!fecha) {
+                this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+                return;
+            }
+            
+            // Combinar fecha y hora en formato ISO (YYYY-MM-DDTHH:mm)
+            const fechaCompleta = `${fecha}T${hora}:00`;
+            console.log('📅 Fecha completa a guardar:', fechaCompleta);
+            
+            const claseData = {
+                nombre: document.getElementById('claseNombre')?.value || '',
+                descripcion: document.getElementById('claseDescripcion')?.value || '',
+                fechaClase: fechaCompleta,
+                enlaces: {
+                    youtube: document.getElementById('claseYoutube')?.value || '',
+                    powerpoint: document.getElementById('clasePowerpoint')?.value || ''
+                },
+                activa: document.getElementById('claseActiva')?.checked || true,
+                instructores: document.getElementById('claseInstructores')?.value 
+                    ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()) 
+                    : []
+            };
+            
+            // Validar nombre
+            if (!claseData.nombre) {
+                this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+                return;
+            }
+            
+            // Validar enlaces
+            if (!claseData.enlaces.youtube) {
+                this.mostrarMensaje('❌ El enlace de YouTube es obligatorio', 'error');
+                return;
+            }
+            
+            if (!claseData.enlaces.powerpoint) {
+                this.mostrarMensaje('❌ El enlace de PowerPoint es obligatorio', 'error');
+                return;
+            }
+            
+            console.log('📤 Enviando datos:', claseData);
+            
+            if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+                const result = await authSystem.makeRequest('/clases-historicas', claseData);
+                
+                if (result.success) {
+                    this.mostrarMensaje('✅ Clase guardada correctamente', 'success');
+                    this.limpiarFormulario();
+                    await this.cargarClases();
+                } else {
+                    throw new Error(result.message || 'Error al guardar');
+                }
+            } else {
+                throw new Error('Sistema de autenticación no disponible');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error guardando clase:', error);
+            this.mostrarMensaje('❌ Error al guardar la clase: ' + error.message, 'error');
+        }
     }
-}
+
+    limpiarFormulario() {
+        console.log('🧹 Limpiando formulario');
+        const form = document.getElementById('formClaseHistorica');
+        if (form) {
+            form.reset();
+            // Establecer valores por defecto
+            const horaInput = document.getElementById('claseHora');
+            if (horaInput) horaInput.value = '10:00';
+            
+            const activaCheck = document.getElementById('claseActiva');
+            if (activaCheck) activaCheck.checked = true;
+        }
+    }
 
     async cargarClases() {
-    console.log('📥 Cargando clases...');
-    
-    const container = document.getElementById('clasesListContainer');
-    if (!container) return;
-    
-    container.innerHTML = this.getLoadingHTML();
-    
-    try {
-        let clases = [];
+        console.log('📥 Cargando clases...');
         
-        // Usar authSystem.makeRequest (igual que en admin.js)
-        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
-            const result = await authSystem.makeRequest('/clases-historicas', null, 'GET');
-            clases = result.data || [];
-            console.log('✅ Clases cargadas:', clases.length);
-        } else {
-            console.error('❌ authSystem no disponible');
-            throw new Error('Sistema de autenticación no disponible');
+        const container = document.getElementById('clasesListContainer');
+        if (!container) return;
+        
+        container.innerHTML = this.getLoadingHTML();
+        
+        try {
+            let clases = [];
+            
+            // Usar authSystem.makeRequest (igual que en admin.js)
+            if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+                const result = await authSystem.makeRequest('/clases-historicas', null, 'GET');
+                clases = result.data || [];
+                console.log('✅ Clases cargadas:', clases.length);
+                if (clases.length > 0) {
+                    console.log('📅 Primera clase fecha:', clases[0].fechaClase);
+                }
+            } else {
+                console.error('❌ authSystem no disponible');
+                throw new Error('Sistema de autenticación no disponible');
+            }
+            
+            if (clases.length === 0) {
+                container.innerHTML = this.getEmptyHTML();
+                this.actualizarEstadisticas([]);
+            } else {
+                this.mostrarClasesEnContainer(container, clases);
+                this.actualizarEstadisticas(clases);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error cargando clases:', error);
+            container.innerHTML = this.getErrorHTML('Error al cargar las clases');
         }
-        
-        if (clases.length === 0) {
-            container.innerHTML = this.getEmptyHTML();
-            this.actualizarEstadisticas([]);
-        } else {
-            this.mostrarClasesEnContainer(container, clases);
-            this.actualizarEstadisticas(clases);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error cargando clases:', error);
-        container.innerHTML = this.getErrorHTML('Error al cargar las clases');
     }
-}
 
     mostrarClasesEnContainer(container, clases) {
-    if (!clases || clases.length === 0) {
-        container.innerHTML = this.getEmptyHTML();
-        return;
-    }
-    
-    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-    
-    clases.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
-    
-    clases.forEach(clase => {
-        // Formatear fecha para mostrar en hora local
-        let fechaFormateada = 'Fecha no disponible';
-        if (clase.fechaClase) {
-            const fecha = new Date(clase.fechaClase);
-            fechaFormateada = fecha.toLocaleString('es-AR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: 'America/Argentina/Buenos_Aires' // Forzar zona horaria Argentina
-            });
+        if (!clases || clases.length === 0) {
+            container.innerHTML = this.getEmptyHTML();
+            return;
         }
         
-        html += `
-            <div class="clase-card" style="
-                background: var(--bg-container);
-                padding: 15px;
-                border-radius: 8px;
-                border-left: 4px solid ${clase.activa ? '#34a853' : '#ea4335'};
-                margin-bottom: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            ">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div style="flex: 1;">
-                        <strong style="color: var(--text-primary); font-size: 1.1em;">${clase.nombre}</strong>
-                        ${clase.descripcion ? `<div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 4px;">${clase.descripcion}</div>` : ''}
-                        <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: var(--text-muted);">
-                            <span>📅 ${fechaFormateada}</span>
-                            ${clase.instructores && clase.instructores.length ? `<span>👥 ${Array.isArray(clase.instructores) ? clase.instructores.join(', ') : clase.instructores}</span>` : ''}
+        let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+        
+        clases.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
+        
+        clases.forEach(clase => {
+            // Formatear fecha para mostrar en hora local
+            let fechaFormateada = 'Fecha no disponible';
+            if (clase.fechaClase) {
+                const fecha = new Date(clase.fechaClase);
+                fechaFormateada = fecha.toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'America/Argentina/Buenos_Aires'
+                });
+            }
+            
+            // Procesar instructores
+            const instructoresTexto = Array.isArray(clase.instructores) 
+                ? clase.instructores.join(', ') 
+                : clase.instructores || '';
+            
+            html += `
+                <div class="clase-card" style="
+                    background: var(--bg-container);
+                    padding: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid ${clase.activa ? '#34a853' : '#ea4335'};
+                    margin-bottom: 10px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <strong style="color: var(--text-primary); font-size: 1.1em;">${clase.nombre}</strong>
+                            ${clase.descripcion ? `<div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 4px;">${clase.descripcion}</div>` : ''}
+                            <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: var(--text-muted);">
+                                <span>📅 ${fechaFormateada}</span>
+                                ${instructoresTexto ? `<span>👥 ${instructoresTexto}</span>` : ''}
+                            </div>
+                            <div style="margin-top: 8px; display: flex; gap: 10px;">
+                                ${clase.enlaces?.youtube ? `<a href="${clase.enlaces.youtube}" target="_blank" class="email-link" style="font-size: 0.9em;">▶️ YouTube</a>` : ''}
+                                ${clase.enlaces?.powerpoint ? `<a href="${clase.enlaces.powerpoint}" target="_blank" class="email-link" style="font-size: 0.9em;">📊 PowerPoint</a>` : ''}
+                            </div>
                         </div>
-                        <div style="margin-top: 8px; display: flex; gap: 10px;">
-                            ${clase.enlaces?.youtube ? `<a href="${clase.enlaces.youtube}" target="_blank" class="email-link" style="font-size: 0.9em;">▶️ YouTube</a>` : ''}
-                            ${clase.enlaces?.powerpoint ? `<a href="${clase.enlaces.powerpoint}" target="_blank" class="email-link" style="font-size: 0.9em;">📊 PowerPoint</a>` : ''}
+                        <div style="display: flex; gap: 5px;">
+                            <span style="
+                                background: ${clase.activa ? '#34a85320' : '#ea433520'};
+                                color: ${clase.activa ? '#34a853' : '#ea4335'};
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                                font-size: 0.8em;
+                                font-weight: bold;
+                                margin-right: 10px;
+                            ">${clase.activa ? 'ACTIVA' : 'INACTIVA'}</span>
+                            <button class="btn-small btn-edit" onclick="window.gestionClasesVisual?.editarClase('${clase._id}')" title="Editar clase">✏️</button>
+                            <button class="btn-small btn-danger" onclick="window.gestionClasesVisual?.eliminarClase('${clase._id}')" title="Eliminar clase">🗑️</button>
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 5px;">
-                        <span style="
-                            background: ${clase.activa ? '#34a85320' : '#ea433520'};
-                            color: ${clase.activa ? '#34a853' : '#ea4335'};
-                            padding: 4px 8px;
-                            border-radius: 4px;
-                            font-size: 0.8em;
-                            font-weight: bold;
-                            margin-right: 10px;
-                        ">${clase.activa ? 'ACTIVA' : 'INACTIVA'}</span>
-                        <button class="btn-small btn-edit" onclick="window.gestionClasesVisual?.editarClase('${clase._id}')" title="Editar clase">✏️</button>
-                        <button class="btn-small btn-danger" onclick="window.gestionClasesVisual?.eliminarClase('${clase._id}')" title="Eliminar clase">🗑️</button>
                     </div>
                 </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-}
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+    }
 
     editarClase(claseId) {
         console.log('✏️ Editando clase:', claseId);
@@ -276,58 +320,62 @@ class GestionClasesVisual {
     }
 
     async eliminarClase(claseId) {
-    if (!confirm('¿Está seguro de que desea eliminar esta clase?')) {
-        return;
-    }
-    
-    console.log('🗑️ Eliminando clase:', claseId);
-    
-    try {
-        // Mostrar indicador de carga
-        this.mostrarMensaje('Eliminando clase...', 'info');
-        
-        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
-            // Llamar a la API para eliminar la clase
-            const result = await authSystem.makeRequest(
-                `/clases-historicas/${claseId}`, 
-                null, 
-                'DELETE'
-            );
-            
-            if (result.success) {
-                this.mostrarMensaje('✅ Clase eliminada correctamente', 'success');
-                // Recargar la lista de clases
-                await this.cargarClases();
-            } else {
-                throw new Error(result.message || 'Error al eliminar');
-            }
-        } else {
-            throw new Error('Sistema de autenticación no disponible');
+        if (!confirm('¿Está seguro de que desea eliminar esta clase?')) {
+            return;
         }
         
-    } catch (error) {
-        console.error('❌ Error eliminando clase:', error);
-        this.mostrarMensaje('❌ Error al eliminar la clase: ' + error.message, 'error');
-        // Recargar para mostrar el estado actual
-        await this.cargarClases();
+        console.log('🗑️ Eliminando clase:', claseId);
+        
+        try {
+            // Mostrar indicador de carga
+            this.mostrarMensaje('Eliminando clase...', 'info');
+            
+            if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+                // Llamar a la API para eliminar la clase
+                const result = await authSystem.makeRequest(
+                    `/clases-historicas/${claseId}`, 
+                    null, 
+                    'DELETE'
+                );
+                
+                if (result.success) {
+                    this.mostrarMensaje('✅ Clase eliminada correctamente', 'success');
+                    // Recargar la lista de clases
+                    await this.cargarClases();
+                } else {
+                    throw new Error(result.message || 'Error al eliminar');
+                }
+            } else {
+                throw new Error('Sistema de autenticación no disponible');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error eliminando clase:', error);
+            this.mostrarMensaje('❌ Error al eliminar la clase: ' + error.message, 'error');
+            // Recargar para mostrar el estado actual
+            await this.cargarClases();
+        }
     }
-}
 
     actualizarEstadisticas(clases = null) {
         if (!clases || clases.length === 0) {
-    // Puedes mostrar valores en cero o un mensaje
-    document.getElementById('statsTotalClases').textContent = '0';
-    document.getElementById('statsClasesActivas').textContent = '0';
-    document.getElementById('statsClasesProximas').textContent = '0';
-    document.getElementById('statsTotalSolicitudesHistorico').textContent = '0';
-    return;
-}
+            document.getElementById('statsTotalClases').textContent = '0';
+            document.getElementById('statsClasesActivas').textContent = '0';
+            document.getElementById('statsClasesProximas').textContent = '0';
+            document.getElementById('statsTotalSolicitudesHistorico').textContent = '0';
+            return;
+        }
         
         const total = clases.length;
         const activas = clases.filter(c => c.activa).length;
+        
+        // Calcular clases próximas (dentro de los próximos 7 días)
+        const ahora = new Date();
         const proximas = clases.filter(c => {
-            const fechaClase = new Date(c.fecha + 'T' + (c.hora || '10:00'));
-            return fechaClase > new Date() && c.activa;
+            if (!c.activa || !c.fechaClase) return false;
+            const fechaClase = new Date(c.fechaClase);
+            const diffDias = (fechaClase - ahora) / (1000 * 60 * 60 * 24);
+            return diffDias > 0 && diffDias <= 7;
         }).length;
         
         const totalEl = document.getElementById('statsTotalClases');
@@ -341,22 +389,11 @@ class GestionClasesVisual {
         if (solicitudesEl) solicitudesEl.textContent = '0'; // Por ahora 0
     }
 
-    setEstadisticasEjemplo() {
-        const totalEl = document.getElementById('statsTotalClases');
-        const activasEl = document.getElementById('statsClasesActivas');
-        const proximasEl = document.getElementById('statsClasesProximas');
-        const solicitudesEl = document.getElementById('statsTotalSolicitudesHistorico');
-        
-        if (totalEl) totalEl.textContent = '3';
-        if (activasEl) activasEl.textContent = '2';
-        if (proximasEl) proximasEl.textContent = '1';
-        if (solicitudesEl) solicitudesEl.textContent = '0';
-    }
-
     mostrarMensaje(mensaje, tipo) {
         const mensajeDiv = document.getElementById('formMensaje');
         if (!mensajeDiv) {
             console.log('📢', mensaje, tipo);
+            alert(mensaje);
             return;
         }
         
