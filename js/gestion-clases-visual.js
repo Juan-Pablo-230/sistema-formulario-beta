@@ -282,20 +282,42 @@ class GestionClasesVisual {
     }
 
     async eliminarClase(claseId) {
-        if (!confirm('¿Está seguro de que desea eliminar esta clase?')) {
-            return;
+    if (!confirm('¿Está seguro de que desea eliminar esta clase?')) {
+        return;
+    }
+    
+    console.log('🗑️ Eliminando clase:', claseId);
+    
+    try {
+        // Mostrar indicador de carga
+        this.mostrarMensaje('Eliminando clase...', 'info');
+        
+        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+            // Llamar a la API para eliminar la clase
+            const result = await authSystem.makeRequest(
+                `/clases-historicas/${claseId}`, 
+                null, 
+                'DELETE'
+            );
+            
+            if (result.success) {
+                this.mostrarMensaje('✅ Clase eliminada correctamente', 'success');
+                // Recargar la lista de clases
+                await this.cargarClases();
+            } else {
+                throw new Error(result.message || 'Error al eliminar');
+            }
+        } else {
+            throw new Error('Sistema de autenticación no disponible');
         }
         
-        console.log('🗑️ Eliminando clase:', claseId);
-        try {
-            // Aquí iría la llamada a la API para eliminar
-            this.mostrarMensaje('✅ Clase eliminada correctamente', 'success');
-            await this.cargarClases();
-        } catch (error) {
-            console.error('❌ Error eliminando clase:', error);
-            this.mostrarMensaje('❌ Error al eliminar la clase', 'error');
-        }
+    } catch (error) {
+        console.error('❌ Error eliminando clase:', error);
+        this.mostrarMensaje('❌ Error al eliminar la clase: ' + error.message, 'error');
+        // Recargar para mostrar el estado actual
+        await this.cargarClases();
     }
+}
 
     actualizarEstadisticas(clases = null) {
         if (!clases || clases.length === 0) {
