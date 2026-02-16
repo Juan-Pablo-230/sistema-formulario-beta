@@ -131,18 +131,18 @@ if (!clasesHistoricasExists) {
 }
 
 // Verificar/crear colección de material histórico
-const materialHistoricoExists = await db.listCollections({ name: 'material_historico' }).hasNext();
+const materialHistoricoExists = await db.listCollections({ name: 'solicitudMaterial' }).hasNext();
 if (!materialHistoricoExists) {
-    console.log('📝 Creando colección "material_historico"...');
-    await db.createCollection('material_historico');
+    console.log('📝 Creando colección "solicitudMaterial"...');
+    await db.createCollection('solicitudMaterial');
     
-    await db.collection('material_historico').createIndex({ usuarioId: 1, claseId: 1 });
-    await db.collection('material_historico').createIndex({ fechaSolicitud: -1 });
-    await db.collection('material_historico').createIndex({ claseId: 1 });
+    await db.collection('solicitudMaterial').createIndex({ usuarioId: 1, claseId: 1 });
+    await db.collection('solicitudMaterial').createIndex({ fechaSolicitud: -1 });
+    await db.collection('solicitudMaterial').createIndex({ claseId: 1 });
     
-    console.log('✅ Colección "material_historico" creada con índices');
+    console.log('✅ Colección "solicitudMaterial" creada con índices');
 } else {
-    console.log('✅ Colección "material_historico" ya existe');
+    console.log('✅ Colección "solicitudMaterial" ya existe');
 }
 }
 

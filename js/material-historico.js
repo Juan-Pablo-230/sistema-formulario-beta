@@ -572,7 +572,7 @@ class MaterialHistorico {
 
     cargarSolicitudesLocal() {
         const user = getCurrentUserSafe();
-        const storageKey = `material_historico_${user._id}`;
+        const storageKey = `solicitudMaterial_${user._id}`;
         const stored = localStorage.getItem(storageKey);
         this.solicitudes = stored ? JSON.parse(stored) : [];
         console.log(`📋 ${this.solicitudes.length} solicitudes cargadas desde localStorage`);
