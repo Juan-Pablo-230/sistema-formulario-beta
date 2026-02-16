@@ -1601,9 +1601,6 @@ generarFilasPlanilla(inscripciones) {
     cambiarVista(vista) {
         this.vistaActual = vista;
         
-        // 🧹 LIMPIAR SOLO ELEMENTOS PROBLEMÁTICOS
-        limpiarElementosProblematicos();
-        
         const inscripcionesSection = document.getElementById('inscripcionesSection');
         const usuariosSection = document.getElementById('usuariosSection');
         const materialSection = document.getElementById('materialSection');
@@ -1774,12 +1771,10 @@ generarFilasPlanilla(inscripciones) {
         
         // Configurar botones de navegación con limpieza
         document.getElementById('btnInscripciones').addEventListener('click', () => {
-            limpiarElementosProblematicos();
             this.cambiarVista('inscripciones');
         });
         
         document.getElementById('btnUsuarios').addEventListener('click', () => {
-            limpiarElementosProblematicos();
             if (authSystem.isAdmin()) {
                 this.cambiarVista('usuarios');
             } else {
@@ -1790,7 +1785,6 @@ generarFilasPlanilla(inscripciones) {
         const btnMaterial = document.getElementById('btnMaterial');
         if (btnMaterial) {
             btnMaterial.addEventListener('click', () => {
-                limpiarElementosProblematicos();
                 if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
                     this.cambiarVista('material');
                 } else {
@@ -1817,7 +1811,6 @@ generarFilasPlanilla(inscripciones) {
         const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
         if (btnMaterialHistorico) {
             btnMaterialHistorico.addEventListener('click', () => {
-                limpiarElementosProblematicos();
                 if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
                     this.cambiarVista('materialHistorico');
                 } else {
@@ -1835,7 +1828,6 @@ generarFilasPlanilla(inscripciones) {
         const btnGestionClasesVisual = document.getElementById('btnGestionClasesVisual');
         if (btnGestionClasesVisual) {
             btnGestionClasesVisual.addEventListener('click', () => {
-                limpiarElementosProblematicos();
                 if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
                     this.cambiarVista('gestionClasesVisual');
                 } else {
@@ -1908,73 +1900,6 @@ generarFilasPlanilla(inscripciones) {
         
         console.log('✅ Admin system MongoDB inicializado correctamente');
     }
-}
-
-// 🧹 FUNCIÓN GLOBAL DE LIMPIEZA (modificada para respetar los filtros del dashboard)
-function limpiarElementosProblematicos() {
-    console.log('🧹 Limpiando solo elementos problemáticos de Material Histórico y Gestión Visual...');
-    
-    // SOLO eliminar elementos específicos de Material Histórico
-    const elementosMaterialHistorico = [
-        '#materialLinks',
-        '#claseInfo',
-        '#linksContainer',
-        '#instructoresInfo',
-        '.material-links.visible',
-        '.link-card',
-        '.periodo-badge'
-    ];
-    
-    elementosMaterialHistorico.forEach(selector => {
-        document.querySelectorAll(selector).forEach(el => {
-            console.log(`   Eliminando elemento de Material Histórico: ${selector}`);
-            el.remove();
-        });
-    });
-    
-    // SOLO eliminar elementos específicos de Gestión Visual (PERO NO los filtros)
-    const elementosGestionVisual = [
-        '#clasesListContainer', // Solo el contenedor de la lista, no los filtros
-        '#formMensaje',
-        '.gestion-container', // El contenedor de gestión visual completo
-        '.form-panel',
-        '.list-panel',
-        '.clase-card'
-    ];
-    
-    elementosGestionVisual.forEach(selector => {
-        document.querySelectorAll(selector).forEach(el => {
-            // Verificar que NO es un filtro antes de eliminar
-            if (!el.closest('.filtros-container') && !el.closest('#filtroContainer')) {
-                console.log(`   Eliminando elemento de Gestión Visual: ${selector}`);
-                el.remove();
-            }
-        });
-    });
-    
-    // Reiniciar instancias globales
-    if (window.materialHistorico) {
-        console.log('   Eliminando instancia de MaterialHistorico');
-        window.materialHistorico = null;
-    }
-    
-    if (window.materialHistoricoInstance) {
-        console.log('   Eliminando instancia de materialHistoricoInstance');
-        window.materialHistoricoInstance = null;
-    }
-    
-    if (window.gestionVisual) {
-        console.log('   Eliminando instancia de gestionVisual');
-        window.gestionVisual = null;
-    }
-    
-    if (window.gestionClasesVisual) {
-        console.log('   Eliminando instancia de gestionClasesVisual');
-        window.gestionClasesVisual = null;
-    }
-    
-    // NO eliminar elementos de filtros
-    console.log('✅ Limpieza completada - Filtros preservados');
 }
 
 // Llamar a la limpieza cuando se carga la página
