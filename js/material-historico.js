@@ -85,10 +85,44 @@ class MaterialHistorico {
         }
     }
 
-    async esperarAuthSystem() {
-        // Este método ya no es necesario porque usamos waitForAuthSystem de formularios.js
-        // Lo dejamos como referencia pero no se usa
-        return waitForAuthSystem();
+    configurarUI() {
+        const usuario = getCurrentUserSafe();
+        console.log('👤 Usuario actual:', usuario);
+        
+        // Autocompletar email si existe el campo
+        const emailInput = document.getElementById('emailUsuario');
+        if (emailInput && usuario && usuario.email) {
+            emailInput.value = usuario.email;
+        }
+
+        // Configurar botón de logout SOLO si existe
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                logoutSafe(); // Usar logoutSafe de formularios.js
+            });
+        } else {
+            console.log('⚠️ Botón de logout no encontrado en el DOM');
+        }
+
+        // Configurar formulario principal SOLO si existe
+        const form = document.getElementById('materialHistoricoForm');
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.procesarSolicitud();
+            });
+        } else {
+            console.error('❌ Formulario materialHistoricoForm no encontrado');
+        }
+
+        // Configurar botón de solicitar otra clase SOLO si existe
+        const solicitarOtraBtn = document.getElementById('solicitarOtraClase');
+        if (solicitarOtraBtn) {
+            solicitarOtraBtn.addEventListener('click', () => {
+                this.ocultarMaterial();
+            });
+        }
     }
 
     async cargarClasesHistoricas() {
@@ -128,75 +162,6 @@ class MaterialHistorico {
             this.mostrarMensaje('Error al cargar clases. Usando datos de ejemplo.', 'info');
             this.cargarClasesEjemplo();
         }
-    }
-
-    cargarClasesEjemplo() {
-        console.log('📋 Usando clases de ejemplo');
-        this.clasesHistoricas = [
-            {
-                _id: "clase_001",
-                nombre: "Telemetría Avanzada",
-                descripcion: "Monitoreo cardíaco continuo y telemetría en unidades coronarias",
-                fechaClase: "2026-02-10T10:00:00Z",
-                enlaces: {
-                    youtube: "https://www.youtube.com/watch?v=telemetria2026",
-                    powerpoint: "https://docs.google.com/presentation/d/1-telemetria"
-                },
-                activa: true,
-                instructores: ["Dr. Juan Pérez", "Lic. María González"]
-            },
-            {
-                _id: "clase_002",
-                nombre: "Rotación de Personal en Salud",
-                descripcion: "Estrategias para gestionar la rotación del personal",
-                fechaClase: "2026-02-15T17:00:00Z",
-                enlaces: {
-                    youtube: "https://www.youtube.com/watch?v=rotacion2026",
-                    powerpoint: "https://docs.google.com/presentation/d/1-rotacion"
-                },
-                activa: true,
-                instructores: ["Lic. Ana López"]
-            },
-            {
-                _id: "clase_003",
-                nombre: "Gestión de Ausentismo",
-                descripcion: "Herramientas para reducir el ausentismo laboral",
-                fechaClase: "2025-11-20T13:00:00Z",
-                enlaces: {
-                    youtube: "https://www.youtube.com/watch?v=ausentismo2025",
-                    powerpoint: "https://docs.google.com/presentation/d/1-ausentismo"
-                },
-                activa: true,
-                instructores: ["Lic. Laura Martínez"]
-            },
-            {
-                _id: "clase_004",
-                nombre: "Stroke / IAM",
-                descripcion: "Protocolos de emergencia para ACV e Infarto",
-                fechaClase: "2025-09-24T13:00:00Z",
-                enlaces: {
-                    youtube: "https://www.youtube.com/watch?v=stroke2025",
-                    powerpoint: "https://docs.google.com/presentation/d/1-stroke"
-                },
-                activa: true,
-                instructores: ["Dr. Roberto Sánchez"]
-            },
-            {
-                _id: "clase_005",
-                nombre: "CoPaP - Cuidados Paliativos",
-                descripcion: "Abordaje integral en cuidados paliativos",
-                fechaClase: "2024-08-25T17:00:00Z",
-                enlaces: {
-                    youtube: "https://www.youtube.com/watch?v=copap2024",
-                    powerpoint: "https://docs.google.com/presentation/d/1-copap"
-                },
-                activa: true,
-                instructores: ["Lic. Silvia Vargas"]
-            }
-        ];
-        
-        this.procesarAnosDisponibles();
-        this.llenarSelectorAnos();
     }
 
     procesarAnosDisponibles() {
@@ -318,8 +283,8 @@ class MaterialHistorico {
         const sinClasesMensaje = document.getElementById('sinClasesMensaje');
         
         if (!this.anoSeleccionado || !this.mesSeleccionado) {
-            form.style.display = 'none';
-            sinClasesMensaje.style.display = 'none';
+            if (form) form.style.display = 'none';
+            if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
             return;
         }
         
@@ -335,14 +300,14 @@ class MaterialHistorico {
         
         if (this.clasesFiltradas.length === 0) {
             // No hay clases para este período
-            form.style.display = 'none';
-            sinClasesMensaje.style.display = 'block';
+            if (form) form.style.display = 'none';
+            if (sinClasesMensaje) sinClasesMensaje.style.display = 'block';
             return;
         }
         
         // Hay clases, mostrar el formulario
-        sinClasesMensaje.style.display = 'none';
-        form.style.display = 'block';
+        if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
+        if (form) form.style.display = 'block';
         this.llenarSelectClases();
     }
 
@@ -388,28 +353,6 @@ class MaterialHistorico {
         console.log(`✅ Selector de clases cargado con ${this.clasesFiltradas.length} opciones`);
     }
 
-    configurarUI() {
-        const usuario = getCurrentUserSafe();
-        console.log('👤 Usuario actual:', usuario);
-        
-        if (usuario && usuario.email) {
-            document.getElementById('emailUsuario').value = usuario.email;
-        }
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            logoutSafe(); // Usar logoutSafe de formularios.js
-        });
-
-        document.getElementById('materialHistoricoForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.procesarSolicitud();
-        });
-
-        document.getElementById('solicitarOtraClase')?.addEventListener('click', () => {
-            this.ocultarMaterial();
-        });
-    }
-
     async procesarSolicitud() {
         const claseId = document.getElementById('claseSeleccionada').value;
         
@@ -449,6 +392,11 @@ class MaterialHistorico {
         const claseFecha = document.getElementById('claseFecha');
         const linksContainer = document.getElementById('linksContainer');
         
+        if (!materialLinks || !claseNombre || !linksContainer) {
+            console.error('❌ Elementos necesarios para mostrar material no encontrados');
+            return;
+        }
+        
         // Formatear fecha para mostrar
         let fechaFormateada = '';
         if (claseData.fecha) {
@@ -466,8 +414,8 @@ class MaterialHistorico {
         }
         
         claseNombre.innerHTML = `${claseData.nombre} <span class="periodo-badge">${this.nombresMeses[this.mesSeleccionado]} ${this.anoSeleccionado}</span>`;
-        claseDescripcion.textContent = claseData.descripcion || 'Material de la clase grabada';
-        claseFecha.textContent = `📅 ${fechaFormateada}`;
+        if (claseDescripcion) claseDescripcion.textContent = claseData.descripcion || 'Material de la clase grabada';
+        if (claseFecha) claseFecha.textContent = `📅 ${fechaFormateada}`;
         
         // Limpiar instructores anteriores
         const instructoresExistente = document.getElementById('instructoresInfo');
@@ -481,7 +429,10 @@ class MaterialHistorico {
             instructoresElem.innerHTML = `👥 Instructores: ${claseData.instructores}`;
             instructoresElem.style.marginTop = '10px';
             instructoresElem.style.color = 'var(--text-secondary)';
-            document.getElementById('claseInfo').appendChild(instructoresElem);
+            const claseInfo = document.getElementById('claseInfo');
+            if (claseInfo) {
+                claseInfo.appendChild(instructoresElem);
+            }
         }
         
         linksContainer.innerHTML = '';
@@ -513,24 +464,43 @@ class MaterialHistorico {
         }
         
         // Ocultar filtros y formulario, mostrar enlaces
-        document.querySelector('.filtros-container').style.display = 'none';
-        document.getElementById('materialHistoricoForm').style.display = 'none';
-        document.getElementById('sinClasesMensaje').style.display = 'none';
+        const filtrosContainer = document.querySelector('.filtros-container');
+        if (filtrosContainer) filtrosContainer.style.display = 'none';
+        
+        const form = document.getElementById('materialHistoricoForm');
+        if (form) form.style.display = 'none';
+        
+        const sinClasesMensaje = document.getElementById('sinClasesMensaje');
+        if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
+        
         materialLinks.classList.add('visible');
         
         this.mostrarMensaje('✅ Material disponible', 'success');
     }
 
     ocultarMaterial() {
-        document.querySelector('.filtros-container').style.display = 'block';
-        document.getElementById('materialHistoricoForm').style.display = 'none';
-        document.getElementById('materialLinks').classList.remove('visible');
-        document.getElementById('claseSeleccionada').value = '';
+        const filtrosContainer = document.querySelector('.filtros-container');
+        if (filtrosContainer) filtrosContainer.style.display = 'block';
+        
+        const form = document.getElementById('materialHistoricoForm');
+        if (form) form.style.display = 'none';
+        
+        const materialLinks = document.getElementById('materialLinks');
+        if (materialLinks) materialLinks.classList.remove('visible');
+        
+        const claseSelect = document.getElementById('claseSeleccionada');
+        if (claseSelect) claseSelect.value = '';
         
         // Resetear selectores
-        document.getElementById('anoSeleccionado').value = '';
-        document.getElementById('mesSeleccionado').innerHTML = '<option value="">Primero seleccione año</option>';
-        document.getElementById('mesSeleccionado').disabled = true;
+        const selectAno = document.getElementById('anoSeleccionado');
+        if (selectAno) selectAno.value = '';
+        
+        const selectMes = document.getElementById('mesSeleccionado');
+        if (selectMes) {
+            selectMes.innerHTML = '<option value="">Primero seleccione año</option>';
+            selectMes.disabled = true;
+        }
+        
         this.anoSeleccionado = null;
         this.mesSeleccionado = null;
     }
@@ -677,6 +647,11 @@ class MaterialHistorico {
 
     mostrarMensaje(mensaje, tipo) {
         const mensajeDiv = document.getElementById('statusMessage');
+        if (!mensajeDiv) {
+            console.log('📢', mensaje, tipo);
+            return;
+        }
+        
         mensajeDiv.textContent = mensaje;
         mensajeDiv.className = `status-message ${tipo}`;
         mensajeDiv.style.display = 'block';
