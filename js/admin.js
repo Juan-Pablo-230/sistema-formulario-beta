@@ -1902,12 +1902,6 @@ generarFilasPlanilla(inscripciones) {
     }
 }
 
-// Llamar a la limpieza cuando se carga la página
-document.addEventListener('DOMContentLoaded', function() {
-    // Pequeño retraso para asegurar que todo está cargado
-    setTimeout(limpiarElementosProblematicos, 100);
-});
-
 const adminSystem = new AdminSystem();
 
 document.addEventListener('DOMContentLoaded', function() {
