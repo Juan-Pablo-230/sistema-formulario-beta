@@ -1,6 +1,3 @@
-console.warn("Esta es una version BETA del sistema de inscripciones. Algunas funcionalidades pueden no estar disponibles o presentar errores. ¡Gracias por tu comprensión y paciencia!");
-console.log('calendar.js cargado correctamente - Versión Columnas Derecha');
-
 class CalendarManager {
     constructor() {
         this.selectedClasses = new Set();

@@ -107,6 +107,12 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.logo[src] {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+
 .header-content {
     display: flex;
     justify-content: space-between;
@@ -1495,6 +1501,12 @@ footer {
     .main-layout {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+
+    .logo[src] {
+        display: grid;
+        width: 100px;
+        height: auto;
     }
     
     .right-column {
