@@ -109,46 +109,54 @@ class GestionClasesVisual {
     }
 
     async guardarClase() {
-        console.log('💾 Guardando clase...');
-        
-        const form = document.getElementById('formClaseHistorica');
-        if (!form) {
-            this.mostrarMensaje('❌ Error: Formulario no encontrado', 'error');
-            return;
-        }
-        
-        // Obtener valores del formulario
-        const claseData = {
-            nombre: document.getElementById('claseNombre')?.value || '',
-            descripcion: document.getElementById('claseDescripcion')?.value || '',
-            fecha: document.getElementById('claseFecha')?.value || '',
-            hora: document.getElementById('claseHora')?.value || '10:00',
+    console.log('💾 Guardando clase...');
+    
+    // Obtener valores del formulario
+    const claseData = {
+        nombre: document.getElementById('claseNombre')?.value || '',
+        descripcion: document.getElementById('claseDescripcion')?.value || '',
+        fechaClase: document.getElementById('claseFecha')?.value || '',
+        enlaces: {
             youtube: document.getElementById('claseYoutube')?.value || '',
-            powerpoint: document.getElementById('clasePowerpoint')?.value || '',
-            instructores: document.getElementById('claseInstructores')?.value || '',
-            activa: document.getElementById('claseActiva')?.checked || true
-        };
-        
-        // Validaciones básicas
-        if (!claseData.nombre || !claseData.fecha) {
-            this.mostrarMensaje('❌ Nombre y fecha son obligatorios', 'error');
-            return;
-        }
-        
-        try {
-            // Aquí iría la llamada a la API para guardar en MongoDB
-            console.log('📤 Enviando datos:', claseData);
-            
-            // Simular guardado exitoso
-            this.mostrarMensaje('✅ Clase guardada correctamente', 'success');
-            this.limpiarFormulario();
-            await this.cargarClases();
-            
-        } catch (error) {
-            console.error('❌ Error guardando clase:', error);
-            this.mostrarMensaje('❌ Error al guardar la clase', 'error');
-        }
+            powerpoint: document.getElementById('clasePowerpoint')?.value || ''
+        },
+        activa: document.getElementById('claseActiva')?.checked || true,
+        instructores: document.getElementById('claseInstructores')?.value 
+            ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()) 
+            : []
+    };
+    
+    // Validaciones básicas
+    if (!claseData.nombre) {
+        this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+        return;
     }
+    
+    if (!claseData.fechaClase) {
+        this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+        return;
+    }
+    
+    try {
+        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+            const result = await authSystem.makeRequest('/clases-historicas', claseData);
+            
+            if (result.success) {
+                this.mostrarMensaje('✅ Clase guardada correctamente', 'success');
+                this.limpiarFormulario();
+                await this.cargarClases();
+            } else {
+                throw new Error(result.message || 'Error al guardar');
+            }
+        } else {
+            throw new Error('Sistema de autenticación no disponible');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error guardando clase:', error);
+        this.mostrarMensaje('❌ Error al guardar la clase: ' + error.message, 'error');
+    }
+}
 
     limpiarFormulario() {
         console.log('🧹 Limpiando formulario');
@@ -165,27 +173,39 @@ class GestionClasesVisual {
     }
 
     async cargarClases() {
-        console.log('📥 Cargando clases...');
+    console.log('📥 Cargando clases...');
+    
+    const container = document.getElementById('clasesListContainer');
+    if (!container) return;
+    
+    container.innerHTML = this.getLoadingHTML();
+    
+    try {
+        let clases = [];
         
-        const container = document.getElementById('clasesListContainer');
-        if (!container) {
-            console.error('❌ Contenedor de clases no encontrado');
-            return;
+        // Usar authSystem.makeRequest (igual que en admin.js)
+        if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+            const result = await authSystem.makeRequest('/clases-historicas', null, 'GET');
+            clases = result.data || [];
+            console.log('✅ Clases cargadas:', clases.length);
+        } else {
+            console.error('❌ authSystem no disponible');
+            throw new Error('Sistema de autenticación no disponible');
         }
         
-        // Mostrar loading
-        container.innerHTML = this.getLoadingHTML();
+        if (clases.length === 0) {
+            container.innerHTML = this.getEmptyHTML();
+            this.actualizarEstadisticas([]);
+        } else {
+            this.mostrarClasesEnContainer(container, clases);
+            this.actualizarEstadisticas(clases);
+        }
         
-        try {
-    const response = await fetch('/api/clases');
-    const clases = await response.json();
-    this.mostrarClasesEnContainer(container, clases);
-    this.actualizarEstadisticas(clases);
-} catch (error) {
-    console.error('Error cargando clases:', error);
-    container.innerHTML = this.getErrorHTML('Error al cargar las clases');
-}
+    } catch (error) {
+        console.error('❌ Error cargando clases:', error);
+        container.innerHTML = this.getErrorHTML('Error al cargar las clases');
     }
+}
 
     mostrarClasesEnContainer(container, clases) {
         if (!clases || clases.length === 0) {
