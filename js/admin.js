@@ -152,6 +152,7 @@ showMaterialHistoricoTable(solicitudes) {
     const tbody = document.getElementById('materialHistoricoBody');
     if (!tbody) return;
     
+    // 🧹 Limpiar cualquier contenido residual dentro de la tabla
     tbody.innerHTML = '';
 
     if (solicitudes.length === 0) {
@@ -224,22 +225,17 @@ generarMaterialHistoricoHTML(solicitud) {
 cambiarVistaMaterialHistorico() {
     this.vistaActual = 'materialHistorico';
     
-    // Ocultar todas las secciones
-    document.querySelectorAll('.table-container').forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Mostrar sección de material histórico
-    const materialHistoricoSection = document.getElementById('materialHistoricoSection');
-    if (materialHistoricoSection) {
-        materialHistoricoSection.style.display = 'block';
+    // Limpiar contenedor antes de cargar
+    const materialHistoricoBody = document.getElementById('materialHistoricoBody');
+    if (materialHistoricoBody) {
+        materialHistoricoBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
+                    Cargando solicitudes de material histórico...
+                </td>
+            </tr>
+        `;
     }
-    
-    // Actualizar botones de navegación
-    document.querySelectorAll('.view-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.getElementById('btnMaterialHistorico').classList.add('active');
     
     // Mostrar datos
     this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
@@ -1038,7 +1034,7 @@ FIN DE LA LISTA
                         fila.parentElement.style.minHeight = '24px';
                     });
                 };
-            </script>
+            <\/script>
         </body>
         </html>
     `);
@@ -1174,10 +1170,7 @@ generarFilasPlanilla(inscripciones) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
-                        No hay inscripciones registradas ${
-                            this.filtroClaseActual !== 'todas' ? 
-                            'con los filtros aplicados' : ''
-                        }
+                        No hay inscripciones registradas ${this.filtroClaseActual !== 'todas' ? 'con los filtros aplicados' : ''}
                     </td>
                 </tr>
             `;
@@ -1607,9 +1600,14 @@ generarFilasPlanilla(inscripciones) {
     cambiarVista(vista) {
         this.vistaActual = vista;
         
+        // 🧹 LIMPIAR ELEMENTOS RESIDUALES ANTES DE CAMBIAR DE VISTA
+        limpiarElementosProblematicos();
+        
         const inscripcionesSection = document.getElementById('inscripcionesSection');
         const usuariosSection = document.getElementById('usuariosSection');
         const materialSection = document.getElementById('materialSection');
+        const materialHistoricoSection = document.getElementById('materialHistoricoSection');
+        const gestionClasesVisualSection = document.getElementById('gestionClasesVisualSection');
         
         const statsInscripciones = document.getElementById('statsInscripciones');
         const statsUsuarios = document.getElementById('statsUsuarios');
@@ -1618,13 +1616,14 @@ generarFilasPlanilla(inscripciones) {
         const filtrosInscripciones = document.getElementById('filtrosInscripciones');
         const filtrosMaterial = document.getElementById('filtrosMaterial');
         
-        const contadorResultados = document.getElementById('contadorResultados');
         const btnInscripciones = document.getElementById('btnInscripciones');
         const btnUsuarios = document.getElementById('btnUsuarios');
         const btnMaterial = document.getElementById('btnMaterial');
+        const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
+        const btnGestionClasesVisual = document.getElementById('btnGestionClasesVisual');
         
         // Resetear todas las vistas
-        [inscripcionesSection, usuariosSection, materialSection].forEach(section => {
+        [inscripcionesSection, usuariosSection, materialSection, materialHistoricoSection, gestionClasesVisualSection].forEach(section => {
             if (section) section.style.display = 'none';
         });
         
@@ -1636,7 +1635,7 @@ generarFilasPlanilla(inscripciones) {
             if (filtro) filtro.style.display = 'none';
         });
         
-        [btnInscripciones, btnUsuarios, btnMaterial].forEach(btn => {
+        [btnInscripciones, btnUsuarios, btnMaterial, btnMaterialHistorico, btnGestionClasesVisual].forEach(btn => {
             if (btn) btn.classList.remove('active');
         });
         
@@ -1664,6 +1663,23 @@ generarFilasPlanilla(inscripciones) {
             
         } else if (vista === 'material') {
             this.cambiarVistaMaterial();
+        } else if (vista === 'materialHistorico') {
+            materialHistoricoSection.style.display = 'block';
+            btnMaterialHistorico.classList.add('active');
+            this.cambiarVistaMaterialHistorico();
+            
+            // Inicializar Material Historico si es necesario
+            if (typeof MaterialHistorico !== 'undefined' && !window.materialHistorico) {
+                window.materialHistorico = new MaterialHistorico();
+            }
+        } else if (vista === 'gestionClasesVisual') {
+            gestionClasesVisualSection.style.display = 'block';
+            btnGestionClasesVisual.classList.add('active');
+            
+            // Inicializar Gestión Visual si es necesario
+            if (typeof GestionClasesVisual !== 'undefined' && !window.gestionClasesVisual) {
+                window.gestionClasesVisual = new GestionClasesVisual();
+            }
         }
     }
 
@@ -1748,12 +1764,14 @@ generarFilasPlanilla(inscripciones) {
         this.actualizarVistaConFiltros();
         this.showUsuariosTable(usuarios);
         
-        // Configurar botones de navegación
+        // Configurar botones de navegación con limpieza
         document.getElementById('btnInscripciones').addEventListener('click', () => {
+            limpiarElementosProblematicos();
             this.cambiarVista('inscripciones');
         });
         
         document.getElementById('btnUsuarios').addEventListener('click', () => {
+            limpiarElementosProblematicos();
             if (authSystem.isAdmin()) {
                 this.cambiarVista('usuarios');
             } else {
@@ -1764,6 +1782,7 @@ generarFilasPlanilla(inscripciones) {
         const btnMaterial = document.getElementById('btnMaterial');
         if (btnMaterial) {
             btnMaterial.addEventListener('click', () => {
+                limpiarElementosProblematicos();
                 if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
                     this.cambiarVista('material');
                 } else {
@@ -1784,6 +1803,42 @@ generarFilasPlanilla(inscripciones) {
         
         if (!authSystem.isAdmin()) {
             document.getElementById('btnUsuarios').style.display = 'none';
+        }
+        
+        // Botón de Material Histórico
+        const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
+        if (btnMaterialHistorico) {
+            btnMaterialHistorico.addEventListener('click', () => {
+                limpiarElementosProblematicos();
+                if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
+                    this.cambiarVista('materialHistorico');
+                } else {
+                    alert('Solo administradores y usuarios avanzados pueden acceder a esta sección');
+                }
+            });
+            
+            // Mostrar botón solo si tiene permisos
+            if (!authSystem.isAdmin() && !authSystem.isAdvancedUser()) {
+                btnMaterialHistorico.style.display = 'none';
+            }
+        }
+        
+        // Botón de Gestión Visual de Clases
+        const btnGestionClasesVisual = document.getElementById('btnGestionClasesVisual');
+        if (btnGestionClasesVisual) {
+            btnGestionClasesVisual.addEventListener('click', () => {
+                limpiarElementosProblematicos();
+                if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
+                    this.cambiarVista('gestionClasesVisual');
+                } else {
+                    alert('Solo administradores y usuarios avanzados pueden acceder a esta sección');
+                }
+            });
+            
+            // Mostrar botón solo si tiene permisos
+            if (!authSystem.isAdmin() && !authSystem.isAdvancedUser()) {
+                btnGestionClasesVisual.style.display = 'none';
+            }
         }
         
         // Configurar botón de exportar correos de material
@@ -1807,26 +1862,8 @@ generarFilasPlanilla(inscripciones) {
         }
         
         if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
-    await this.loadSolicitudesMaterialHistorico();
-}
-
-// Configurar el botón de material histórico en init():
-const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
-if (btnMaterialHistorico) {
-    btnMaterialHistorico.addEventListener('click', () => {
-        if (authSystem.isAdmin() || authSystem.isAdvancedUser()) {
-            this.cambiarVistaMaterialHistorico();
-        } else {
-            alert('Solo administradores y usuarios avanzados pueden acceder a esta sección');
+            await this.loadSolicitudesMaterialHistorico();
         }
-    });
-    
-    // Mostrar botón solo si tiene permisos
-    if (!authSystem.isAdmin() && !authSystem.isAdvancedUser()) {
-        btnMaterialHistorico.style.display = 'none';
-    }
-}
-
 
         document.getElementById('refreshBtn').addEventListener('click', async () => {
             document.getElementById('refreshBtn').textContent = 'Actualizando...';
@@ -1845,9 +1882,9 @@ if (btnMaterialHistorico) {
                 this.actualizarTablaMaterial();
             }
             if (this.vistaActual === 'materialHistorico') {
-    const nuevasSolicitudes = await this.loadSolicitudesMaterialHistorico();
-    this.showMaterialHistoricoTable(nuevasSolicitudes);
-}
+                const nuevasSolicitudes = await this.loadSolicitudesMaterialHistorico();
+                this.showMaterialHistoricoTable(nuevasSolicitudes);
+            }
             
             document.getElementById('refreshBtn').textContent = '🔄 Actualizar Datos';
         });
@@ -1864,6 +1901,89 @@ if (btnMaterialHistorico) {
         console.log('✅ Admin system MongoDB inicializado correctamente');
     }
 }
+
+// 🧹 FUNCIÓN GLOBAL DE LIMPIEZA (fuera de la clase)
+function limpiarElementosProblematicos() {
+    console.log('🧹 Limpiando elementos problemáticos de Material Histórico y Gestión Visual...');
+    
+    // Lista de IDs específicos a eliminar
+    const idsAEliminar = [
+        'materialLinks',
+        'claseInfo',
+        'linksContainer',
+        'instructoresInfo',
+        'formMensaje',
+        'clasesListContainer',
+        'statsMiniContainer'
+    ];
+    
+    idsAEliminar.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            console.log(`   Eliminando elemento con ID: ${id}`);
+            elemento.remove();
+        }
+    });
+    
+    // Lista de selectores de clase a eliminar
+    const selectoresAEliminar = [
+        '.material-links',
+        '.material-links.visible',
+        '.filtros-container select', // Selects adicionales creados dinámicamente
+        '.periodo-badge',
+        '.link-card',
+        '.gestion-container',
+        '.form-panel',
+        '.list-panel',
+        '.clase-card',
+        '.graficos-container',
+        '.login-required-message',
+        '.status-message'
+    ];
+    
+    selectoresAEliminar.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            console.log(`   Eliminando elemento con selector: ${selector}`);
+            el.remove();
+        });
+    });
+    
+    // Limpiar cualquier div vacío que pueda haber quedado
+    document.querySelectorAll('div:empty').forEach(el => {
+        if (!el.closest('header') && !el.closest('nav') && !el.closest('footer')) {
+            el.remove();
+        }
+    });
+    
+    // Reiniciar instancias globales
+    if (window.materialHistorico) {
+        console.log('   Eliminando instancia de MaterialHistorico');
+        window.materialHistorico = null;
+    }
+    
+    if (window.materialHistoricoInstance) {
+        console.log('   Eliminando instancia de materialHistoricoInstance');
+        window.materialHistoricoInstance = null;
+    }
+    
+    if (window.gestionVisual) {
+        console.log('   Eliminando instancia de gestionVisual');
+        window.gestionVisual = null;
+    }
+    
+    if (window.gestionClasesVisual) {
+        console.log('   Eliminando instancia de gestionClasesVisual');
+        window.gestionClasesVisual = null;
+    }
+    
+    console.log('✅ Limpieza completada');
+}
+
+// Llamar a la limpieza cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Pequeño retraso para asegurar que todo está cargado
+    setTimeout(limpiarElementosProblematicos, 100);
+});
 
 const adminSystem = new AdminSystem();
 
