@@ -177,60 +177,14 @@ class GestionClasesVisual {
         container.innerHTML = this.getLoadingHTML();
         
         try {
-            // Aquí iría la llamada a la API para obtener las clases
-            // Por ahora usamos datos de ejemplo
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const clasesEjemplo = this.obtenerClasesEjemplo();
-            this.mostrarClasesEnContainer(container, clasesEjemplo);
-            this.actualizarEstadisticas(clasesEjemplo);
-            
-        } catch (error) {
-            console.error('❌ Error cargando clases:', error);
-            container.innerHTML = this.getErrorHTML('Error al cargar las clases');
-        }
-    }
-
-    obtenerClasesEjemplo() {
-        const fechaActual = new Date();
-        const fechaProxima = new Date();
-        fechaProxima.setDate(fechaProxima.getDate() + 7);
-        
-        return [
-            {
-                _id: '1',
-                nombre: 'Introducción a MongoDB',
-                descripcion: 'Conceptos básicos de MongoDB',
-                fecha: '2026-02-10',
-                hora: '10:00',
-                youtube: 'https://youtube.com/...',
-                powerpoint: 'https://docs.google.com/...',
-                instructores: 'Dr. Juan Pérez',
-                activa: true
-            },
-            {
-                _id: '2',
-                nombre: 'Node.js Avanzado',
-                descripcion: 'APIs con Node.js',
-                fecha: '2026-02-15',
-                hora: '14:00',
-                youtube: 'https://youtube.com/...',
-                powerpoint: 'https://docs.google.com/...',
-                instructores: 'Lic. María González',
-                activa: true
-            },
-            {
-                _id: '3',
-                nombre: 'React Hooks',
-                descripcion: 'useState, useEffect, useContext',
-                fecha: '2026-02-20',
-                hora: '09:00',
-                youtube: '',
-                powerpoint: 'https://docs.google.com/...',
-                instructores: 'Ing. Carlos López',
-                activa: false
-            }
-        ];
+    const response = await fetch('/api/clases');
+    const clases = await response.json();
+    this.mostrarClasesEnContainer(container, clases);
+    this.actualizarEstadisticas(clases);
+} catch (error) {
+    console.error('Error cargando clases:', error);
+    container.innerHTML = this.getErrorHTML('Error al cargar las clases');
+}
     }
 
     mostrarClasesEnContainer(container, clases) {
@@ -324,12 +278,14 @@ class GestionClasesVisual {
     }
 
     actualizarEstadisticas(clases = null) {
-        if (!clases) {
-            // Si no se proporcionan clases, intentar obtener las actuales del contenedor
-            // Por ahora solo ponemos valores de ejemplo
-            this.setEstadisticasEjemplo();
-            return;
-        }
+        if (!clases || clases.length === 0) {
+    // Puedes mostrar valores en cero o un mensaje
+    document.getElementById('statsTotalClases').textContent = '0';
+    document.getElementById('statsClasesActivas').textContent = '0';
+    document.getElementById('statsClasesProximas').textContent = '0';
+    document.getElementById('statsTotalSolicitudesHistorico').textContent = '0';
+    return;
+}
         
         const total = clases.length;
         const activas = clases.filter(c => c.activa).length;
