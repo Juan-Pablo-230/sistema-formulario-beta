@@ -111,11 +111,17 @@ class GestionClasesVisual {
     async guardarClase() {
     console.log('💾 Guardando clase...');
     
-    // Obtener valores del formulario
+    // Obtener fecha y hora
+    const fecha = document.getElementById('claseFecha')?.value || '';
+    const hora = document.getElementById('claseHora')?.value || '10:00';
+    
+    // Combinar fecha y hora en formato ISO (YYYY-MM-DDTHH:mm)
+    const fechaCompleta = `${fecha}T${hora}:00`;
+    
     const claseData = {
         nombre: document.getElementById('claseNombre')?.value || '',
         descripcion: document.getElementById('claseDescripcion')?.value || '',
-        fechaClase: document.getElementById('claseFecha')?.value || '',
+        fechaClase: fechaCompleta, // Enviar fecha completa con hora
         enlaces: {
             youtube: document.getElementById('claseYoutube')?.value || '',
             powerpoint: document.getElementById('clasePowerpoint')?.value || ''
@@ -158,20 +164,6 @@ class GestionClasesVisual {
     }
 }
 
-    limpiarFormulario() {
-        console.log('🧹 Limpiando formulario');
-        const form = document.getElementById('formClaseHistorica');
-        if (form) {
-            form.reset();
-            // Establecer valores por defecto
-            const horaInput = document.getElementById('claseHora');
-            if (horaInput) horaInput.value = '10:00';
-            
-            const activaCheck = document.getElementById('claseActiva');
-            if (activaCheck) activaCheck.checked = true;
-        }
-    }
-
     async cargarClases() {
     console.log('📥 Cargando clases...');
     
@@ -208,72 +200,74 @@ class GestionClasesVisual {
 }
 
     mostrarClasesEnContainer(container, clases) {
-        if (!clases || clases.length === 0) {
-            container.innerHTML = this.getEmptyHTML();
-            return;
-        }
-        
-        let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-        
-        clases.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-        
-        clases.forEach(clase => {
-            const fechaCompleta = clase.hora ? 
-                `${clase.fecha} ${clase.hora}` : 
-                clase.fecha;
-            
-            const fechaFormateada = new Date(fechaCompleta).toLocaleString('es-AR', {
+    if (!clases || clases.length === 0) {
+        container.innerHTML = this.getEmptyHTML();
+        return;
+    }
+    
+    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+    
+    clases.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
+    
+    clases.forEach(clase => {
+        // Formatear fecha para mostrar en hora local
+        let fechaFormateada = 'Fecha no disponible';
+        if (clase.fechaClase) {
+            const fecha = new Date(clase.fechaClase);
+            fechaFormateada = fecha.toLocaleString('es-AR', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-                hour12: false
+                hour12: false,
+                timeZone: 'America/Argentina/Buenos_Aires' // Forzar zona horaria Argentina
             });
-            
-            html += `
-                <div class="clase-card" style="
-                    background: var(--bg-container);
-                    padding: 15px;
-                    border-radius: 8px;
-                    border-left: 4px solid ${clase.activa ? '#34a853' : '#ea4335'};
-                    margin-bottom: 10px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div style="flex: 1;">
-                            <strong style="color: var(--text-primary); font-size: 1.1em;">${clase.nombre}</strong>
-                            ${clase.descripcion ? `<div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 4px;">${clase.descripcion}</div>` : ''}
-                            <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: var(--text-muted);">
-                                <span>📅 ${fechaFormateada}</span>
-                                ${clase.instructores ? `<span>👥 ${clase.instructores}</span>` : ''}
-                            </div>
-                            <div style="margin-top: 8px; display: flex; gap: 10px;">
-                                ${clase.youtube ? `<a href="${clase.youtube}" target="_blank" class="email-link" style="font-size: 0.9em;">▶️ YouTube</a>` : ''}
-                                ${clase.powerpoint ? `<a href="${clase.powerpoint}" target="_blank" class="email-link" style="font-size: 0.9em;">📊 PowerPoint</a>` : ''}
-                            </div>
+        }
+        
+        html += `
+            <div class="clase-card" style="
+                background: var(--bg-container);
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid ${clase.activa ? '#34a853' : '#ea4335'};
+                margin-bottom: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <strong style="color: var(--text-primary); font-size: 1.1em;">${clase.nombre}</strong>
+                        ${clase.descripcion ? `<div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 4px;">${clase.descripcion}</div>` : ''}
+                        <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: var(--text-muted);">
+                            <span>📅 ${fechaFormateada}</span>
+                            ${clase.instructores && clase.instructores.length ? `<span>👥 ${Array.isArray(clase.instructores) ? clase.instructores.join(', ') : clase.instructores}</span>` : ''}
                         </div>
-                        <div style="display: flex; gap: 5px;">
-                            <span style="
-                                background: ${clase.activa ? '#34a85320' : '#ea433520'};
-                                color: ${clase.activa ? '#34a853' : '#ea4335'};
-                                padding: 4px 8px;
-                                border-radius: 4px;
-                                font-size: 0.8em;
-                                font-weight: bold;
-                                margin-right: 10px;
-                            ">${clase.activa ? 'ACTIVA' : 'INACTIVA'}</span>
-                            <button class="btn-small btn-edit" onclick="window.gestionClasesVisual?.editarClase('${clase._id}')" title="Editar clase">✏️</button>
-                            <button class="btn-small btn-danger" onclick="window.gestionClasesVisual?.eliminarClase('${clase._id}')" title="Eliminar clase">🗑️</button>
+                        <div style="margin-top: 8px; display: flex; gap: 10px;">
+                            ${clase.enlaces?.youtube ? `<a href="${clase.enlaces.youtube}" target="_blank" class="email-link" style="font-size: 0.9em;">▶️ YouTube</a>` : ''}
+                            ${clase.enlaces?.powerpoint ? `<a href="${clase.enlaces.powerpoint}" target="_blank" class="email-link" style="font-size: 0.9em;">📊 PowerPoint</a>` : ''}
                         </div>
                     </div>
+                    <div style="display: flex; gap: 5px;">
+                        <span style="
+                            background: ${clase.activa ? '#34a85320' : '#ea433520'};
+                            color: ${clase.activa ? '#34a853' : '#ea4335'};
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-size: 0.8em;
+                            font-weight: bold;
+                            margin-right: 10px;
+                        ">${clase.activa ? 'ACTIVA' : 'INACTIVA'}</span>
+                        <button class="btn-small btn-edit" onclick="window.gestionClasesVisual?.editarClase('${clase._id}')" title="Editar clase">✏️</button>
+                        <button class="btn-small btn-danger" onclick="window.gestionClasesVisual?.eliminarClase('${clase._id}')" title="Eliminar clase">🗑️</button>
+                    </div>
                 </div>
-            `;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-    }
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
 
     editarClase(claseId) {
         console.log('✏️ Editando clase:', claseId);
