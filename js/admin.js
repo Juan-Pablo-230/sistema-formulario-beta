@@ -795,6 +795,7 @@ FIN DE LA LISTA
     const filtroContainer = document.getElementById('filtroContainer');
     if (!filtroContainer) return;
     
+    // Limpiar pero NO eliminar el contenedor
     filtroContainer.innerHTML = '';
     
     if (clases.length > 0) {
@@ -1600,7 +1601,7 @@ generarFilasPlanilla(inscripciones) {
     cambiarVista(vista) {
         this.vistaActual = vista;
         
-        // 🧹 LIMPIAR ELEMENTOS RESIDUALES ANTES DE CAMBIAR DE VISTA
+        // 🧹 LIMPIAR SOLO ELEMENTOS PROBLEMÁTICOS
         limpiarElementosProblematicos();
         
         const inscripcionesSection = document.getElementById('inscripcionesSection');
@@ -1613,6 +1614,7 @@ generarFilasPlanilla(inscripciones) {
         const statsUsuarios = document.getElementById('statsUsuarios');
         const statsMaterial = document.getElementById('statsMaterial');
         
+        // Estos son los filtros que DEBEN mantenerse
         const filtrosInscripciones = document.getElementById('filtrosInscripciones');
         const filtrosMaterial = document.getElementById('filtrosMaterial');
         
@@ -1631,6 +1633,7 @@ generarFilasPlanilla(inscripciones) {
             if (stats) stats.style.display = 'none';
         });
         
+        // SOLO ocultar filtros, NO eliminarlos del DOM
         [filtrosInscripciones, filtrosMaterial].forEach(filtro => {
             if (filtro) filtro.style.display = 'none';
         });
@@ -1662,7 +1665,12 @@ generarFilasPlanilla(inscripciones) {
             document.getElementById('usuariosEstandar').textContent = estandar;
             
         } else if (vista === 'material') {
+            materialSection.style.display = 'block';
+            statsMaterial.style.display = 'grid';
+            filtrosMaterial.style.display = 'flex';
+            btnMaterial.classList.add('active');
             this.cambiarVistaMaterial();
+            
         } else if (vista === 'materialHistorico') {
             materialHistoricoSection.style.display = 'block';
             btnMaterialHistorico.classList.add('active');
@@ -1902,57 +1910,46 @@ generarFilasPlanilla(inscripciones) {
     }
 }
 
-// 🧹 FUNCIÓN GLOBAL DE LIMPIEZA (fuera de la clase)
+// 🧹 FUNCIÓN GLOBAL DE LIMPIEZA (modificada para respetar los filtros del dashboard)
 function limpiarElementosProblematicos() {
-    console.log('🧹 Limpiando elementos problemáticos de Material Histórico y Gestión Visual...');
+    console.log('🧹 Limpiando solo elementos problemáticos de Material Histórico y Gestión Visual...');
     
-    // Lista de IDs específicos a eliminar
-    const idsAEliminar = [
-        'materialLinks',
-        'claseInfo',
-        'linksContainer',
-        'instructoresInfo',
-        'formMensaje',
-        'clasesListContainer',
-        'statsMiniContainer'
-    ];
-    
-    idsAEliminar.forEach(id => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-            console.log(`   Eliminando elemento con ID: ${id}`);
-            elemento.remove();
-        }
-    });
-    
-    // Lista de selectores de clase a eliminar
-    const selectoresAEliminar = [
-        '.material-links',
+    // SOLO eliminar elementos específicos de Material Histórico
+    const elementosMaterialHistorico = [
+        '#materialLinks',
+        '#claseInfo',
+        '#linksContainer',
+        '#instructoresInfo',
         '.material-links.visible',
-        '.filtros-container select', // Selects adicionales creados dinámicamente
-        '.periodo-badge',
         '.link-card',
-        '.gestion-container',
-        '.form-panel',
-        '.list-panel',
-        '.clase-card',
-        '.graficos-container',
-        '.login-required-message',
-        '.status-message'
+        '.periodo-badge'
     ];
     
-    selectoresAEliminar.forEach(selector => {
+    elementosMaterialHistorico.forEach(selector => {
         document.querySelectorAll(selector).forEach(el => {
-            console.log(`   Eliminando elemento con selector: ${selector}`);
+            console.log(`   Eliminando elemento de Material Histórico: ${selector}`);
             el.remove();
         });
     });
     
-    // Limpiar cualquier div vacío que pueda haber quedado
-    document.querySelectorAll('div:empty').forEach(el => {
-        if (!el.closest('header') && !el.closest('nav') && !el.closest('footer')) {
-            el.remove();
-        }
+    // SOLO eliminar elementos específicos de Gestión Visual (PERO NO los filtros)
+    const elementosGestionVisual = [
+        '#clasesListContainer', // Solo el contenedor de la lista, no los filtros
+        '#formMensaje',
+        '.gestion-container', // El contenedor de gestión visual completo
+        '.form-panel',
+        '.list-panel',
+        '.clase-card'
+    ];
+    
+    elementosGestionVisual.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            // Verificar que NO es un filtro antes de eliminar
+            if (!el.closest('.filtros-container') && !el.closest('#filtroContainer')) {
+                console.log(`   Eliminando elemento de Gestión Visual: ${selector}`);
+                el.remove();
+            }
+        });
     });
     
     // Reiniciar instancias globales
@@ -1976,7 +1973,8 @@ function limpiarElementosProblematicos() {
         window.gestionClasesVisual = null;
     }
     
-    console.log('✅ Limpieza completada');
+    // NO eliminar elementos de filtros
+    console.log('✅ Limpieza completada - Filtros preservados');
 }
 
 // Llamar a la limpieza cuando se carga la página
