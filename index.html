@@ -129,77 +129,14 @@
                     <!-- Lista de clases para agregar al calendario -->
                     <div class="calendar-classes-list">
                         <h4>Clases Disponibles:</h4>
-                        
-                        <!-- Clase Ausentismo (ID: 1) -->
-                        <div class="calendar-class-card" data-class-id="1">
-                            <div class="class-info">
-                                <div class="class-title">Ausentismo</div>
-                                <div class="class-details">
-                                    <span class="detail-item">📅 19/02/2026</span>
-                                    <span class="detail-item">🕒 13:00hs</span>
-                                    <span class="detail-item modality presencial">Presencial</span>
-                                </div>
-                                <div class="class-instructor">Lic. Mercedes Sosa</div>
+                        <!-- Las clases se insertan acá -->
+                         
+                        <div class="calendar-actions"><span id="selectedClassesCount">0</span> Clases seleccionadas</div>
+                        <div class="selection-preview">
+                            <h4>📋 Vista Previa:</h4>
+                            <div class="preview-list" id="previewList">
+                                <div class="empty-preview">No hay clases seleccionadas</div>
                             </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(1)">
-                                + Agregar a .ics
-                            </button>
-                        </div>
-                        
-                        <!-- Clase Stroke / IAM (ID: 2) -->
-                        <div class="calendar-class-card" data-class-id="2">
-                            <div class="class-info">
-                                <div class="class-title">Stroke / IAM</div>
-                                <div class="class-details">
-                                    <span class="detail-item">📅 24/02/2026</span>
-                                    <span class="detail-item">🕒 15:00hs</span>
-                                    <span class="detail-item modality virtual">Virtual</span>
-                                </div>
-                                <div class="class-instructor">Lic. Daniel de la Rosa, Lic. Liliana Areco</div>
-                            </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(2)">
-                                + Agregar a .ics
-                            </button>
-                        </div>
-                        
-                        <!-- Clase CoPaP (ID: 3) -->
-                        <div class="calendar-class-card" data-class-id="3">
-                            <div class="class-info">
-                                <div class="class-title">CoPaP</div>
-                                <div class="class-details">
-                                    <span class="detail-item">📅 25/02/2026</span>
-                                    <span class="detail-item">🕒 18:30hs</span>
-                                    <span class="detail-item modality virtual">Virtual</span>
-                                </div>
-                                <div class="class-instructor">Lic. Karina Raihy, Enf. Sara Aiduc</div>
-                            </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(3)">
-                                + Agregar a .ics
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Acciones del calendario -->
-                    <div class="calendar-actions">
-                        <div class="selected-count">
-                            <span id="selectedClassesCount">0</span> clases seleccionadas
-                        </div>
-                        
-                        <div class="action-buttons">
-                            <button id="downloadSelectedBtn" class="download-selected-btn" onclick="calendarManager.downloadSelected()">
-                                📥 Descargar Seleccionadas (.ics)
-                            </button>
-                            <button id="downloadAllBtn" class="download-all-btn" onclick="calendarManager.downloadAll()">
-                                📥 Descargar Todas (.ics)
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Vista previa de selección -->
-                    <div class="selection-preview" id="selectionPreview">
-                        <h4>📋 Vista Previa:</h4>
-                        <div class="preview-list" id="previewList">
-                            <div class="empty-preview">No hay clases seleccionadas</div>
                         </div>
                     </div>
                 </div>
