@@ -1,3 +1,4 @@
+console.warn("Esta es una version BETA del sistema de inscripciones. Algunas funcionalidades pueden no estar disponibles o presentar errores. ¡Gracias por tu comprensión y paciencia!");
 console.log('calendar.js cargado correctamente - Versión Columnas Derecha');
 
 class CalendarManager {
@@ -217,10 +218,23 @@ class CalendarManager {
         return icsContent.join('\r\n');
     }
 
-    // Crear un evento individual
+    /**
+     * Crea un evento en formato UTC para .ics
+     * Convierte hora Argentina (GMT-3) a UTC sumando 3 horas
+     */
     createEvent(cls, reminders, dtstamp) {
-        const startDate = new Date(`${cls.date}T${cls.time}:00`);
-        const endDate = new Date(`${cls.date}T${cls.endTime}:00`);
+        // Parsear fecha y hora Argentina
+        const [year, month, day] = cls.date.split('-').map(Number);
+        
+        // Hora de inicio Argentina
+        const [startHour, startMinute] = cls.time.split(':').map(Number);
+        // Hora de fin Argentina
+        const [endHour, endMinute] = cls.endTime.split(':').map(Number);
+        
+        // Crear fechas UTC (sumar 3 horas para convertir ART a UTC)
+        // IMPORTANTE: Argentina está en GMT-3, por eso sumamos 3 horas
+        const startDate = new Date(Date.UTC(year, month - 1, day, startHour + 3, startMinute, 0));
+        const endDate = new Date(Date.UTC(year, month - 1, day, endHour + 3, endMinute, 0));
         
         const event = [
             'BEGIN:VEVENT',
@@ -255,10 +269,14 @@ class CalendarManager {
         return event;
     }
 
-    // Formatear fecha para .ics
+    /**
+     * Formatea una fecha UTC para .ics
+     * @param {Date} date - Fecha en UTC
+     * @returns {string} Fecha formateada como YYYYMMDDTHHmmSSZ
+     */
     formatDateForICS(date) {
-        const utcDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-        return utcDate.toISOString()
+        // date ya es UTC, solo formateamos y agregamos 'Z'
+        return date.toISOString()
             .replace(/[-:]/g, '')
             .split('.')[0] + 'Z';
     }
@@ -393,38 +411,9 @@ class CalendarManager {
     }
 
     // Mostrar toast temporal
-    showToast(title, message) {
-        const toast = document.createElement('div');
-        toast.className = 'calendar-toast';
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--bg-container);
-            color: var(--text-primary);
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-            border-left: 4px solid var(--accent-color);
-            z-index: 9999;
-            max-width: 300px;
-            animation: slideInUp 0.3s ease;
-        `;
-        
-        toast.innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-            <div style="font-size: 0.9em; color: var(--text-secondary);">${message}</div>
-        `;
-
-        document.body.appendChild(toast);
-
-        // Remover después de 3 segundos
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.style.animation = 'slideOutDown 0.3s ease forwards';
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, 3000);
+    showToast(message) {
+        // Por simplicidad, usamos alert
+        alert(message);
     }
 
     // Marcar clases próximas (próximos 3 días)
@@ -433,7 +422,10 @@ class CalendarManager {
         const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
         
         this.classesData.forEach(cls => {
-            const classDate = new Date(`${cls.date}T${cls.time}:00`);
+            const [year, month, day] = cls.date.split('-').map(Number);
+            const [hour, minute] = cls.time.split(':').map(Number);
+            // Crear fecha en hora local para comparación visual
+            const classDate = new Date(year, month - 1, day, hour, minute);
             const classCard = document.querySelector(`.calendar-class-card[data-class-id="${cls.id}"]`);
             
             if (classCard && classDate > now && classDate <= threeDaysFromNow) {

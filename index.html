@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Asistencia - Clases</title>
+    <title>Sistema de Asistencia - Beta</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
         <header class="main-header">
             <div class="header-content">
                 <div class="header-text">
-                    <h1>Sistema de inscripciones</h1>
+                    <h1>Sistema de inscripciones - Beta</h1>
                     <p>Seleccione la clase para registrar la inscripcion</p>
                 </div>
                 
@@ -130,51 +130,50 @@
                     <div class="calendar-classes-list">
                         <h4>Clases Disponibles:</h4>
                         
-                        <!-- Clase 3 -->
-                        <div class="calendar-class-card" data-class-id="3">
+                        <!-- Clase Ausentismo (ID: 1) -->
+                        <div class="calendar-class-card" data-class-id="1">
                             <div class="class-info">
                                 <div class="class-title">Ausentismo</div>
                                 <div class="class-details">
                                     <span class="detail-item">📅 19/02/2026</span>
-                                    <span class="detail-item">🕒 10:00hs</span>
+                                    <span class="detail-item">🕒 13:00hs</span>
                                     <span class="detail-item modality presencial">Presencial</span>
-                                    <!-- <span class="detail-item modality hibrida">Híbrida</span> -->
                                 </div>
                                 <div class="class-instructor">Lic. Mercedes Sosa</div>
                             </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(3)">
+                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(1)">
                                 + Agregar a .ics
                             </button>
                         </div>
                         
-                        <!-- Clase 4 -->
-                        <div class="calendar-class-card" data-class-id="4">
+                        <!-- Clase Stroke / IAM (ID: 2) -->
+                        <div class="calendar-class-card" data-class-id="2">
                             <div class="class-info">
                                 <div class="class-title">Stroke / IAM</div>
                                 <div class="class-details">
                                     <span class="detail-item">📅 24/02/2026</span>
-                                    <span class="detail-item">🕒 12:00hs</span>
+                                    <span class="detail-item">🕒 15:00hs</span>
                                     <span class="detail-item modality virtual">Virtual</span>
                                 </div>
                                 <div class="class-instructor">Lic. Daniel de la Rosa, Lic. Liliana Areco</div>
                             </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(4)">
+                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(2)">
                                 + Agregar a .ics
                             </button>
                         </div>
                         
-                        <!-- Clase 5 -->
-                        <div class="calendar-class-card" data-class-id="5">
+                        <!-- Clase CoPaP (ID: 3) -->
+                        <div class="calendar-class-card" data-class-id="3">
                             <div class="class-info">
                                 <div class="class-title">CoPaP</div>
                                 <div class="class-details">
                                     <span class="detail-item">📅 25/02/2026</span>
-                                    <span class="detail-item">🕒 15:30hs</span>
+                                    <span class="detail-item">🕒 18:30hs</span>
                                     <span class="detail-item modality virtual">Virtual</span>
                                 </div>
                                 <div class="class-instructor">Lic. Karina Raihy, Enf. Sara Aiduc</div>
                             </div>
-                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(5)">
+                            <button class="add-to-calendar-btn" onclick="calendarManager.addToCalendar(3)">
                                 + Agregar a .ics
                             </button>
                         </div>
@@ -213,7 +212,7 @@
         <!-- Mantener el contenido existente del modal -->
         <div class="modal-container">
             <div class="modal-header">
-                <h2>✏️ Mi perfil</h2>
+                <h2>✏️ Mi perfil - Version Beta</h2>
                 <button class="close-modal">&times;</button>
             </div>
             
@@ -346,6 +345,7 @@
         </div>
     </div>
 
+    <script> console.warn("Esta es una version BETA del sistema de inscripciones.") </script>
     <script src="/js/auth.js"></script>
     <script src="/js/search.js"></script>
     <script src="/js/profile-updater.js"></script>
