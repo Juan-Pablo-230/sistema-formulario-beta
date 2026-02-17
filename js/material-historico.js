@@ -193,7 +193,9 @@ class MaterialHistorico {
             return;
         }
         
+        // Agregar opción "Todos" al inicio
         selectAno.innerHTML = '<option value="">Seleccione un año</option>';
+        selectAno.innerHTML += '<option value="todos">📅 Todos los años</option>';
         
         this.anosDisponibles.forEach(ano => {
             const option = document.createElement('option');
@@ -208,11 +210,11 @@ class MaterialHistorico {
             this.procesarMesesDisponibles();
         });
         
-        console.log('✅ Selector de años cargado');
+        console.log('✅ Selector de años cargado con opción "Todos"');
     }
 
     procesarMesesDisponibles() {
-        if (!this.anoSeleccionado) {
+        if (!this.anoSeleccionado || this.anoSeleccionado === 'todos') {
             this.mesesDisponibles = [];
             this.llenarSelectorMeses();
             return;
@@ -253,20 +255,41 @@ class MaterialHistorico {
             return;
         }
         
-        if (this.mesesDisponibles.length === 0) {
+        if (this.anoSeleccionado === 'todos') {
+            // Si seleccionó "Todos los años", mostrar opción "Todos los meses"
+            selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
+            selectMes.innerHTML += '<option value="todos">📆 Todos los meses</option>';
+            
+            // Agregar todos los meses disponibles globalmente
+            const todosMeses = new Set();
+            this.clasesHistoricas.forEach(clase => {
+                if (clase.fechaClase) {
+                    const fecha = new Date(clase.fechaClase);
+                    todosMeses.add(fecha.getMonth());
+                }
+            });
+            
+            Array.from(todosMeses).sort((a, b) => a - b).forEach(mesNum => {
+                const option = document.createElement('option');
+                option.value = mesNum;
+                option.textContent = this.nombresMeses[mesNum];
+                selectMes.appendChild(option);
+            });
+        } else if (this.mesesDisponibles.length === 0) {
             selectMes.innerHTML = '<option value="">No hay meses con clases</option>';
             this.filtrarClasesPorMes();
             return;
+        } else {
+            selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
+            selectMes.innerHTML += '<option value="todos">📆 Todos los meses</option>';
+            
+            this.mesesDisponibles.forEach(mesNum => {
+                const option = document.createElement('option');
+                option.value = mesNum;
+                option.textContent = this.nombresMeses[mesNum];
+                selectMes.appendChild(option);
+            });
         }
-        
-        selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
-        
-        this.mesesDisponibles.forEach(mesNum => {
-            const option = document.createElement('option');
-            option.value = mesNum;
-            option.textContent = this.nombresMeses[mesNum];
-            selectMes.appendChild(option);
-        });
         
         // Agregar evento de cambio
         selectMes.addEventListener('change', (e) => {
@@ -274,41 +297,88 @@ class MaterialHistorico {
             this.filtrarClasesPorMes();
         });
         
-        console.log('✅ Selector de meses cargado');
+        console.log('✅ Selector de meses cargado con opción "Todos"');
     }
 
     filtrarClasesPorMes() {
         const selectClase = document.getElementById('claseSeleccionada');
         const form = document.getElementById('materialHistoricoForm');
         const sinClasesMensaje = document.getElementById('sinClasesMensaje');
+        const buscadorContainer = document.getElementById('buscadorClasesContainer');
         
         if (!this.anoSeleccionado || !this.mesSeleccionado) {
             if (form) form.style.display = 'none';
             if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
+            if (buscadorContainer) buscadorContainer.style.display = 'none';
             return;
         }
         
-        // Filtrar clases por año y mes
+        // Filtrar clases por año y mes (considerando opciones "todos")
         this.clasesFiltradas = this.clasesHistoricas.filter(clase => {
             if (!clase.fechaClase) return false;
             const fecha = new Date(clase.fechaClase);
-            return fecha.getFullYear() === parseInt(this.anoSeleccionado) && 
-                   fecha.getMonth() === parseInt(this.mesSeleccionado);
+            
+            // Filtrar por año
+            const pasaAno = this.anoSeleccionado === 'todos' || 
+                           fecha.getFullYear() === parseInt(this.anoSeleccionado);
+            
+            // Filtrar por mes
+            const pasaMes = this.mesSeleccionado === 'todos' || 
+                           fecha.getMonth() === parseInt(this.mesSeleccionado);
+            
+            return pasaAno && pasaMes;
         });
         
-        console.log(`🔍 ${this.clasesFiltradas.length} clases encontradas para ${this.nombresMeses[this.mesSeleccionado]} ${this.anoSeleccionado}`);
+        console.log(`🔍 ${this.clasesFiltradas.length} clases encontradas para los filtros seleccionados`);
         
         if (this.clasesFiltradas.length === 0) {
             // No hay clases para este período
             if (form) form.style.display = 'none';
+            if (buscadorContainer) buscadorContainer.style.display = 'none';
             if (sinClasesMensaje) sinClasesMensaje.style.display = 'block';
             return;
         }
         
-        // Hay clases, mostrar el formulario
+        // Hay clases, mostrar el formulario y el buscador
         if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
         if (form) form.style.display = 'block';
+        if (buscadorContainer) buscadorContainer.style.display = 'block';
+        
         this.llenarSelectClases();
+        this.configurarBuscadorClases();
+    }
+
+    configurarBuscadorClases() {
+        const buscador = document.getElementById('buscadorClases');
+        if (!buscador) return;
+        
+        // Eliminar event listener anterior si existe
+        const nuevoBuscador = buscador.cloneNode(true);
+        buscador.parentNode.replaceChild(nuevoBuscador, buscador);
+        
+        // Agregar nuevo event listener
+        nuevoBuscador.addEventListener('input', (e) => {
+            this.filtrarListaClases(e.target.value);
+        });
+    }
+
+    filtrarListaClases(textoBusqueda) {
+        const select = document.getElementById('claseSeleccionada');
+        if (!select) return;
+        
+        const opciones = select.querySelectorAll('option');
+        const textoLower = textoBusqueda.toLowerCase();
+        
+        opciones.forEach(option => {
+            if (option.value === '') return; // Ignorar la opción por defecto
+            
+            const textoOpcion = option.textContent.toLowerCase();
+            if (textoOpcion.includes(textoLower)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
     }
 
     llenarSelectClases() {
@@ -317,9 +387,9 @@ class MaterialHistorico {
         
         select.innerHTML = '<option value="">Seleccione una clase</option>';
         
-        // Ordenar por fecha (más reciente primero)
+        // Ordenar alfabéticamente por nombre
         this.clasesFiltradas.sort((a, b) => {
-            return new Date(b.fechaClase) - new Date(a.fechaClase);
+            return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
         });
         
         this.clasesFiltradas.forEach(clase => {
@@ -351,7 +421,14 @@ class MaterialHistorico {
             select.appendChild(option);
         });
         
-        console.log(`✅ Selector de clases cargado con ${this.clasesFiltradas.length} opciones`);
+        console.log(`✅ Selector de clases cargado con ${this.clasesFiltradas.length} opciones (ordenadas alfabéticamente)`);
+        
+        // Resetear buscador
+        const buscador = document.getElementById('buscadorClases');
+        if (buscador) {
+            buscador.value = '';
+            this.filtrarListaClases('');
+        }
     }
 
     async procesarSolicitud() {
@@ -415,7 +492,19 @@ class MaterialHistorico {
             fechaFormateada = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
         }
         
-        claseNombre.innerHTML = `${claseData.nombre} <span class="periodo-badge">${this.nombresMeses[this.mesSeleccionado]} ${this.anoSeleccionado}</span>`;
+        // Mostrar período seleccionado en el badge
+        let periodoTexto = '';
+        if (this.anoSeleccionado === 'todos' && this.mesSeleccionado === 'todos') {
+            periodoTexto = 'Todos los períodos';
+        } else if (this.anoSeleccionado === 'todos') {
+            periodoTexto = `Todos los años - ${this.nombresMeses[this.mesSeleccionado]}`;
+        } else if (this.mesSeleccionado === 'todos') {
+            periodoTexto = `${this.anoSeleccionado} - Todos los meses`;
+        } else {
+            periodoTexto = `${this.nombresMeses[this.mesSeleccionado]} ${this.anoSeleccionado}`;
+        }
+        
+        claseNombre.innerHTML = `${claseData.nombre} <span class="periodo-badge">${periodoTexto}</span>`;
         if (claseDescripcion) claseDescripcion.textContent = claseData.descripcion || 'Material de la clase grabada';
         if (claseFecha) claseFecha.textContent = `📅 ${fechaFormateada}`;
         
@@ -475,6 +564,9 @@ class MaterialHistorico {
         const sinClasesMensaje = document.getElementById('sinClasesMensaje');
         if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
         
+        const buscadorContainer = document.getElementById('buscadorClasesContainer');
+        if (buscadorContainer) buscadorContainer.style.display = 'none';
+        
         materialLinks.classList.add('visible');
         
         this.mostrarMensaje('✅ Material disponible', 'success');
@@ -492,6 +584,12 @@ class MaterialHistorico {
         
         const claseSelect = document.getElementById('claseSeleccionada');
         if (claseSelect) claseSelect.value = '';
+        
+        const buscadorContainer = document.getElementById('buscadorClasesContainer');
+        if (buscadorContainer) buscadorContainer.style.display = 'none';
+        
+        const buscador = document.getElementById('buscadorClases');
+        if (buscador) buscador.value = '';
         
         // Resetear selectores
         const selectAno = document.getElementById('anoSeleccionado');
@@ -661,6 +759,110 @@ class MaterialHistorico {
         setTimeout(() => {
             mensajeDiv.style.display = 'none';
         }, 5000);
+    }
+
+    cargarClasesEjemplo() {
+        // Datos de ejemplo para pruebas
+        this.clasesHistoricas = [
+            {
+                _id: '1',
+                nombre: 'Introducción a JavaScript',
+                descripcion: 'Clase introductoria sobre JavaScript moderno',
+                fechaClase: '2024-01-15T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo1',
+                    powerpoint: 'https://ejemplo.com/ppt1'
+                },
+                instructores: ['Carlos Pérez']
+            },
+            {
+                _id: '2',
+                nombre: 'React Avanzado',
+                descripcion: 'Componentes avanzados y hooks personalizados',
+                fechaClase: '2024-02-20T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo2',
+                    powerpoint: 'https://ejemplo.com/ppt2'
+                },
+                instructores: ['Ana Gómez']
+            },
+            {
+                _id: '3',
+                nombre: 'Node.js y Express',
+                descripcion: 'Desarrollo de APIs con Node.js',
+                fechaClase: '2024-01-25T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo3',
+                    powerpoint: 'https://ejemplo.com/ppt3'
+                },
+                instructores: ['Carlos Pérez', 'Ana Gómez']
+            },
+            {
+                _id: '4',
+                nombre: 'Angular Básico',
+                descripcion: 'Introducción a Angular',
+                fechaClase: '2023-12-10T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo4'
+                },
+                instructores: ['Luis Martínez']
+            },
+            {
+                _id: '5',
+                nombre: 'Vue.js para principiantes',
+                descripcion: 'Primeros pasos con Vue.js',
+                fechaClase: '2023-11-05T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo5',
+                    powerpoint: 'https://ejemplo.com/ppt5'
+                },
+                instructores: ['María López']
+            },
+            {
+                _id: '6',
+                nombre: 'Python desde cero',
+                descripcion: 'Fundamentos de programación con Python',
+                fechaClase: '2024-03-08T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo6'
+                },
+                instructores: ['Roberto Sánchez']
+            },
+            {
+                _id: '7',
+                nombre: 'Django Framework',
+                descripcion: 'Desarrollo web con Django',
+                fechaClase: '2024-02-12T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo7',
+                    powerpoint: 'https://ejemplo.com/ppt7'
+                },
+                instructores: ['Roberto Sánchez']
+            },
+            {
+                _id: '8',
+                nombre: 'HTML y CSS avanzado',
+                descripcion: 'Técnicas modernas de CSS',
+                fechaClase: '2024-01-08T18:00:00Z',
+                activa: true,
+                enlaces: {
+                    youtube: 'https://youtube.com/watch?v=ejemplo8',
+                    powerpoint: 'https://ejemplo.com/ppt8'
+                },
+                instructores: ['Laura Torres']
+            }
+        ];
+        
+        console.log(`✅ ${this.clasesHistoricas.length} clases de ejemplo cargadas`);
+        this.procesarAnosDisponibles();
+        this.llenarSelectorAnos();
     }
 }
 
