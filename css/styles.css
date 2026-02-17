@@ -695,6 +695,7 @@ body {
 
 /* ===== ESTILOS PARA LA SECCIÓN DE VIDEO ===== */
 .video-section {
+    display: none;
     margin: 40px 0;
     text-align: center;
 }
