@@ -5,7 +5,6 @@ class AdminSystem {
         this.inscripcionesData = [];
         this.usuariosData = [];
         this.filtroClaseActual = '';
-        this.filtroClaseMaterialActual = '';
         this.vistaActual = 'inscripciones';
         this.usuarioEditando = null;
         this.claseFiltradaActual = null;
@@ -1256,7 +1255,6 @@ generarFilasPlanilla(inscripciones) {
         
         const inscripcionesSection = document.getElementById('inscripcionesSection');
         const usuariosSection = document.getElementById('usuariosSection');
-        const materialSection = document.getElementById('materialSection');
         const materialHistoricoSection = document.getElementById('materialHistoricoSection');
         const gestionClasesVisualSection = document.getElementById('gestionClasesVisualSection');
         
@@ -1265,9 +1263,7 @@ generarFilasPlanilla(inscripciones) {
         const statsMaterial = document.getElementById('statsMaterial');
         
         // Estos son los filtros que DEBEN mantenerse
-        const filtrosInscripciones = document.getElementById('filtrosInscripciones');
-        const filtrosMaterial = document.getElementById('filtrosMaterial');
-        
+        const filtrosInscripciones = document.getElementById('filtrosInscripciones');        
         const btnInscripciones = document.getElementById('btnInscripciones');
         const btnUsuarios = document.getElementById('btnUsuarios');
         const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
