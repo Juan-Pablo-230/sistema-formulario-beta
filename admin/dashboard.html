@@ -24,7 +24,6 @@
         <div class="view-navigation">
             <button id="btnInscripciones" class="view-btn active">📋 Inscripciones</button>
             <button id="btnUsuarios" class="view-btn">👥 Gestión de Usuarios</button>
-            <button id="btnMaterial" class="view-btn">📚 Solicitudes de Material</button>
             <button id="btnMaterialHistorico" class="view-btn">📚 Material Histórico</button>
             <button id="btnGestionClasesVisual" class="view-btn">🎯 Gestión Visual de Clases</button>
         </div>
@@ -56,44 +55,11 @@
             </div>
         </div>
 
-        <div class="stats-container" id="statsMaterial" style="display: none;">
-            <div class="stat-card">
-                <h3>Total Solicitudes</h3>
-                <div class="stat-number" id="totalSolicitudes">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>Solicitudes Hoy</h3>
-                <div class="stat-number" id="solicitudesHoy">0</div>
-            </div>
-        </div>
-
         <!-- Sección de filtros para inscripciones -->
         <div class="filtros-container" id="filtrosInscripciones">
             <label>Filtrar por clase:</label>
             <div id="filtroContainer"></div>
             <div class="contador-resultados" id="contadorResultados">0 inscripciones en total</div>
-        </div>
-
-        <!-- Sección de filtros para material -->
-        <div class="filtros-container" id="filtrosMaterial" style="display: none; margin-bottom: 20px;">
-            <label for="filtroClaseMaterialAdmin">Filtrar por clase:</label>
-            <select id="filtroClaseMaterialAdmin" class="filtro-select">
-                <option value="">Todas las clases</option>
-            </select>
-            
-            <div class="contador-resultados" id="contadorMaterialAdmin">
-                0 solicitudes en total
-            </div>
-            
-            <button id="btnExportarCorreosAdmin" class="btn btn-success" style="display: none;">
-                📧 Exportar Correos (.txt)
-            </button>
-        </div>
-
-        <div class="actions-bar">
-            <button id="refreshBtn" class="btn btn-primary">🔄 Actualizar Datos</button>
-            <button id="exportBtn" class="btn btn-success">📥 Exportar a CSV</button>
-            <button id="createUserBtn" class="btn btn-warning" style="display: none;">➕ Crear Usuario</button>
         </div>
 
         <!-- Sección de Inscripciones -->
@@ -137,31 +103,6 @@
             </table>
         </div>
 
-        <!-- Sección de Solicitudes de Material -->
-        <div class="table-container" id="materialSection" style="display: none;">
-            <h2>📚 Solicitudes de Material por Clase</h2>
-            
-            <table class="inscripciones-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Apellido y Nombre</th>
-                        <th>Legajo</th>
-                        <th>Clase</th>
-                        <th>Email</th>
-                        <th>Fecha Solicitud</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="materialBodyAdmin">
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
-                            No hay solicitudes de material
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
         <!-- Sección de Solicitudes de Material Histórico (nueva) -->
          <div class="table-container" id="materialHistoricoSection" style="display: none;">
             <h2>📚 Solicitudes de Material Histórico</h2>
