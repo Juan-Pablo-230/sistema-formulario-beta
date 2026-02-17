@@ -11,7 +11,7 @@
     <div class="container">
         <header class="main-header">
             <div class="header-content">
-                                    <div>
+                    <div>
                         <img src="/img/logo.png" alt="logo" class="logo">
                     </div>
                 <div class="header-text">
@@ -45,14 +45,6 @@
                 </div>
             </div>
         </header>
-        
-        <div class="search-container">
-            <div class="search-box">
-                <p>Escribe aqui el nombre de la clase para buscar su formulario:</p>
-                <input type="text" id="searchInput" class="form-control" placeholder="introduce el nombre de la clase.">
-                <div id="searchResults" class="search-results"></div>
-            </div>
-        </div>
 
         <div class="main-layout">
             <!-- Columna izquierda: Clases principales -->
@@ -110,7 +102,7 @@
             <div class="right-column">
                 <div class="calendar-sidebar">
                     <div class="calendar-header">
-                        <h3>📅 Calendario ICS</h3>
+                        <h3>📅 Calendario</h3>
                         <p>Agrega clases a tu calendario personal</p>
                     </div>
                     
@@ -140,10 +132,10 @@
                             
                             <div class="action-buttons">
                                 <button id="downloadSelectedBtn" class="download-selected-btn" onclick="calendarManager.downloadSelected()">
-                                    📥 Descargar Seleccionadas (.ics)
+                                    📥 Descargar clases seleccionadas
                                 </button>
                                 <button id="downloadAllBtn" class="download-all-btn" onclick="calendarManager.downloadAll()">
-                                    📥 Descargar Todas (.ics)
+                                    📥 Descargar todas las clases
                                 </button>
                             </div>
                         </div>
@@ -198,7 +190,7 @@
                         <label for="updateLegajo">Número de Legajo *</label>
                         <input type="number" id="updateLegajo" name="legajo" required>
                         <small class="legajo-warning" style="display: none;">
-                            ⚠️ Este legajo ya está registrado. Use su cuenta existente.
+                            ⚠️ Este legajo ya está registrado. Por favor use su cuenta existente. Si olvidó su contraseña, por favor contacte al administrador para poder realizar el restablecimiento de la misma.
                         </small>
                     </div>
 
@@ -301,7 +293,6 @@
     <footer><a href="https://sistema-formularios-production.up.railway.app/">Ir a la version estable del sistema</a></footer>
 
     <script src="/js/auth.js"></script>
-    <script src="/js/search.js"></script>
     <script src="/js/profile-updater.js"></script>
     <script src="/js/calendar.js"></script>
     <script>
