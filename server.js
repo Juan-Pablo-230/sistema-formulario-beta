@@ -728,7 +728,8 @@ app.delete('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        const result = await db.collection('').deleteOne({
+        // ✅ CORREGIDO: Especificar la colección 'clases'
+        const result = await db.collection('clases').deleteOne({
             _id: new ObjectId(id)
         });
         
