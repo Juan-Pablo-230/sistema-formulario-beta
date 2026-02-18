@@ -3,7 +3,7 @@ console.log('🎯 gestion-clases-visual.js cargado');
 class GestionClasesVisual {
     constructor() {
         console.log('🔄 Inicializando Gestión Visual de Clases...');
-        this.apiBaseUrl = window.location.origin + '/api'; // Agregar esta línea
+        this.apiBaseUrl = window.location.origin + '/api';
         
         // Verificar que estamos en la sección correcta
         const visualSection = document.getElementById('gestionClasesVisualSection');
@@ -201,7 +201,86 @@ class GestionClasesVisual {
         }
         
         // Restaurar estado del formulario si estábamos en modo edición
-        this.cancelarEdicion();
+        // PERO SIN LLAMAR A cancelarEdicion() para evitar recursión
+        this.restaurarEstadoFormulario();
+    }
+
+    // Nuevo método auxiliar para restaurar el estado del formulario sin recursión
+    restaurarEstadoFormulario() {
+        // Restaurar botón submit
+        const submitBtn = document.querySelector('#formClaseHistorica button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '💾 Guardar Clase';
+            delete submitBtn.dataset.editando;
+        }
+        
+        // Remover botón de cancelar
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+        
+        // Restaurar evento original del formulario
+        const form = document.getElementById('formClaseHistorica');
+        if (form) {
+            // Remover event listeners anteriores
+            form.removeEventListener('submit', this.handleSubmit);
+            
+            // Crear nuevo handler
+            this.handleSubmit = (e) => {
+                e.preventDefault();
+                this.guardarClase();
+            };
+            
+            // Agregar nuevo event listener
+            form.addEventListener('submit', this.handleSubmit);
+        }
+    }
+
+    // Versión corregida de cancelarEdicion (sin llamar a limpiarFormulario)
+    cancelarEdicion() {
+        console.log('🔄 Cancelando edición');
+        
+        // Restaurar botón submit
+        const submitBtn = document.querySelector('#formClaseHistorica button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '💾 Guardar Clase';
+            delete submitBtn.dataset.editando;
+        }
+        
+        // Remover botón de cancelar
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+        
+        // Restaurar evento original del formulario
+        const form = document.getElementById('formClaseHistorica');
+        if (form) {
+            // Remover event listeners anteriores
+            form.removeEventListener('submit', this.handleSubmit);
+            
+            // Crear nuevo handler
+            this.handleSubmit = (e) => {
+                e.preventDefault();
+                this.guardarClase();
+            };
+            
+            // Agregar nuevo event listener
+            form.addEventListener('submit', this.handleSubmit);
+        }
+        
+        // Limpiar los valores del formulario SIN LLAMAR A limpiarFormulario()
+        if (form) {
+            form.reset();
+            const horaInput = document.getElementById('claseHora');
+            if (horaInput) horaInput.value = '10:00';
+            
+            const activaCheck = document.getElementById('claseActiva');
+            if (activaCheck) activaCheck.checked = true;
+        }
+        
+        this.mostrarMensaje('Edición cancelada', 'info');
     }
 
     async cargarClases() {
@@ -317,7 +396,6 @@ class GestionClasesVisual {
         container.innerHTML = html;
     }
 
-    // NUEVO MÉTODO: Editar clase
     editarClase(claseId) {
         console.log('✏️ Editando clase:', claseId);
         
@@ -344,13 +422,20 @@ class GestionClasesVisual {
                     // Cambiar el evento del formulario temporalmente
                     const form = document.getElementById('formClaseHistorica');
                     
-                    // Guardar referencia al evento original
-                    this.originalSubmitHandler = form.onsubmit;
+                    // Remover event listener anterior
+                    form.removeEventListener('submit', this.handleSubmit);
                     
-                    form.onsubmit = (e) => {
+                    // Crear handler temporal para edición
+                    const tempHandler = (e) => {
                         e.preventDefault();
                         this.actualizarClase(claseId);
                     };
+                    
+                    // Guardar referencia al handler temporal
+                    this.tempEditHandler = tempHandler;
+                    
+                    // Agregar nuevo event listener
+                    form.addEventListener('submit', tempHandler);
                     
                     // Agregar botón para cancelar edición si no existe
                     const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -379,7 +464,6 @@ class GestionClasesVisual {
         });
     }
 
-    // NUEVO MÉTODO: Cargar clase en el formulario
     cargarClaseEnFormulario(clase) {
         // Llenar campos básicos
         document.getElementById('claseNombre').value = clase.nombre || '';
@@ -414,7 +498,6 @@ class GestionClasesVisual {
         document.getElementById('formClaseHistorica').scrollIntoView({ behavior: 'smooth' });
     }
 
-    // NUEVO MÉTODO: Actualizar clase
     async actualizarClase(claseId) {
         try {
             // Obtener datos del formulario
@@ -467,6 +550,14 @@ class GestionClasesVisual {
                 
                 if (result.success) {
                     this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
+                    
+                    // Limpiar el handler temporal
+                    const form = document.getElementById('formClaseHistorica');
+                    if (form && this.tempEditHandler) {
+                        form.removeEventListener('submit', this.tempEditHandler);
+                        this.tempEditHandler = null;
+                    }
+                    
                     this.cancelarEdicion(); // Restaurar formulario
                     await this.cargarClases(); // Recargar lista
                 } else {
@@ -480,38 +571,6 @@ class GestionClasesVisual {
             console.error('❌ Error actualizando clase:', error);
             this.mostrarMensaje('❌ Error al actualizar la clase: ' + error.message, 'error');
         }
-    }
-
-    // NUEVO MÉTODO: Cancelar edición
-    cancelarEdicion() {
-        // Restaurar botón submit
-        const submitBtn = document.querySelector('#formClaseHistorica button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.textContent = '💾 Guardar Clase';
-            delete submitBtn.dataset.editando;
-        }
-        
-        // Remover botón de cancelar
-        const cancelBtn = document.getElementById('cancelEditBtn');
-        if (cancelBtn) {
-            cancelBtn.remove();
-        }
-        
-        // Restaurar evento original del formulario
-        const form = document.getElementById('formClaseHistorica');
-        if (form && this.originalSubmitHandler) {
-            form.onsubmit = this.originalSubmitHandler;
-        } else if (form) {
-            form.onsubmit = (e) => {
-                e.preventDefault();
-                this.guardarClase();
-            };
-        }
-        
-        // Limpiar formulario
-        this.limpiarFormulario();
-        
-        this.mostrarMensaje('Edición cancelada', 'info');
     }
 
     async eliminarClase(claseId) {
