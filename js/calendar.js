@@ -19,7 +19,6 @@ class CalendarManager {
                 modality: "Virtual",
                 instructor: "Lic. Daniel de la Rosa, Lic. Liliana Areco",
                 location: "Microsoft Teams",
-                description: "Clase sobre protocolos de stroke e infarto agudo de miocardio"
             },
             {
                 id: 2,
@@ -32,7 +31,18 @@ class CalendarManager {
                 modality: "Virtual",
                 instructor: "Lic. Karina Raihy, Enf. Sara Aiduc",
                 location: "Microsoft Teams",
-                description: "Clase sobre cuidados paliativos y atención primaria"
+            },
+            {
+                id: 3,
+                title: "Ausentismo",
+                date: "2026-02-26",
+                displayDate: "26/02/2026",
+                time: "10:00",
+                displayTime: "10:00hs",
+                endTime: "13:00",
+                modality: "Presencial",
+                instructor: "Lic. Mercedes Sosa",
+                location: "Aula a confirmar",
             }
         ];
     }
