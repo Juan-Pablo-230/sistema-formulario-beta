@@ -66,149 +66,151 @@ class AdminSystem {
         }
     }
 
-// Método para cargar solicitudes de material histórico
-async loadSolicitudesMaterialHistorico() {
-    try {
-        console.log('📥 Cargando solicitudes de material histórico...');
-        
-        const user = authSystem.getCurrentUser();
-        if (!user || !user._id) {
-            console.error('❌ No hay usuario logueado');
+    // Método para cargar solicitudes de material histórico
+    async loadSolicitudesMaterialHistorico() {
+        try {
+            console.log('📥 Cargando solicitudes de material histórico...');
+            
+            const user = authSystem.getCurrentUser();
+            if (!user || !user._id) {
+                console.error('❌ No hay usuario logueado');
+                this.solicitudesMaterialHistoricoData = [];
+                this.showMaterialHistoricoTable([]);
+                return [];
+            }
+            
+            console.log('👤 Usuario actual:', user._id);
+            
+            const result = await authSystem.makeRequest('/material-historico/solicitudes', null, 'GET');
+            
+            this.solicitudesMaterialHistoricoData = result.data || [];
+            console.log('✅ Solicitudes de material histórico cargadas:', this.solicitudesMaterialHistoricoData.length);
+            
+            // Actualizar tabla si estamos en la vista correcta
+            if (this.vistaActual === 'materialHistorico') {
+                this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
+            }
+            
+            return this.solicitudesMaterialHistoricoData;
+            
+        } catch (error) {
+            console.error('❌ Error cargando solicitudes de material histórico:', error);
             this.solicitudesMaterialHistoricoData = [];
-            this.showMaterialHistoricoTable([]);
+            
+            // Mostrar mensaje de error en la tabla
+            if (this.vistaActual === 'materialHistorico') {
+                const tbody = document.getElementById('materialHistoricoBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #ff6b6b; padding: 20px;">
+                                ⚠️ Error al cargar las solicitudes. Asegúrate de que el servidor tenga las rutas de material histórico configuradas.
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+            
             return [];
         }
+    }
+
+    // Método para mostrar la tabla de material histórico
+    showMaterialHistoricoTable(solicitudes) {
+        const tbody = document.getElementById('materialHistoricoBody');
+        if (!tbody) return;
         
-        console.log('👤 Usuario actual:', user._id);
+        tbody.innerHTML = '';
+
+        if (solicitudes.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
+                        No hay solicitudes de material histórico
+                    </td>
+                </tr>
+            `;
+            
+            const totalEl = document.getElementById('totalSolicitudesHistorico');
+            const clasesEl = document.getElementById('clasesDistintasHistorico');
+            if (totalEl) totalEl.textContent = '0';
+            if (clasesEl) clasesEl.textContent = '0';
+            return;
+        }
+
+        // Ordenar por fecha más reciente
+        solicitudes.sort((a, b) => 
+            new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud)
+        );
+
+        // Calcular estadísticas
+        const clasesUnicas = new Set(solicitudes.map(s => s.claseNombre)).size;
+        const totalEl = document.getElementById('totalSolicitudesHistorico');
+        const clasesEl = document.getElementById('clasesDistintasHistorico');
+        if (totalEl) totalEl.textContent = solicitudes.length;
+        if (clasesEl) clasesEl.textContent = clasesUnicas;
+
+        solicitudes.forEach((solicitud, index) => {
+            const row = document.createElement('tr');
+            
+            const fecha = solicitud.fechaSolicitud ? 
+                new Date(solicitud.fechaSolicitud).toLocaleString('es-AR') : 
+                'Fecha no disponible';
+            
+            const materialHTML = this.generarMaterialHistoricoHTML(solicitud);
+            
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${solicitud.usuario?.apellidoNombre || 'N/A'}</td>
+                <td>${solicitud.usuario?.legajo || 'N/A'}</td>
+                <td>${solicitud.claseNombre || 'N/A'}</td>
+                <td>${solicitud.email || solicitud.usuario?.email || 'N/A'}</td>
+                <td>${fecha}</td>
+                <td>${materialHTML}</td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+    }
+
+    // Método auxiliar para generar HTML de material
+    generarMaterialHistoricoHTML(solicitud) {
+        const enlaces = [];
         
-        // Verificar si la ruta existe antes de llamar
-        const result = await authSystem.makeRequest('/material-historico/solicitudes', null, 'GET');
-        
-        this.solicitudesMaterialHistoricoData = result.data || [];
-        console.log('✅ Solicitudes de material histórico cargadas:', this.solicitudesMaterialHistoricoData.length);
-        
-        // Actualizar tabla si estamos en la vista correcta
-        if (this.vistaActual === 'materialHistorico') {
-            this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
+        if (solicitud.youtube) {
+            enlaces.push(`<a href="${solicitud.youtube}" target="_blank" class="email-link" title="Ver en YouTube">▶️ YouTube</a>`);
         }
         
-        return this.solicitudesMaterialHistoricoData;
-        
-    } catch (error) {
-        console.error('❌ Error cargando solicitudes de material histórico:', error);
-        this.solicitudesMaterialHistoricoData = [];
-        
-        // Mostrar mensaje de error en la tabla
-        if (this.vistaActual === 'materialHistorico') {
-            const tbody = document.getElementById('materialHistoricoBody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #ff6b6b; padding: 20px;">
-                            ⚠️ Error al cargar las solicitudes. Asegúrate de que el servidor tenga las rutas de material histórico configuradas.
-                        </td>
-                    </tr>
-                `;
-            }
+        if (solicitud.powerpoint) {
+            enlaces.push(`<a href="${solicitud.powerpoint}" target="_blank" class="email-link" title="Ver presentación">📊 PPT</a>`);
         }
         
-        return [];
-    }
-}
-
-// Método para mostrar la tabla de material histórico
-showMaterialHistoricoTable(solicitudes) {
-    const tbody = document.getElementById('materialHistoricoBody');
-    if (!tbody) return;
-    
-    // 🧹 Limpiar cualquier contenido residual dentro de la tabla
-    tbody.innerHTML = '';
-
-    if (solicitudes.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
-                    No hay solicitudes de material histórico
-                </td>
-            </tr>
-        `;
+        if (enlaces.length === 0) {
+            return '<span style="color: #666;">Material no disponible</span>';
+        }
         
-        document.getElementById('totalSolicitudesHistorico').textContent = '0';
-        document.getElementById('clasesDistintasHistorico').textContent = '0';
-        return;
+        return enlaces.join(' | ');
     }
 
-    // Ordenar por fecha más reciente
-    solicitudes.sort((a, b) => 
-        new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud)
-    );
-
-    // Calcular estadísticas
-    const clasesUnicas = new Set(solicitudes.map(s => s.claseNombre)).size;
-    document.getElementById('totalSolicitudesHistorico').textContent = solicitudes.length;
-    document.getElementById('clasesDistintasHistorico').textContent = clasesUnicas;
-
-    solicitudes.forEach((solicitud, index) => {
-        const row = document.createElement('tr');
+    // Método para cambiar a vista de material histórico
+    cambiarVistaMaterialHistorico() {
+        this.vistaActual = 'materialHistorico';
         
-        const fecha = solicitud.fechaSolicitud ? 
-            new Date(solicitud.fechaSolicitud).toLocaleString('es-AR') : 
-            'Fecha no disponible';
+        // Limpiar contenedor antes de cargar
+        const materialHistoricoBody = document.getElementById('materialHistoricoBody');
+        if (materialHistoricoBody) {
+            materialHistoricoBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
+                        Cargando solicitudes de material histórico...
+                    </td>
+                </tr>
+            `;
+        }
         
-        const materialHTML = this.generarMaterialHistoricoHTML(solicitud);
-        
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${solicitud.usuario?.apellidoNombre || 'N/A'}</td>
-            <td>${solicitud.usuario?.legajo || 'N/A'}</td>
-            <td>${solicitud.claseNombre || 'N/A'}</td>
-            <td>${solicitud.email || solicitud.usuario?.email || 'N/A'}</td>
-            <td>${fecha}</td>
-            <td>${materialHTML}</td>
-        `;
-        
-        tbody.appendChild(row);
-    });
-}
-
-// Método auxiliar para generar HTML de material
-generarMaterialHistoricoHTML(solicitud) {
-    const enlaces = [];
-    
-    if (solicitud.youtube) {
-        enlaces.push(`<a href="${solicitud.youtube}" target="_blank" class="email-link" title="Ver en YouTube">▶️ YouTube</a>`);
+        // Mostrar datos
+        this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
     }
-    
-    if (solicitud.powerpoint) {
-        enlaces.push(`<a href="${solicitud.powerpoint}" target="_blank" class="email-link" title="Ver presentación">📊 PPT</a>`);
-    }
-    
-    if (enlaces.length === 0) {
-        return '<span style="color: #666;">Material no disponible</span>';
-    }
-    
-    return enlaces.join(' | ');
-}
-
-// Método para cambiar a vista de material histórico
-cambiarVistaMaterialHistorico() {
-    this.vistaActual = 'materialHistorico';
-    
-    // Limpiar contenedor antes de cargar
-    const materialHistoricoBody = document.getElementById('materialHistoricoBody');
-    if (materialHistoricoBody) {
-        materialHistoricoBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
-                    Cargando solicitudes de material histórico...
-                </td>
-            </tr>
-        `;
-    }
-    
-    // Mostrar datos
-    this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
-}
 
     async initMaterialData() {
         try {
@@ -442,33 +444,33 @@ cambiarVistaMaterialHistorico() {
     }
 
     crearInterfazFiltros(inscripciones) {
-    const clases = this.obtenerClasesUnicas(inscripciones);
-    
-    const filtroContainer = document.getElementById('filtroContainer');
-    if (!filtroContainer) return;
-    
-    // Limpiar pero NO eliminar el contenedor
-    filtroContainer.innerHTML = '';
-    
-    if (clases.length > 0) {
-        const selectClase = document.createElement('select');
-        selectClase.id = 'filtroClase';
-        selectClase.className = 'filtro-select';
-        selectClase.innerHTML = `
-            <option value="">Seleccione una clase:</option>
-            <option value="todas" ${this.filtroClaseActual === 'todas' ? 'selected' : ''}>Todas las clases</option>
-            ${clases.map(clase => `<option value="${clase}" ${this.filtroClaseActual === clase ? 'selected' : ''}>${clase}</option>`).join('')}
-        `;
+        const clases = this.obtenerClasesUnicas(inscripciones);
         
-        selectClase.addEventListener('change', (e) => {
-            this.filtroClaseActual = e.target.value;
-            this.actualizarVistaConFiltros();
-            this.actualizarBotonImprimir();
-        });
+        const filtroContainer = document.getElementById('filtroContainer');
+        if (!filtroContainer) return;
         
-        filtroContainer.appendChild(selectClase);
-    }
+        // Limpiar pero NO eliminar el contenedor
+        filtroContainer.innerHTML = '';
         
+        if (clases.length > 0) {
+            const selectClase = document.createElement('select');
+            selectClase.id = 'filtroClase';
+            selectClase.className = 'filtro-select';
+            selectClase.innerHTML = `
+                <option value="">Seleccione una clase:</option>
+                <option value="todas" ${this.filtroClaseActual === 'todas' ? 'selected' : ''}>Todas las clases</option>
+                ${clases.map(clase => `<option value="${clase}" ${this.filtroClaseActual === clase ? 'selected' : ''}>${clase}</option>`).join('')}
+            `;
+            
+            selectClase.addEventListener('change', (e) => {
+                this.filtroClaseActual = e.target.value;
+                this.actualizarVistaConFiltros();
+                this.actualizarBotonImprimir();
+            });
+            
+            filtroContainer.appendChild(selectClase);
+        }
+            
         const imprimirContainer = document.createElement('div');
         imprimirContainer.id = 'imprimirContainer';
         imprimirContainer.style.display = 'none';
@@ -503,268 +505,260 @@ cambiarVistaMaterialHistorico() {
     }
 
     imprimirPlanillaAsistencia() {
-    if (!this.claseFiltradaActual) {
-        alert('No hay una clase específica seleccionada para imprimir');
-        return;
-    }
-    
-    const inscripcionesFiltradas = this.aplicarFiltrosCombinados(this.inscripcionesData);
-    
-    if (inscripcionesFiltradas.length === 0) {
-        alert('No hay inscripciones para la clase seleccionada');
-        return;
-    }
-    
-    const ventanaImpresion = window.open('', '_blank');
-    const fechaActual = new Date().toLocaleDateString({hour12: false}, 'es-AR');
-    const nombreClase = this.claseFiltradaActual;
-    
-    // Obtener todas las páginas
-    const paginas = this.generarFilasPlanilla(inscripcionesFiltradas);
-    
-    // Generar contenido HTML para todas las páginas
-    let contenidoHTML = '';
-    
-    paginas.forEach((pagina, index) => {
-        contenidoHTML += `
-            <div class="pagina" style="page-break-after: ${index < paginas.length - 1 ? 'always' : 'avoid'};">
-                <div class="header">
-                    <h1>PLANILLA DE ASISTENCIA - PÁGINA ${pagina.pagina}/${pagina.totalPaginas}</h1>
-                    <h2>${nombreClase}</h2>
-                </div>
-                
-                <div class="info-section">
-                    <div><strong>Fecha de impresión:</strong> ${fechaActual}</div>
-                    <div><strong>Inscriptos en esta página:</strong> ${pagina.inicioNumero}-${pagina.finNumero} de ${inscripcionesFiltradas.length}</div>
-                    <div><strong>Total general:</strong> ${inscripcionesFiltradas.length} inscriptos</div>
-                </div>
-                
-                <div class="planilla-container">
-                    <div class="columna">
-                        <div class="columna-header">COLUMNA A</div>
-                        ${pagina.primeraColumna}
+        if (!this.claseFiltradaActual) {
+            alert('No hay una clase específica seleccionada para imprimir');
+            return;
+        }
+        
+        const inscripcionesFiltradas = this.aplicarFiltrosCombinados(this.inscripcionesData);
+        
+        if (inscripcionesFiltradas.length === 0) {
+            alert('No hay inscripciones para la clase seleccionada');
+            return;
+        }
+        
+        const ventanaImpresion = window.open('', '_blank');
+        const fechaActual = new Date().toLocaleDateString('es-AR');
+        const nombreClase = this.claseFiltradaActual;
+        
+        // Obtener todas las páginas
+        const paginas = this.generarFilasPlanilla(inscripcionesFiltradas);
+        
+        // Generar contenido HTML para todas las páginas
+        let contenidoHTML = '';
+        
+        paginas.forEach((pagina, index) => {
+            contenidoHTML += `
+                <div class="pagina" style="page-break-after: ${index < paginas.length - 1 ? 'always' : 'avoid'};">
+                    <div class="header">
+                        <h1>PLANILLA DE ASISTENCIA - PÁGINA ${pagina.pagina}/${pagina.totalPaginas}</h1>
+                        <h2>${nombreClase}</h2>
                     </div>
                     
-                    <div class="columna">
-                        <div class="columna-header">COLUMNA B</div>
-                        ${pagina.segundaColumna}
+                    <div class="info-section">
+                        <div><strong>Fecha de impresión:</strong> ${fechaActual}</div>
+                        <div><strong>Inscriptos en esta página:</strong> ${pagina.inicioNumero}-${pagina.finNumero} de ${inscripcionesFiltradas.length}</div>
+                        <div><strong>Total general:</strong> ${inscripcionesFiltradas.length} inscriptos</div>
+                    </div>
+                    
+                    <div class="planilla-container">
+                        <div class="columna">
+                            <div class="columna-header">COLUMNA A</div>
+                            ${pagina.primeraColumna}
+                        </div>
+                        
+                        <div class="columna">
+                            <div class="columna-header">COLUMNA B</div>
+                            ${pagina.segundaColumna}
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Página ${pagina.pagina} de ${pagina.totalPaginas} - Sistema de Asistencia MongoDB</p>
                     </div>
                 </div>
-                
-                <div class="footer">
-                    <p>Página ${pagina.pagina} de ${pagina.totalPaginas} - Sistema de Asistencia MongoDB</p>
-                </div>
-            </div>
-        `;
-    });
-    
-    ventanaImpresion.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Planilla de Asistencia - ${nombreClase}</title>
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    margin: 20px; 
-                    color: #333;
-                    font-size: 12px; /* Tamaño de fuente más pequeño para más espacio */
-                }
-                .pagina {
-                    margin-bottom: 30px;
-                }
-                .header { 
-                    text-align: center; 
-                    margin-bottom: 20px; 
-                    border-bottom: 2px solid #333; 
-                    padding-bottom: 15px; 
-                }
-                .header h1 { 
-                    margin: 0; 
-                    font-size: 18px; 
-                    color: #2c3e50; 
-                }
-                .header h2 { 
-                    margin: 5px 0 0 0; 
-                    font-size: 14px; 
-                    color: #7f8c8d; 
-                }
-                .info-section { 
-                    margin-bottom: 15px; 
-                    display: flex; 
-                    justify-content: space-between; 
-                    font-size: 11px;
-                    flex-wrap: wrap;
-                }
-                .planilla-container { 
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr; 
-                    gap: 15px;
-                    min-height: 500px;
-                }
-                .columna { 
-                    border: 1px solid #333; 
-                }
-                .columna-header { 
-                    background-color: #34495e; 
-                    color: white; 
-                    padding: 8px; 
-                    text-align: center; 
-                    font-weight: bold; 
-                    border-bottom: 1px solid #333;
-                    font-size: 11px;
-                }
-                .fila { 
-                    display: grid; 
-                    grid-template-columns: 1fr 60px; /* Reducir ancho de columna asistencia */
-                    border-bottom: 1px solid #ddd; 
-                    min-height: 24px; /* Altura mínima de fila reducida */
-                }
-                .fila:last-child { border-bottom: none; }
-                .nombre { 
-                    padding: 6px 8px; /* Padding reducido */
-                    border-right: 1px solid #ddd;
-                    font-size: 11px;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-                .asistencia { 
-                    padding: 6px; 
-                    text-align: center; 
-                    background-color: #f8f9fa; 
-                    border: 1px solid #e74c3c;
-                    font-size: 11px;
-                }
-                .footer { 
-                    margin-top: 20px; 
-                    text-align: center; 
-                    font-size: 10px; 
-                    color: #7f8c8d; 
-                }
-                @media print {
+            `;
+        });
+        
+        ventanaImpresion.document.write(`
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Planilla de Asistencia - ${nombreClase}</title>
+                <style>
                     body { 
-                        margin: 10mm;
-                        font-size: 10px;
+                        font-family: Arial, sans-serif; 
+                        margin: 20px; 
+                        color: #333;
+                        font-size: 12px;
                     }
-                    .no-print { display: none; }
+                    .pagina {
+                        margin-bottom: 30px;
+                    }
+                    .header { 
+                        text-align: center; 
+                        margin-bottom: 20px; 
+                        border-bottom: 2px solid #333; 
+                        padding-bottom: 15px; 
+                    }
+                    .header h1 { 
+                        margin: 0; 
+                        font-size: 18px; 
+                        color: #2c3e50; 
+                    }
+                    .header h2 { 
+                        margin: 5px 0 0 0; 
+                        font-size: 14px; 
+                        color: #7f8c8d; 
+                    }
+                    .info-section { 
+                        margin-bottom: 15px; 
+                        display: flex; 
+                        justify-content: space-between; 
+                        font-size: 11px;
+                        flex-wrap: wrap;
+                    }
                     .planilla-container { 
-                        break-inside: avoid;
-                        gap: 10mm;
+                        display: grid; 
+                        grid-template-columns: 1fr 1fr; 
+                        gap: 15px;
+                        min-height: 500px;
                     }
-                    .columna {
-                        break-inside: avoid;
+                    .columna { 
+                        border: 1px solid #333; 
                     }
-                    .fila {
-                        min-height: 20px;
+                    .columna-header { 
+                        background-color: #34495e; 
+                        color: white; 
+                        padding: 8px; 
+                        text-align: center; 
+                        font-weight: bold; 
+                        border-bottom: 1px solid #333;
+                        font-size: 11px;
                     }
-                    .nombre, .asistencia {
-                        padding: 4px 6px;
+                    .fila { 
+                        display: grid; 
+                        grid-template-columns: 1fr 60px;
+                        border-bottom: 1px solid #ddd; 
+                        min-height: 24px;
                     }
-                }
-                @page { 
-                    size: A4; 
-                    margin: 15mm;
-                }
-            </style>
-        </head>
-        <body>
-            ${contenidoHTML}
-            
-            <div class="no-print" style="text-align: center; margin-top: 20px;">
-                <button onclick="window.print()" style="padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer;">🖨️ Imprimir todas las páginas</button>
-                <button onclick="window.close()" style="padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">❌ Cerrar</button>
-            </div>
-            
-            <script>
-                window.onload = function() { 
-                    window.focus();
-                    // Auto-ajustar altura de filas vacías
-                    const filasVacias = document.querySelectorAll('.nombre:empty');
-                    filasVacias.forEach(fila => {
-                        fila.parentElement.style.minHeight = '24px';
-                    });
-                };
-            <\/script>
-        </body>
-        </html>
-    `);
-    
-    ventanaImpresion.document.close();
-}
+                    .fila:last-child { border-bottom: none; }
+                    .nombre { 
+                        padding: 6px 8px;
+                        border-right: 1px solid #ddd;
+                        font-size: 11px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                    .asistencia { 
+                        padding: 6px; 
+                        text-align: center; 
+                        background-color: #f8f9fa; 
+                        border: 1px solid #e74c3c;
+                        font-size: 11px;
+                    }
+                    .footer { 
+                        margin-top: 20px; 
+                        text-align: center; 
+                        font-size: 10px; 
+                        color: #7f8c8d; 
+                    }
+                    @media print {
+                        body { 
+                            margin: 10mm;
+                            font-size: 10px;
+                        }
+                        .no-print { display: none; }
+                        .planilla-container { 
+                            break-inside: avoid;
+                            gap: 10mm;
+                        }
+                        .columna {
+                            break-inside: avoid;
+                        }
+                        .fila {
+                            min-height: 20px;
+                        }
+                        .nombre, .asistencia {
+                            padding: 4px 6px;
+                        }
+                    }
+                    @page { 
+                        size: A4; 
+                        margin: 15mm;
+                    }
+                </style>
+            </head>
+            <body>
+                ${contenidoHTML}
+                
+                <div class="no-print" style="text-align: center; margin-top: 20px;">
+                    <button onclick="window.print()" style="padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer;">🖨️ Imprimir todas las páginas</button>
+                    <button onclick="window.close()" style="padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">❌ Cerrar</button>
+                </div>
+                
+                <script>
+                    window.onload = function() { 
+                        window.focus();
+                        const filasVacias = document.querySelectorAll('.nombre:empty');
+                        filasVacias.forEach(fila => {
+                            fila.parentElement.style.minHeight = '24px';
+                        });
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        
+        ventanaImpresion.document.close();
+    }
 
-generarFilasPlanilla(inscripciones) {
-    const MAX_FILAS_POR_PAGINA = 25; // Máximo de filas por página (ajustable)
-    const COLUMNAS_POR_PAGINA = 2;   // Dos columnas por página
-    
-    // Calcular cuántas filas caben por columna
-    const maxFilasPorColumna = Math.ceil(MAX_FILAS_POR_PAGINA / COLUMNAS_POR_PAGINA);
-    
-    // Calcular cuántas páginas necesitamos
-    const totalPaginas = Math.ceil(inscripciones.length / MAX_FILAS_POR_PAGINA);
-    
-    const paginas = [];
-    
-    for (let pagina = 0; pagina < totalPaginas; pagina++) {
-        // Calcular el rango de inscripciones para esta página
-        const inicio = pagina * MAX_FILAS_POR_PAGINA;
-        const fin = Math.min(inicio + MAX_FILAS_POR_PAGINA, inscripciones.length);
-        const inscripcionesPagina = inscripciones.slice(inicio, fin);
+    generarFilasPlanilla(inscripciones) {
+        const MAX_FILAS_POR_PAGINA = 25;
+        const COLUMNAS_POR_PAGINA = 2;
         
-        // Dividir las inscripciones de esta página en dos columnas
-        const mitad = Math.ceil(inscripcionesPagina.length / COLUMNAS_POR_PAGINA);
-        const primeraMitad = inscripcionesPagina.slice(0, mitad);
-        const segundaMitad = inscripcionesPagina.slice(mitad);
+        const maxFilasPorColumna = Math.ceil(MAX_FILAS_POR_PAGINA / COLUMNAS_POR_PAGINA);
+        const totalPaginas = Math.ceil(inscripciones.length / MAX_FILAS_POR_PAGINA);
         
-        // Generar columnas
-        let primeraColumna = primeraMitad.map((insc, index) => {
-            const numeroGlobal = inicio + index + 1;
-            return `
-                <div class="fila">
-                    <div class="nombre">${numeroGlobal}. ${insc.usuario?.apellidoNombre || 'N/A'}</div>
-                    <div class="asistencia"></div>
-                </div>
-            `;
-        }).join('');
+        const paginas = [];
         
-        let segundaColumna = segundaMitad.map((insc, index) => {
-            const numeroGlobal = inicio + mitad + index + 1;
-            return `
-                <div class="fila">
-                    <div class="nombre">${numeroGlobal}. ${insc.usuario?.apellidoNombre || 'N/A'}</div>
-                    <div class="asistencia"></div>
-                </div>
-            `;
-        }).join('');
-        
-        // Si la segunda columna tiene menos filas, agregar filas vacías para igualar
-        const diferencia = primeraMitad.length - segundaMitad.length;
-        if (diferencia > 0) {
-            for (let i = 0; i < diferencia; i++) {
-                segundaColumna += `
+        for (let pagina = 0; pagina < totalPaginas; pagina++) {
+            const inicio = pagina * MAX_FILAS_POR_PAGINA;
+            const fin = Math.min(inicio + MAX_FILAS_POR_PAGINA, inscripciones.length);
+            const inscripcionesPagina = inscripciones.slice(inicio, fin);
+            
+            const mitad = Math.ceil(inscripcionesPagina.length / COLUMNAS_POR_PAGINA);
+            const primeraMitad = inscripcionesPagina.slice(0, mitad);
+            const segundaMitad = inscripcionesPagina.slice(mitad);
+            
+            let primeraColumna = primeraMitad.map((insc, index) => {
+                const numeroGlobal = inicio + index + 1;
+                return `
                     <div class="fila">
-                        <div class="nombre"></div>
+                        <div class="nombre">${numeroGlobal}. ${insc.usuario?.apellidoNombre || 'N/A'}</div>
                         <div class="asistencia"></div>
                     </div>
                 `;
+            }).join('');
+            
+            let segundaColumna = segundaMitad.map((insc, index) => {
+                const numeroGlobal = inicio + mitad + index + 1;
+                return `
+                    <div class="fila">
+                        <div class="nombre">${numeroGlobal}. ${insc.usuario?.apellidoNombre || 'N/A'}</div>
+                        <div class="asistencia"></div>
+                    </div>
+                `;
+            }).join('');
+            
+            const diferencia = primeraMitad.length - segundaMitad.length;
+            if (diferencia > 0) {
+                for (let i = 0; i < diferencia; i++) {
+                    segundaColumna += `
+                        <div class="fila">
+                            <div class="nombre"></div>
+                            <div class="asistencia"></div>
+                        </div>
+                    `;
+                }
             }
+            
+            paginas.push({
+                pagina: pagina + 1,
+                totalPaginas: totalPaginas,
+                primeraColumna: primeraColumna,
+                segundaColumna: segundaColumna,
+                inicioNumero: inicio + 1,
+                finNumero: fin,
+                totalInscripcionesPagina: inscripcionesPagina.length
+            });
         }
         
-        paginas.push({
-            pagina: pagina + 1,
-            totalPaginas: totalPaginas,
-            primeraColumna: primeraColumna,
-            segundaColumna: segundaColumna,
-            inicioNumero: inicio + 1,
-            finNumero: fin,
-            totalInscripcionesPagina: inscripcionesPagina.length
-        });
+        return paginas;
     }
-    
-    return paginas;
-}
 
     actualizarVistaConFiltros() {
         if (this.vistaActual === 'inscripciones') {
@@ -775,13 +769,16 @@ generarFilasPlanilla(inscripciones) {
             
             const totalInscripciones = this.inscripcionesData.length;
             const inscripcionesFiltradasCount = inscripcionesFiltradas.length;
+            const contadorResultados = document.getElementById('contadorResultados');
             
-            if (this.filtroClaseActual !== 'todas') {
-                document.getElementById('contadorResultados').textContent = 
-                    `Mostrando ${inscripcionesFiltradasCount} de ${totalInscripciones} inscripciones`;
-            } else {
-                document.getElementById('contadorResultados').textContent = 
-                    `${totalInscripciones} inscripciones en total`;
+            if (contadorResultados) {
+                if (this.filtroClaseActual !== 'todas') {
+                    contadorResultados.textContent = 
+                        `Mostrando ${inscripcionesFiltradasCount} de ${totalInscripciones} inscripciones`;
+                } else {
+                    contadorResultados.textContent = 
+                        `${totalInscripciones} inscripciones en total`;
+                }
             }
         }
     }
@@ -806,7 +803,8 @@ generarFilasPlanilla(inscripciones) {
             
         });
 
-        document.getElementById('totalInscripciones').textContent = stats.total;
+        const totalInscripcionesEl = document.getElementById('totalInscripciones');
+        if (totalInscripcionesEl) totalInscripcionesEl.textContent = stats.total;
         
         console.log('📈 Estadísticas calculadas MongoDB:', stats);
     }
@@ -833,7 +831,7 @@ generarFilasPlanilla(inscripciones) {
         inscripciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
         inscripciones.forEach((insc, index) => {
-            const fecha = insc.fecha ? new Date(insc.fecha).toLocaleString({hour12: false}, 'es-AR') : 'Fecha no disponible';
+            const fecha = insc.fecha ? new Date(insc.fecha).toLocaleString('es-AR') : 'Fecha no disponible';
             const row = document.createElement('tr');
             
             const emailLink = insc.usuario?.email ? 
@@ -884,36 +882,36 @@ generarFilasPlanilla(inscripciones) {
             const row = document.createElement('tr');
             
             const fechaRegistro = usuario.fechaRegistro ? 
-                new Date(usuario.fechaRegistro).toLocaleString({hour12: false}, 'es-AR') : 
+                new Date(usuario.fechaRegistro).toLocaleString('es-AR') : 
                 'No registrada';
                 
-                const esAdmin = authSystem.isAdmin();
-                const acciones = esAdmin ? `
-    <div class="user-actions-stacked">
-        <select class="role-select" data-legajo="${usuario.legajo}">
-            <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario Estándar</option>
-            <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Usuario Avanzado</option>
-            <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''}>Administrador</option>
-        </select>
-        <div class="action-buttons">
-            <button class="btn-small btn-password change-password" data-legajo="${usuario.legajo}" title="Cambiar contraseña">🔐</button>
-            <button class="btn-small btn-edit edit-user" data-legajo="${usuario.legajo}" title="Editar datos del usuario">✏️</button>
-            <button class="btn-small btn-danger delete-user" data-legajo="${usuario.legajo}" title="Eliminar usuario">🗑️</button>
-        </div>
-    </div>
-` : (authSystem.isAdvancedUser() ? `
-    <div class="user-actions-stacked">
-        <select class="role-select" data-legajo="${usuario.legajo}">
-            <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario Estándar</option>
-            <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Usuario Avanzado</option>
-            <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''} disabled>Administrador</option>
-        </select>
-        <div class="action-buttons">
-            <button class="btn-small btn-edit edit-user" data-legajo="${usuario.legajo}" title="Editar datos del usuario">✏️</button>
-            <span class="read-only">Solo lectura</span>
-        </div>
-    </div>
-` : '<span class="read-only">Solo lectura</span>');
+            const esAdmin = authSystem.isAdmin();
+            const acciones = esAdmin ? `
+                <div class="user-actions-stacked">
+                    <select class="role-select" data-legajo="${usuario.legajo}">
+                        <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario Estándar</option>
+                        <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Usuario Avanzado</option>
+                        <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                    </select>
+                    <div class="action-buttons">
+                        <button class="btn-small btn-password change-password" data-legajo="${usuario.legajo}" title="Cambiar contraseña">🔐</button>
+                        <button class="btn-small btn-edit edit-user" data-legajo="${usuario.legajo}" title="Editar datos del usuario">✏️</button>
+                        <button class="btn-small btn-danger delete-user" data-legajo="${usuario.legajo}" title="Eliminar usuario">🗑️</button>
+                    </div>
+                </div>
+            ` : (authSystem.isAdvancedUser() ? `
+                <div class="user-actions-stacked">
+                    <select class="role-select" data-legajo="${usuario.legajo}">
+                        <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario Estándar</option>
+                        <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Usuario Avanzado</option>
+                        <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''} disabled>Administrador</option>
+                    </select>
+                    <div class="action-buttons">
+                        <button class="btn-small btn-edit edit-user" data-legajo="${usuario.legajo}" title="Editar datos del usuario">✏️</button>
+                        <span class="read-only">Solo lectura</span>
+                    </div>
+                </div>
+            ` : '<span class="read-only">Solo lectura</span>');
             
             row.innerHTML = `
                 <td>${index + 1}</td>
@@ -1212,43 +1210,41 @@ generarFilasPlanilla(inscripciones) {
     }
 
     async actualizarUsuarioDesdeModal(usuarioId) {
-    const form = document.getElementById('editUserForm');
-    const formData = new FormData(form);
-    
-    const userData = {
-        apellidoNombre: formData.get('apellidoNombre'),
-        legajo: formData.get('legajo'),
-        email: formData.get('email'),
-        turno: formData.get('turno')
-    };
+        const form = document.getElementById('editUserForm');
+        const formData = new FormData(form);
+        
+        const userData = {
+            apellidoNombre: formData.get('apellidoNombre'),
+            legajo: formData.get('legajo'),
+            email: formData.get('email'),
+            turno: formData.get('turno')
+        };
 
-    // Validaciones básicas
-    if (!userData.apellidoNombre || !userData.legajo || !userData.email || !userData.turno) {
-        alert('❌ Todos los campos son obligatorios');
-        return;
-    }
-
-    try {
-        // Enviar la solicitud al endpoint PUT
-        const result = await authSystem.makeRequest(
-            `/admin/usuarios/${usuarioId}`,
-            userData,
-            'PUT'
-        );
-
-        if (result.success) {
-            alert('✅ Usuario actualizado correctamente');
-            document.getElementById('editUserModal').remove();
-            
-            // Recargar la lista de usuarios
-            const usuarios = await this.loadUsuarios();
-            this.showUsuariosTable(usuarios);
+        // Validaciones básicas
+        if (!userData.apellidoNombre || !userData.legajo || !userData.email || !userData.turno) {
+            alert('❌ Todos los campos son obligatorios');
+            return;
         }
-    } catch (error) {
-        console.error('❌ Error actualizando usuario:', error);
-        alert('❌ Error al actualizar usuario: ' + error.message);
+
+        try {
+            const result = await authSystem.makeRequest(
+                `/admin/usuarios/${usuarioId}`,
+                userData,
+                'PUT'
+            );
+
+            if (result.success) {
+                alert('✅ Usuario actualizado correctamente');
+                document.getElementById('editUserModal').remove();
+                
+                const usuarios = await this.loadUsuarios();
+                this.showUsuariosTable(usuarios);
+            }
+        } catch (error) {
+            console.error('❌ Error actualizando usuario:', error);
+            alert('❌ Error al actualizar usuario: ' + error.message);
+        }
     }
-}
 
     cambiarVista(vista) {
         this.vistaActual = vista;
@@ -1260,28 +1256,26 @@ generarFilasPlanilla(inscripciones) {
         
         const statsInscripciones = document.getElementById('statsInscripciones');
         const statsUsuarios = document.getElementById('statsUsuarios');
-        const statsMaterial = document.getElementById('statsMaterial');
         
-        // Estos son los filtros que DEBEN mantenerse
-        const filtrosInscripciones = document.getElementById('filtrosInscripciones');        
+        // Filtros que deben mantenerse
+        const filtrosInscripciones = document.getElementById('filtrosInscripciones');
+        
         const btnInscripciones = document.getElementById('btnInscripciones');
         const btnUsuarios = document.getElementById('btnUsuarios');
         const btnMaterialHistorico = document.getElementById('btnMaterialHistorico');
         const btnGestionClasesVisual = document.getElementById('btnGestionClasesVisual');
         
         // Resetear todas las vistas
-        [inscripcionesSection, usuariosSection, materialSection, materialHistoricoSection, gestionClasesVisualSection].forEach(section => {
+        [inscripcionesSection, usuariosSection, materialHistoricoSection, gestionClasesVisualSection].forEach(section => {
             if (section) section.style.display = 'none';
         });
         
-        [statsInscripciones, statsUsuarios, statsMaterial].forEach(stats => {
+        [statsInscripciones, statsUsuarios].forEach(stats => {
             if (stats) stats.style.display = 'none';
         });
         
-        // SOLO ocultar filtros, NO eliminarlos del DOM
-        [filtrosInscripciones, filtrosMaterial].forEach(filtro => {
-            if (filtro) filtro.style.display = 'none';
-        });
+        // Ocultar filtros
+        if (filtrosInscripciones) filtrosInscripciones.style.display = 'none';
         
         [btnInscripciones, btnUsuarios, btnMaterialHistorico, btnGestionClasesVisual].forEach(btn => {
             if (btn) btn.classList.remove('active');
@@ -1304,10 +1298,15 @@ generarFilasPlanilla(inscripciones) {
             const avanzados = this.usuariosData.filter(u => u.role === 'advanced').length;
             const estandar = this.usuariosData.filter(u => u.role === 'user' || !u.role).length;
             
-            document.getElementById('totalUsuarios').textContent = totalUsuarios;
-            document.getElementById('usuariosAdmin').textContent = admins;
-            document.getElementById('usuariosAvanzados').textContent = avanzados;
-            document.getElementById('usuariosEstandar').textContent = estandar;
+            const totalEl = document.getElementById('totalUsuarios');
+            const adminEl = document.getElementById('usuariosAdmin');
+            const avanzadosEl = document.getElementById('usuariosAvanzados');
+            const estandarEl = document.getElementById('usuariosEstandar');
+            
+            if (totalEl) totalEl.textContent = totalUsuarios;
+            if (adminEl) adminEl.textContent = admins;
+            if (avanzadosEl) avanzadosEl.textContent = avanzados;
+            if (estandarEl) estandarEl.textContent = estandar;
             
         } else if (vista === 'materialHistorico') {
             materialHistoricoSection.style.display = 'block';
@@ -1330,61 +1329,61 @@ generarFilasPlanilla(inscripciones) {
     }
 
     exportToCSV(inscripciones) {
-    const inscripcionesAExportar = this.aplicarFiltrosCombinados(inscripciones);
-    
-    if (inscripcionesAExportar.length === 0) {
-        alert('No hay datos para exportar con los filtros actuales');
-        return;
-    }
-
-    // Obtener nombre de la clase para el archivo
-    let nombreClaseArchivo = 'todas_las_clases';
-    let nombreClaseMostrar = 'Todas las clases';
-    
-    // Si hay una clase filtrada, usarla para el nombre
-    if (this.filtroClaseActual && this.filtroClaseActual !== 'todas') {
-        nombreClaseMostrar = this.filtroClaseActual;
+        const inscripcionesAExportar = this.aplicarFiltrosCombinados(inscripciones);
         
-        // Limpiar el nombre para que sea válido como nombre de archivo
-        nombreClaseArchivo = this.filtroClaseActual
-            .toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar acentos
-            .replace(/[^a-z0-9\s]/gi, '') // Quitar caracteres especiales
-            .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
-            .substring(0, 50); // Limitar longitud
+        if (inscripcionesAExportar.length === 0) {
+            alert('No hay datos para exportar con los filtros actuales');
+            return;
+        }
+
+        // Obtener nombre de la clase para el archivo
+        let nombreClaseArchivo = 'todas_las_clases';
+        let nombreClaseMostrar = 'Todas las clases';
+        
+        // Si hay una clase filtrada, usarla para el nombre
+        if (this.filtroClaseActual && this.filtroClaseActual !== 'todas') {
+            nombreClaseMostrar = this.filtroClaseActual;
+            
+            // Limpiar el nombre para que sea válido como nombre de archivo
+            nombreClaseArchivo = this.filtroClaseActual
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+                .replace(/[^a-z0-9\s]/gi, '') // Quitar caracteres especiales
+                .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+                .substring(0, 50); // Limitar longitud
+        }
+
+        const headers = ['Apellido y Nombre', 'Legajo', 'Clase', 'Turno', 'Email', 'Fecha'];
+        const csvData = [
+            headers.join(','),
+            ...inscripcionesAExportar.map(insc => [
+                `"${insc.usuario?.apellidoNombre || ''}"`,
+                `"${insc.usuario?.legajo || ''}"`,
+                `"${insc.clase || ''}"`,
+                `"${insc.turno || ''}"`,
+                `"${insc.usuario?.email || ''}"`,
+                `"${insc.fecha ? new Date(insc.fecha).toLocaleString('es-AR') : ''}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        // Crear nombre de archivo CON EL NOMBRE DE LA CLASE
+        const fecha = new Date().toISOString().split('T')[0];
+        const nombreArchivo = `inscripciones_${nombreClaseArchivo}_${fecha}.csv`;
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', nombreArchivo);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log(`✅ CSV exportado exitosamente:\n📄 ${nombreArchivo}\n📊 ${inscripcionesAExportar.length} registros\n🏫 ${nombreClaseMostrar}`);
     }
-
-    const headers = ['Apellido y Nombre', 'Legajo', 'Clase', 'Turno', 'Email', 'Fecha'];
-    const csvData = [
-        headers.join(','),
-        ...inscripcionesAExportar.map(insc => [
-            `"${insc.usuario?.apellidoNombre || ''}"`,
-            `"${insc.usuario?.legajo || ''}"`,
-            `"${insc.clase || ''}"`,
-            `"${insc.turno || ''}"`,
-            `"${insc.usuario?.email || ''}"`,
-            `"${insc.fecha ? new Date(insc.fecha).toLocaleString({hour12: false}, 'es-AR') : ''}"`
-        ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    // Crear nombre de archivo CON EL NOMBRE DE LA CLASE
-    const fecha = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-    const nombreArchivo = `inscripciones_${nombreClaseArchivo}_${fecha}.csv`;
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', nombreArchivo);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    console.log(`✅ CSV exportado exitosamente:\n📄 ${nombreArchivo}\n📊 ${inscripcionesAExportar.length} registros\n🏫 ${nombreClaseMostrar}`);
-}
     
     async init() {
         console.log('🚀 Inicializando admin system MongoDB...');
@@ -1394,10 +1393,13 @@ generarFilasPlanilla(inscripciones) {
         }
         
         const user = authSystem.getCurrentUser();
-        document.getElementById('adminName').textContent = user.apellidoNombre;
-        document.getElementById('adminEmail').textContent = user.email;
-        
+        const adminNameEl = document.getElementById('adminName');
+        const adminEmailEl = document.getElementById('adminEmail');
         const roleElement = document.getElementById('adminRole');
+        
+        if (adminNameEl) adminNameEl.textContent = user.apellidoNombre;
+        if (adminEmailEl) adminEmailEl.textContent = user.email;
+        
         if (roleElement) {
             roleElement.textContent = authSystem.getUserRoleText(user.role);
             roleElement.className = `admin-role-badge role-${user.role}`;
@@ -1410,21 +1412,27 @@ generarFilasPlanilla(inscripciones) {
         this.actualizarVistaConFiltros();
         this.showUsuariosTable(usuarios);
         
-        // Configurar botones de navegación con limpieza
-        document.getElementById('btnInscripciones').addEventListener('click', () => {
-            this.cambiarVista('inscripciones');
-        });
+        // Configurar botones de navegación con verificación de existencia
+        const btnInscripciones = document.getElementById('btnInscripciones');
+        if (btnInscripciones) {
+            btnInscripciones.addEventListener('click', () => {
+                this.cambiarVista('inscripciones');
+            });
+        }
         
-        document.getElementById('btnUsuarios').addEventListener('click', () => {
-            if (authSystem.isAdmin()) {
-                this.cambiarVista('usuarios');
-            } else {
-                alert('Solo los administradores pueden acceder a la gestión de usuarios');
+        const btnUsuarios = document.getElementById('btnUsuarios');
+        if (btnUsuarios) {
+            btnUsuarios.addEventListener('click', () => {
+                if (authSystem.isAdmin()) {
+                    this.cambiarVista('usuarios');
+                } else {
+                    alert('Solo los administradores pueden acceder a la gestión de usuarios');
+                }
+            });
+            
+            if (!authSystem.isAdmin()) {
+                btnUsuarios.style.display = 'none';
             }
-        });
-        
-        if (!authSystem.isAdmin()) {
-            document.getElementById('btnUsuarios').style.display = 'none';
         }
         
         // Botón de Material Histórico
@@ -1461,9 +1469,12 @@ generarFilasPlanilla(inscripciones) {
             }
         }
         
-        document.getElementById('exportBtn').addEventListener('click', () => {
-            this.exportToCSV(this.inscripcionesData);
-        });
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.exportToCSV(this.inscripcionesData);
+            });
+        }
         
         const createUserBtn = document.getElementById('createUserBtn');
         if (createUserBtn && authSystem.isAdmin()) {
@@ -1477,32 +1488,41 @@ generarFilasPlanilla(inscripciones) {
             await this.loadSolicitudesMaterialHistorico();
         }
 
-        document.getElementById('refreshBtn').addEventListener('click', async () => {
-            document.getElementById('refreshBtn').textContent = 'Actualizando...';
-            const nuevasInscripciones = await this.loadInscripciones();
-            const nuevosUsuarios = await this.loadUsuarios();
-            
-            if (this.vistaActual === 'inscripciones') {
-                this.crearInterfazFiltros(nuevasInscripciones);
-                this.actualizarVistaConFiltros();
-            } else if (this.vistaActual === 'usuarios') {
-                this.showUsuariosTable(nuevosUsuarios);
-            } else if (this.vistaActual === 'materialHistorico') {
-                const nuevasSolicitudes = await this.loadSolicitudesMaterialHistorico();
-                this.showMaterialHistoricoTable(nuevasSolicitudes);
-            }
-            
-            document.getElementById('refreshBtn').textContent = '🔄 Actualizar Datos';
-        });
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.textContent = 'Actualizando...';
+                const nuevasInscripciones = await this.loadInscripciones();
+                const nuevosUsuarios = await this.loadUsuarios();
+                
+                if (this.vistaActual === 'inscripciones') {
+                    this.crearInterfazFiltros(nuevasInscripciones);
+                    this.actualizarVistaConFiltros();
+                } else if (this.vistaActual === 'usuarios') {
+                    this.showUsuariosTable(nuevosUsuarios);
+                } else if (this.vistaActual === 'materialHistorico') {
+                    const nuevasSolicitudes = await this.loadSolicitudesMaterialHistorico();
+                    this.showMaterialHistoricoTable(nuevasSolicitudes);
+                }
+                
+                refreshBtn.textContent = '🔄 Actualizar Datos';
+            });
+        }
         
-        document.getElementById('homeBtn').addEventListener('click', () => {
-            window.location.href = '/index.html';
-        });
+        const homeBtn = document.getElementById('homeBtn');
+        if (homeBtn) {
+            homeBtn.addEventListener('click', () => {
+                window.location.href = '/index.html';
+            });
+        }
         
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            authSystem.logout();
-            window.location.href = '/index.html';
-        });
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                authSystem.logout();
+                window.location.href = '/index.html';
+            });
+        }
         
         console.log('✅ Admin system MongoDB inicializado correctamente');
     }
