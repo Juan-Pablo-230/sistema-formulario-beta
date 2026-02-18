@@ -10,19 +10,6 @@ class CalendarManager {
         return [
             {
                 id: 1,
-                title: "Ausentismo",
-                date: "2026-02-19",
-                displayDate: "19/02/2026",
-                time: "10:00",
-                displayTime: "10:00hs",
-                endTime: "11:00",
-                modality: "Presencial",
-                instructor: "Lic. Mercedes Sosa",
-                location: "Aula a confirmar",
-                description: "Clase sobre manejo de ausentismo laboral"
-            },
-            {
-                id: 2,
                 title: "Stroke / IAM",
                 date: "2026-02-24",
                 displayDate: "24/02/2026",
@@ -35,7 +22,7 @@ class CalendarManager {
                 description: "Clase sobre protocolos de stroke e infarto agudo de miocardio"
             },
             {
-                id: 3,
+                id: 2,
                 title: "CoPaP",
                 date: "2026-02-25",
                 displayDate: "25/02/2026",

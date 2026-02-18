@@ -3,6 +3,7 @@ console.log('🎯 gestion-clases-visual.js cargado');
 class GestionClasesVisual {
     constructor() {
         console.log('🔄 Inicializando Gestión Visual de Clases...');
+        this.apiBaseUrl = window.location.origin + '/api'; // Agregar esta línea
         
         // Verificar que estamos en la sección correcta
         const visualSection = document.getElementById('gestionClasesVisualSection');
@@ -198,6 +199,9 @@ class GestionClasesVisual {
             const activaCheck = document.getElementById('claseActiva');
             if (activaCheck) activaCheck.checked = true;
         }
+        
+        // Restaurar estado del formulario si estábamos en modo edición
+        this.cancelarEdicion();
     }
 
     async cargarClases() {
@@ -313,10 +317,201 @@ class GestionClasesVisual {
         container.innerHTML = html;
     }
 
+    // NUEVO MÉTODO: Editar clase
     editarClase(claseId) {
         console.log('✏️ Editando clase:', claseId);
-        this.mostrarMensaje('Función de edición en desarrollo', 'info');
-        // Aquí iría la lógica para cargar los datos de la clase en el formulario
+        
+        // Buscar la clase en las clases cargadas
+        fetch(`${this.apiBaseUrl}/clases-historicas/${claseId}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'user-id': authSystem.getCurrentUser()?._id || ''
+            }
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success && result.data) {
+                const clase = result.data;
+                this.cargarClaseEnFormulario(clase);
+                this.mostrarMensaje('✅ Clase cargada para edición', 'success');
+                
+                // Cambiar el texto del botón de submit temporalmente
+                const submitBtn = document.querySelector('#formClaseHistorica button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.dataset.editando = claseId;
+                    submitBtn.textContent = '✏️ Actualizar Clase';
+                    
+                    // Cambiar el evento del formulario temporalmente
+                    const form = document.getElementById('formClaseHistorica');
+                    
+                    // Guardar referencia al evento original
+                    this.originalSubmitHandler = form.onsubmit;
+                    
+                    form.onsubmit = (e) => {
+                        e.preventDefault();
+                        this.actualizarClase(claseId);
+                    };
+                    
+                    // Agregar botón para cancelar edición si no existe
+                    const cancelEditBtn = document.getElementById('cancelEditBtn');
+                    if (!cancelEditBtn) {
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.id = 'cancelEditBtn';
+                        cancelBtn.type = 'button';
+                        cancelBtn.className = 'btn btn-secondary';
+                        cancelBtn.textContent = '❌ Cancelar Edición';
+                        cancelBtn.style.marginLeft = '10px';
+                        cancelBtn.onclick = () => this.cancelarEdicion();
+                        
+                        const formActions = document.querySelector('#formClaseHistorica .form-actions');
+                        if (formActions) {
+                            formActions.appendChild(cancelBtn);
+                        }
+                    }
+                }
+            } else {
+                this.mostrarMensaje('❌ Error al cargar la clase', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando clase:', error);
+            this.mostrarMensaje('❌ Error al cargar la clase', 'error');
+        });
+    }
+
+    // NUEVO MÉTODO: Cargar clase en el formulario
+    cargarClaseEnFormulario(clase) {
+        // Llenar campos básicos
+        document.getElementById('claseNombre').value = clase.nombre || '';
+        document.getElementById('claseDescripcion').value = clase.descripcion || '';
+        
+        // Formatear fecha para input date (YYYY-MM-DD)
+        if (clase.fechaClase) {
+            const fecha = new Date(clase.fechaClase);
+            const fechaStr = fecha.toISOString().split('T')[0];
+            document.getElementById('claseFecha').value = fechaStr;
+            
+            // Extraer hora (HH:MM)
+            const hora = fecha.toTimeString().split(' ')[0].substring(0, 5);
+            document.getElementById('claseHora').value = hora || '10:00';
+        }
+        
+        // Enlaces
+        document.getElementById('claseYoutube').value = clase.enlaces?.youtube || '';
+        document.getElementById('clasePowerpoint').value = clase.enlaces?.powerpoint || '';
+        
+        // Instructores (array a string separado por comas)
+        if (clase.instructores && Array.isArray(clase.instructores)) {
+            document.getElementById('claseInstructores').value = clase.instructores.join(', ');
+        } else {
+            document.getElementById('claseInstructores').value = clase.instructores || '';
+        }
+        
+        // Estado activo
+        document.getElementById('claseActiva').checked = clase.activa !== false;
+        
+        // Scroll suave al formulario
+        document.getElementById('formClaseHistorica').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // NUEVO MÉTODO: Actualizar clase
+    async actualizarClase(claseId) {
+        try {
+            // Obtener datos del formulario
+            const fecha = document.getElementById('claseFecha')?.value || '';
+            const hora = document.getElementById('claseHora')?.value || '10:00';
+            
+            if (!fecha) {
+                this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+                return;
+            }
+            
+            const fechaCompleta = `${fecha}T${hora}:00`;
+            
+            const claseData = {
+                nombre: document.getElementById('claseNombre')?.value || '',
+                descripcion: document.getElementById('claseDescripcion')?.value || '',
+                fechaClase: fechaCompleta,
+                enlaces: {
+                    youtube: document.getElementById('claseYoutube')?.value || '',
+                    powerpoint: document.getElementById('clasePowerpoint')?.value || ''
+                },
+                activa: document.getElementById('claseActiva')?.checked || true,
+                instructores: document.getElementById('claseInstructores')?.value 
+                    ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()) 
+                    : []
+            };
+            
+            // Validar nombre
+            if (!claseData.nombre) {
+                this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+                return;
+            }
+            
+            // Validar enlaces (opcionales pero si se proporcionan deben ser válidos)
+            if (claseData.enlaces.youtube && !claseData.enlaces.youtube.startsWith('http')) {
+                this.mostrarMensaje('❌ El enlace de YouTube debe ser una URL válida', 'error');
+                return;
+            }
+            
+            if (claseData.enlaces.powerpoint && !claseData.enlaces.powerpoint.startsWith('http')) {
+                this.mostrarMensaje('❌ El enlace de PowerPoint debe ser una URL válida', 'error');
+                return;
+            }
+            
+            console.log('📤 Actualizando clase:', claseData);
+            
+            // Enviar a la API
+            if (typeof authSystem !== 'undefined' && authSystem.makeRequest) {
+                const result = await authSystem.makeRequest(`/clases-historicas/${claseId}`, claseData, 'PUT');
+                
+                if (result.success) {
+                    this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
+                    this.cancelarEdicion(); // Restaurar formulario
+                    await this.cargarClases(); // Recargar lista
+                } else {
+                    throw new Error(result.message || 'Error al actualizar');
+                }
+            } else {
+                throw new Error('Sistema de autenticación no disponible');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error actualizando clase:', error);
+            this.mostrarMensaje('❌ Error al actualizar la clase: ' + error.message, 'error');
+        }
+    }
+
+    // NUEVO MÉTODO: Cancelar edición
+    cancelarEdicion() {
+        // Restaurar botón submit
+        const submitBtn = document.querySelector('#formClaseHistorica button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '💾 Guardar Clase';
+            delete submitBtn.dataset.editando;
+        }
+        
+        // Remover botón de cancelar
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+        
+        // Restaurar evento original del formulario
+        const form = document.getElementById('formClaseHistorica');
+        if (form && this.originalSubmitHandler) {
+            form.onsubmit = this.originalSubmitHandler;
+        } else if (form) {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                this.guardarClase();
+            };
+        }
+        
+        // Limpiar formulario
+        this.limpiarFormulario();
+        
+        this.mostrarMensaje('Edición cancelada', 'info');
     }
 
     async eliminarClase(claseId) {
