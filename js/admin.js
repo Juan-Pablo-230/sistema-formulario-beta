@@ -66,7 +66,7 @@ class AdminSystem {
         }
     }
 
-    // Método para cargar solicitudes de material histórico
+    // Método para cargar solicitudes de material histórico (VERSIÓN MEJORADA)
     async loadSolicitudesMaterialHistorico() {
         try {
             console.log('📥 Cargando solicitudes de material histórico...');
@@ -86,6 +86,16 @@ class AdminSystem {
             this.solicitudesMaterialHistoricoData = result.data || [];
             console.log('✅ Solicitudes de material histórico cargadas:', this.solicitudesMaterialHistoricoData.length);
             
+            // Log para depuración - mostrar los datos cargados
+            if (this.solicitudesMaterialHistoricoData.length > 0) {
+                console.log('📋 Primera solicitud:', {
+                    nombre: this.solicitudesMaterialHistoricoData[0].usuario?.apellidoNombre,
+                    turno: this.solicitudesMaterialHistoricoData[0].usuario?.turno,
+                    email: this.solicitudesMaterialHistoricoData[0].usuario?.email || this.solicitudesMaterialHistoricoData[0].email,
+                    clase: this.solicitudesMaterialHistoricoData[0].claseNombre
+                });
+            }
+            
             // Actualizar tabla si estamos en la vista correcta
             if (this.vistaActual === 'materialHistorico') {
                 this.showMaterialHistoricoTable(this.solicitudesMaterialHistoricoData);
@@ -103,7 +113,7 @@ class AdminSystem {
                 if (tbody) {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="7" style="text-align: center; color: #ff6b6b; padding: 20px;">
+                            <td colspan="8" style="text-align: center; color: #ff6b6b; padding: 20px;">
                                 ⚠️ Error al cargar las solicitudes. Asegúrate de que el servidor tenga las rutas de material histórico configuradas.
                             </td>
                         </tr>
@@ -115,7 +125,7 @@ class AdminSystem {
         }
     }
 
-    // Método para mostrar la tabla de material histórico
+    // Método para mostrar la tabla de material histórico (VERSIÓN MEJORADA)
     showMaterialHistoricoTable(solicitudes) {
         const tbody = document.getElementById('materialHistoricoBody');
         if (!tbody) return;
@@ -125,7 +135,7 @@ class AdminSystem {
         if (solicitudes.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
+                    <td colspan="8" style="text-align: center; color: #666; padding: 20px;">
                         No hay solicitudes de material histórico
                     </td>
                 </tr>
@@ -159,12 +169,40 @@ class AdminSystem {
             
             const materialHTML = this.generarMaterialHistoricoHTML(solicitud);
             
+            // Obtener turno del usuario (de la solicitud o del usuario anidado)
+            let turno = 'No especificado';
+            if (solicitud.turno) {
+                turno = solicitud.turno;
+            } else if (solicitud.usuario && solicitud.usuario.turno) {
+                turno = solicitud.usuario.turno;
+            }
+            
+            // Formatear turno para mostrar de manera más legible
+            const turnoFormateado = this.formatearTurno(turno);
+            
+            // Obtener email para mailto
+            let email = '';
+            let emailDisplay = 'No disponible';
+            
+            if (solicitud.email) {
+                email = solicitud.email;
+                emailDisplay = `<a href="mailto:${email}" class="email-link" title="Enviar correo a ${email}">${email}</a>`;
+            } else if (solicitud.usuario && solicitud.usuario.email) {
+                email = solicitud.usuario.email;
+                emailDisplay = `<a href="mailto:${email}" class="email-link" title="Enviar correo a ${email}">${email}</a>`;
+            }
+            
+            // Obtener nombre y legajo
+            const nombre = solicitud.usuario?.apellidoNombre || 'N/A';
+            const legajo = solicitud.usuario?.legajo || 'N/A';
+            
             row.innerHTML = `
                 <td>${index + 1}</td>
-                <td>${solicitud.usuario?.apellidoNombre || 'N/A'}</td>
-                <td>${solicitud.usuario?.legajo || 'N/A'}</td>
+                <td>${nombre}</td>
+                <td>${legajo}</td>
+                <td>${turnoFormateado}</td>
                 <td>${solicitud.claseNombre || 'N/A'}</td>
-                <td>${solicitud.email || solicitud.usuario?.email || 'N/A'}</td>
+                <td>${emailDisplay}</td>
                 <td>${fecha}</td>
                 <td>${materialHTML}</td>
             `;
@@ -173,23 +211,93 @@ class AdminSystem {
         });
     }
 
-    // Método auxiliar para generar HTML de material
+    // Nuevo método auxiliar para formatear turnos
+    formatearTurno(turno) {
+        if (!turno || turno === 'No especificado') {
+            return '<span style="color: #999; font-style: italic;">No especificado</span>';
+        }
+        
+        // Mapa de colores para diferentes tipos de turno
+        const coloresTurno = {
+            'Turno mañana': { bg: '#e3f2fd', color: '#1565c0', icon: '🌅' },
+            'Turno tarde': { bg: '#fff3e0', color: '#e65100', icon: '☀️' },
+            'Turno noche A': { bg: '#e8eaf6', color: '#283593', icon: '🌙' },
+            'Turno noche B': { bg: '#e8eaf6', color: '#1a237e', icon: '🌙' },
+            'Turno intermedio': { bg: '#f3e5f5', color: '#6a1b9a', icon: '⏰' },
+            'Sábado, Domingo y feriado': { bg: '#ffebee', color: '#b71c1c', icon: '📅' }
+        };
+        
+        const estilo = coloresTurno[turno] || { bg: '#f5f5f5', color: '#616161', icon: '👤' };
+        
+        return `
+            <span style="
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 20px;
+                background: ${estilo.bg};
+                color: ${estilo.color};
+                font-weight: 500;
+                font-size: 0.9em;
+                white-space: nowrap;
+            ">
+                ${estilo.icon} ${turno}
+            </span>
+        `;
+    }
+
+    // Método auxiliar para generar HTML de material (mejorado)
     generarMaterialHistoricoHTML(solicitud) {
         const enlaces = [];
         
         if (solicitud.youtube) {
-            enlaces.push(`<a href="${solicitud.youtube}" target="_blank" class="email-link" title="Ver en YouTube">▶️ YouTube</a>`);
+            enlaces.push(`
+                <a href="${solicitud.youtube}" 
+                   target="_blank" 
+                   class="email-link" 
+                   title="Ver en YouTube"
+                   style="
+                       display: inline-flex;
+                       align-items: center;
+                       gap: 4px;
+                       padding: 4px 8px;
+                       background: #ff0000;
+                       color: white;
+                       border-radius: 4px;
+                       text-decoration: none;
+                       font-size: 0.85em;
+                   ">
+                    ▶️ YouTube
+                </a>
+            `);
         }
         
         if (solicitud.powerpoint) {
-            enlaces.push(`<a href="${solicitud.powerpoint}" target="_blank" class="email-link" title="Ver presentación">📊 PPT</a>`);
+            enlaces.push(`
+                <a href="${solicitud.powerpoint}" 
+                   target="_blank" 
+                   class="email-link" 
+                   title="Ver presentación"
+                   style="
+                       display: inline-flex;
+                       align-items: center;
+                       gap: 4px;
+                       padding: 4px 8px;
+                       background: #d24726;
+                       color: white;
+                       border-radius: 4px;
+                       text-decoration: none;
+                       font-size: 0.85em;
+                   ">
+                    📊 PPT
+                </a>
+            `);
         }
         
         if (enlaces.length === 0) {
-            return '<span style="color: #666;">Material no disponible</span>';
+            return '<span style="color: #666; font-style: italic;">Material no disponible</span>';
         }
         
-        return enlaces.join(' | ');
+        return `<div style="display: flex; gap: 5px; flex-wrap: wrap;">${enlaces.join('')}</div>`;
     }
 
     // Método para cambiar a vista de material histórico
@@ -201,7 +309,7 @@ class AdminSystem {
         if (materialHistoricoBody) {
             materialHistoricoBody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
+                    <td colspan="8" style="text-align: center; color: #666; padding: 20px;">
                         Cargando solicitudes de material histórico...
                     </td>
                 </tr>

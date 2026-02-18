@@ -103,40 +103,41 @@
             </table>
         </div>
 
-        <!-- Sección de Solicitudes de Material Histórico (nueva) -->
-         <div class="table-container" id="materialHistoricoSection" style="display: none;">
-            <h2>📚 Solicitudes de Material Histórico</h2>
-            <div class="stats-mini" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                <div class="stat-mini-card" style="background: var(--bg-card); padding: 15px; border-radius: 8px; flex: 1;">
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Total Solicitudes</div>
-                    <div style="font-size: 1.8em; font-weight: bold;" id="totalSolicitudesHistorico">0</div>
-                </div>
-                <div class="stat-mini-card" style="background: var(--bg-card); padding: 15px; border-radius: 8px; flex: 1;">
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Clases Distintas</div>
-                    <div style="font-size: 1.8em; font-weight: bold;" id="clasesDistintasHistorico">0</div>
-                </div>
-            </div>
-            <table class="inscripciones-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Apellido y Nombre</th>
-                        <th>Legajo</th>
-                        <th>Clase</th>
-                        <th>Email</th>
-                        <th>Fecha Solicitud</th>
-                        <th>Material</th>
-                    </tr>
-                </thead>
-                <tbody id="materialHistoricoBody">
-                    <tr>
-                        <td colspan="7" style="text-align: center; color: #666; padding: 20px;">
-                            No hay solicitudes de material histórico
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Sección de Solicitudes de Material Histórico (actualizada) -->
+<div class="table-container" id="materialHistoricoSection" style="display: none;">
+    <h2>📚 Solicitudes de Material Histórico</h2>
+    <div class="stats-mini" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="stat-mini-card" style="background: var(--bg-card); padding: 15px; border-radius: 8px; flex: 1;">
+            <div style="font-size: 0.9em; color: var(--text-muted);">Total Solicitudes</div>
+            <div style="font-size: 1.8em; font-weight: bold;" id="totalSolicitudesHistorico">0</div>
         </div>
+        <div class="stat-mini-card" style="background: var(--bg-card); padding: 15px; border-radius: 8px; flex: 1;">
+            <div style="font-size: 0.9em; color: var(--text-muted);">Clases Distintas</div>
+            <div style="font-size: 1.8em; font-weight: bold;" id="clasesDistintasHistorico">0</div>
+        </div>
+    </div>
+    <table class="inscripciones-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Apellido y Nombre</th>
+                <th>Legajo</th>
+                <th>Turno</th>
+                <th>Clase</th>
+                <th>Email</th>
+                <th>Fecha Solicitud</th>
+                <th>Material</th>
+            </tr>
+        </thead>
+        <tbody id="materialHistoricoBody">
+            <tr>
+                <td colspan="8" style="text-align: center; color: #666; padding: 20px;">
+                    No hay solicitudes de material histórico
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
         <!-- Sección de Gestión Visual de Clases Históricas -->
 <div class="table-container" id="gestionClasesVisualSection" style="display: none;">

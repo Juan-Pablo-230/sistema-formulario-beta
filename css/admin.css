@@ -124,6 +124,104 @@
     background: #c82333;
 }
 
+/* Estilos para los badges de turno en Material Histórico */
+.turno-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.turno-badge.mañana {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.turno-badge.tarde {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.turno-badge.noche {
+    background: #e8eaf6;
+    color: #283593;
+}
+
+.turno-badge.intermedio {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+.turno-badge.finde {
+    background: #ffebee;
+    color: #b71c1c;
+}
+
+.turno-badge.default {
+    background: #f5f5f5;
+    color: #616161;
+}
+
+/* Estilos para los enlaces de material */
+.material-links-container {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.material-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.85em;
+    transition: all 0.3s ease;
+}
+
+.material-link.youtube {
+    background: #ff0000;
+    color: white;
+}
+
+.material-link.youtube:hover {
+    background: #cc0000;
+    transform: translateY(-2px);
+}
+
+.material-link.powerpoint {
+    background: #d24726;
+    color: white;
+}
+
+.material-link.powerpoint:hover {
+    background: #b33e1f;
+    transform: translateY(-2px);
+}
+
+.material-link.no-disponible {
+    color: #999;
+    font-style: italic;
+    background: none;
+    padding: 4px 0;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .turno-badge {
+        font-size: 0.8em;
+        padding: 3px 8px;
+    }
+    
+    .material-link {
+        font-size: 0.8em;
+        padding: 3px 6px;
+    }
+}
+
 /* Para pantallas pequeñas */
 @media (max-width: 768px) {
     .user-actions-stacked {
