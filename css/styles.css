@@ -252,28 +252,6 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
-.search-container {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.search-box {
-    max-width: 650px;
-    margin: 0 auto;
-    background: var(--bg-container);
-    padding: 25px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-md);
-}
-
-.search-box p {
-    color: var(--text-secondary);
-    margin-bottom: 18px;
-    font-size: 1.15em;
-    font-weight: 300;
-}
-
 .form-control {
     width: 100%;
     padding: 14px 18px;
@@ -1673,10 +1651,6 @@ footer {
     
     .header-text h1 {
         font-size: 1.8em;
-    }
-    
-    .search-box {
-        padding: 20px;
     }
     
     .class-card {

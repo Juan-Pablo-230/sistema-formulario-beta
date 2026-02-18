@@ -475,7 +475,7 @@ app.get('/api/clases-historicas', async (req, res) => {
         const db = await mongoDB.getDatabaseSafe('formulario');
         
         // Eliminar el filtro { activa: { $ne: false } } para mostrar TODAS las clases
-        const clases = await db.collection('clases_historicas')
+        const clases = await db.collection('clases')
             .find({}) // ← Sin filtro, muestra todas (activas e inactivas)
             .sort({ fechaClase: -1 })
             .toArray();
@@ -512,7 +512,7 @@ app.get('/api/clases-historicas/:id', async (req, res) => {
         
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        const clase = await db.collection('clases_historicas').findOne({ 
+        const clase = await db.collection('clases').findOne({ 
             _id: new ObjectId(id) 
         });
         
@@ -592,7 +592,7 @@ app.post('/api/clases-historicas', async (req, res) => {
             creadoPor: new ObjectId(userHeader)
         };
         
-        const result = await db.collection('clases_historicas').insertOne(nuevaClase);
+        const result = await db.collection('clases').insertOne(nuevaClase);
         
         console.log('✅ Clase creada:', result.insertedId);
         console.log('📅 Fecha guardada:', fecha);
@@ -670,7 +670,7 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
             }
         };
         
-        const result = await db.collection('clases_historicas').updateOne(
+        const result = await db.collection('clases').updateOne(
             { _id: new ObjectId(id) },
             updateData
         );
@@ -728,7 +728,7 @@ app.delete('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        const result = await db.collection('clases_historicas').deleteOne({
+        const result = await db.collection('').deleteOne({
             _id: new ObjectId(id)
         });
         
@@ -964,13 +964,13 @@ app.get('/api/material-historico/init', async (req, res) => {
         const db = await mongoDB.getDatabaseSafe('formulario');
         
         // Verificar/crear colección de clases históricas
-        const clasesHistoricasExists = await db.listCollections({ name: 'clases_historicas' }).hasNext();
+        const clasesHistoricasExists = await db.listCollections({ name: 'clases' }).hasNext();
         if (!clasesHistoricasExists) {
-            console.log('📝 Creando colección "clases_historicas"...');
-            await db.createCollection('clases_historicas');
+            console.log('📝 Creando colección "clases"...');
+            await db.createCollection('clases');
             
-            await db.collection('clases_historicas').createIndex({ fechaClase: -1 });
-            await db.collection('clases_historicas').createIndex({ nombre: 1 });
+            await db.collection('clases').createIndex({ fechaClase: -1 });
+            await db.collection('clases').createIndex({ nombre: 1 });
             
             // Insertar algunas clases de ejemplo
             const clasesEjemplo = [
@@ -998,7 +998,7 @@ app.get('/api/material-historico/init', async (req, res) => {
                 }
             ];
             
-            await db.collection('clases_historicas').insertMany(clasesEjemplo);
+            await db.collection('clases').insertMany(clasesEjemplo);
             console.log('✅ Clases de ejemplo insertadas');
         }
         
@@ -1523,7 +1523,7 @@ app.get('/api/init-db', async (req, res) => {
         const db = await mongoDB.getDatabaseSafe('formulario');
         
         // Verificar/Crear colecciones
-        const collections = ['usuarios', 'inscripciones', 'material', 'clases', 'clases_historicas', 'solicitudMaterial'];
+        const collections = ['usuarios', 'inscripciones', 'material', 'clases', 'clases', 'solicitudMaterial'];
         
         for (const collectionName of collections) {
             const collectionExists = await db.listCollections({ name: collectionName }).hasNext();
@@ -1544,7 +1544,7 @@ app.get('/api/init-db', async (req, res) => {
                     await db.collection(collectionName).createIndex({ usuarioId: 1, clase: 1 });
                     await db.collection(collectionName).createIndex({ fechaSolicitud: -1 });
                     console.log(`✅ Índices creados para "${collectionName}"`);
-                } else if (collectionName === 'clases_historicas') {
+                } else if (collectionName === 'clases') {
                     await db.collection(collectionName).createIndex({ fechaClase: -1 });
                     await db.collection(collectionName).createIndex({ nombre: 1 });
                     console.log(`✅ Índices creados para "${collectionName}"`);

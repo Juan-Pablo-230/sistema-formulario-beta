@@ -62,13 +62,13 @@ async function initializeDatabase() {
     }
 
     // Verificar/crear colección de clases históricas
-const clasesHistoricasExists = await db.listCollections({ name: 'clases_historicas' }).hasNext();
+const clasesHistoricasExists = await db.listCollections({ name: 'clases' }).hasNext();
 if (!clasesHistoricasExists) {
-    console.log('📝 Creando colección "clases_historicas"...');
-    await db.createCollection('clases_historicas');
+    console.log('📝 Creando colección "clases"...');
+    await db.createCollection('clases');
     
-    await db.collection('clases_historicas').createIndex({ fechaClase: -1 });
-    await db.collection('clases_historicas').createIndex({ nombre: 1 });
+    await db.collection('clases').createIndex({ fechaClase: -1 });
+    await db.collection('clases').createIndex({ nombre: 1 });
     
     // Insertar algunas clases de ejemplo
     const clasesEjemplo = [
@@ -124,10 +124,10 @@ if (!clasesHistoricasExists) {
         }
     ];
     
-    await db.collection('clases_historicas').insertMany(clasesEjemplo);
-    console.log('✅ Clases históricas de ejemplo insertadas');
+    await db.collection('clases').insertMany(clasesEjemplo);
+    console.log('✅ Clases de ejemplo insertadas');
 } else {
-    console.log('✅ Colección "clases_historicas" ya existe');
+    console.log('✅ Colección "clases" ya existe');
 }
 
 // Verificar/crear colección de material histórico
