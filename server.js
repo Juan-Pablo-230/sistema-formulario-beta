@@ -567,7 +567,7 @@ app.post('/api/clases-historicas', async (req, res) => {
         const { nombre, descripcion, fechaClase, enlaces, activa, instructores, tags } = req.body;
         
         // Validaciones básicas
-        if (!nombre || !fechaClase || !enlaces?.youtube || !enlaces?.powerpoint) {
+        if (!nombre || !fechaClase) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Faltan campos requeridos' 
@@ -645,7 +645,7 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
         const { nombre, descripcion, fechaClase, enlaces, activa, instructores, tags } = req.body;
         
         // Validaciones básicas
-        if (!nombre || !fechaClase || !enlaces?.youtube || !enlaces?.powerpoint) {
+        if (!nombre || !fechaClase) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Faltan campos requeridos' 
