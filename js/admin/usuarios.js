@@ -26,16 +26,55 @@ class UsuariosManager {
         }
     }
 
-    // Nuevo método para cargar todas las inscripciones
+    // CORREGIDO: Método para cargar todas las inscripciones
     async cargarInscripciones() {
         try {
+            console.log('📥 Cargando inscripciones para historial...');
             const result = await authSystem.makeRequest('/inscripciones', null, 'GET');
-            this.inscripcionesData = result.data || [];
-            console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas para historial`);
+            
+            // Verificar la estructura de los datos
+            if (result.success && result.data) {
+                this.inscripcionesData = result.data;
+                console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas para historial`);
+                
+                // Mostrar las primeras inscripciones para debug
+                if (this.inscripcionesData.length > 0) {
+                    console.log('📋 Ejemplo de inscripción:', {
+                        usuarioId: this.inscripcionesData[0].usuarioId,
+                        usuario: this.inscripcionesData[0].usuario?._id,
+                        clase: this.inscripcionesData[0].clase
+                    });
+                }
+            } else {
+                console.warn('⚠️ No se pudieron cargar las inscripciones');
+                this.inscripcionesData = [];
+            }
         } catch (error) {
             console.error('❌ Error cargando inscripciones:', error);
             this.inscripcionesData = [];
         }
+    }
+
+    // CORREGIDO: Método para contar asistencias de un usuario
+    contarAsistenciasUsuario(usuarioId) {
+        if (!this.inscripcionesData || this.inscripcionesData.length === 0) {
+            return 0;
+        }
+        
+        // Contar inscripciones que coincidan con el ID del usuario
+        const asistencias = this.inscripcionesData.filter(ins => {
+            // Verificar si el usuarioId está en usuario._id o en usuarioId
+            const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
+                            (ins.usuarioId === usuarioId);
+            
+            if (coincide) {
+                console.log(`✅ Coincidencia encontrada para usuario ${usuarioId}:`, ins.clase);
+            }
+            
+            return coincide;
+        });
+        
+        return asistencias.length;
     }
 
     actualizarUI() {
@@ -72,10 +111,8 @@ class UsuariosManager {
         const esAdmin = authSystem.isAdmin();
 
         tbody.innerHTML = usuariosFiltrados.map((usuario, index) => {
-            // Calcular el total de asistencias para este usuario
-            const asistencias = this.inscripcionesData.filter(ins => 
-                ins.usuario?._id === usuario._id || ins.usuarioId === usuario._id
-            ).length;
+            // CORREGIDO: Calcular el total de asistencias para este usuario
+            const asistencias = this.contarAsistenciasUsuario(usuario._id);
 
             return `
             <tr>
@@ -97,9 +134,9 @@ class UsuariosManager {
                             <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')" title="Editar usuario">✏️</button>
                             <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')" title="Eliminar usuario">🗑️</button>
                         ` : '<span class="read-only">Solo lectura</span>'}
-                        <!-- Nuevo botón para ver historial -->
-                        <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia">
-                            📋 Historial (${asistencias})
+                        <!-- Botón de historial SOLO con icono -->
+                        <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">
+                            📋
                         </button>
                     </div>
                 </td>
@@ -107,17 +144,26 @@ class UsuariosManager {
         `}).join('');
     }
 
-    // Nuevo método para ver el historial
+    // CORREGIDO: Método para ver el historial
     async verHistorial(usuarioId) {
         const usuario = this.data.find(u => u._id === usuarioId);
         if (!usuario) return;
 
-        // Filtrar inscripciones del usuario
-        const asistencias = this.inscripcionesData.filter(ins => 
-            ins.usuario?._id === usuarioId || ins.usuarioId === usuarioId
-        );
+        // CORREGIDO: Filtrar inscripciones del usuario correctamente
+        const asistencias = this.inscripcionesData.filter(ins => {
+            // Intentar diferentes formas de coincidencia
+            const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
+                            (ins.usuarioId === usuarioId);
+            
+            if (coincide) {
+                console.log(`📝 Asistencia encontrada para ${usuario.apellidoNombre}:`, ins.clase);
+            }
+            
+            return coincide;
+        });
 
         const total = asistencias.length;
+        console.log(`📊 Total asistencias para ${usuario.apellidoNombre}: ${total}`);
 
         // Ordenar por fecha más reciente
         asistencias.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
@@ -128,46 +174,60 @@ class UsuariosManager {
             asistenciasHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene asistencias registradas.</p>';
         } else {
             asistenciasHTML = `
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <thead>
-                        <tr style="background: var(--accent-color); color: white;">
-                            <th style="padding: 12px; text-align: left;">Clase</th>
-                            <th style="padding: 12px; text-align: left;">Turno</th>
-                            <th style="padding: 12px; text-align: left;">Fecha de Inscripción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${asistencias.map(ins => `
-                            <tr style="border-bottom: 1px solid var(--border-color);">
-                                <td style="padding: 12px;">${ins.clase || 'N/A'}</td>
-                                <td style="padding: 12px;">${ins.turno || 'N/A'}</td>
-                                <td style="padding: 12px;">${ins.fecha ? new Date(ins.fecha).toLocaleString('es-AR') : 'N/A'}</td>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                        <thead>
+                            <tr style="background: var(--accent-color); color: white;">
+                                <th style="padding: 12px; text-align: left;">#</th>
+                                <th style="padding: 12px; text-align: left;">Clase</th>
+                                <th style="padding: 12px; text-align: left;">Turno</th>
+                                <th style="padding: 12px; text-align: left;">Fecha de Inscripción</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${asistencias.map((ins, index) => `
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 12px;">${index + 1}</td>
+                                    <td style="padding: 12px; font-weight: 500;">${ins.clase || 'N/A'}</td>
+                                    <td style="padding: 12px;">${ins.turno || 'N/A'}</td>
+                                    <td style="padding: 12px;">${ins.fecha ? new Date(ins.fecha).toLocaleString('es-AR', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: false
+                                    }) : 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         }
 
         const content = `
             <div style="padding: 20px;">
-                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
-                    <div style="margin-bottom: 10px;">
-                        <strong style="font-size: 1.1em;">${usuario.apellidoNombre}</strong>
+                <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-container) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">${usuario.apellidoNombre}</h3>
+                        <span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; color: var(--text-secondary);">
-                        <div>📋 Legajo: ${usuario.legajo}</div>
-                        <div>📧 Email: ${usuario.email}</div>
-                        <div>⏰ Turno: ${usuario.turno || 'No especificado'}</div>
-                        <div>🎭 Rol: ${this.getRoleText(usuario.role)}</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; color: var(--text-secondary);">
+                        <div><strong>📋 Legajo:</strong> ${usuario.legajo}</div>
+                        <div><strong>📧 Email:</strong> ${usuario.email}</div>
+                        <div><strong>⏰ Turno:</strong> ${usuario.turno || 'No especificado'}</div>
                     </div>
                 </div>
                 
-                <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-                    <strong style="font-size: 1.3em;">Total de asistencias: ${total}</strong>
+                <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                    <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Total de asistencias</div>
+                    <strong style="font-size: 2.5em;">${total}</strong>
                 </div>
                 
-                <h4 style="margin-bottom: 15px; color: var(--text-primary);">📅 Detalle de clases registradas:</h4>
+                <h4 style="margin-bottom: 15px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>📅</span> Detalle de clases registradas
+                </h4>
                 ${asistenciasHTML}
             </div>
         `;
@@ -178,9 +238,11 @@ class UsuariosManager {
         const title = document.getElementById('historialModalTitle');
         
         if (modal && contentDiv && title) {
-            title.textContent = `📋 Historial de Asistencia - ${usuario.apellidoNombre}`;
+            title.textContent = `📋 Historial de Asistencia`;
             contentDiv.innerHTML = content;
             modal.style.display = 'flex';
+            
+            console.log(`✅ Modal abierto para ${usuario.apellidoNombre} con ${total} asistencias`);
         }
     }
 
@@ -308,6 +370,7 @@ class UsuariosManager {
             
             this.cerrarModal();
             await this.cargarDatos();
+            await this.cargarInscripciones(); // Recargar inscripciones también
             alert(userId ? '✅ Usuario actualizado' : '✅ Usuario creado');
         } catch (error) {
             alert('❌ Error: ' + error.message);
@@ -349,8 +412,16 @@ class UsuariosManager {
         });
 
         document.getElementById('refreshUsersBtn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('refreshUsersBtn');
+            const originalText = btn.textContent;
+            btn.textContent = '🔄 Actualizando...';
+            btn.disabled = true;
+            
             await this.cargarDatos();
             await this.cargarInscripciones(); // Recargar inscripciones también
+            
+            btn.textContent = originalText;
+            btn.disabled = false;
         });
 
         document.querySelectorAll('.close-modal, .cancel-modal').forEach(btn => {

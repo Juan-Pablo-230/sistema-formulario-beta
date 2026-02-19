@@ -1,4 +1,6 @@
-/* Estilos específicos para la sección de usuarios */
+/* ===== ESTILOS ESPECÍFICOS PARA GESTIÓN DE USUARIOS ===== */
+
+/* ===== ESTADÍSTICAS DE USUARIOS ===== */
 .stats-container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -13,6 +15,12 @@
     border-radius: 10px;
     text-align: center;
     box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
 }
 
 .stat-card:nth-child(2) {
@@ -27,6 +35,18 @@
     background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
+.stat-card h3 {
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    opacity: 0.9;
+}
+
+.stat-number {
+    font-size: 2.2em;
+    font-weight: bold;
+}
+
+/* ===== BARRA DE ACCIONES ===== */
 .actions-bar {
     display: flex;
     align-items: center;
@@ -38,6 +58,63 @@
     border: 1px solid var(--border-color);
 }
 
+#searchUser {
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-container);
+    color: var(--text-primary);
+    font-size: 14px;
+    max-width: 300px;
+    flex: 1;
+}
+
+#searchUser:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* ===== TABLA DE USUARIOS ===== */
+.table-container {
+    background: var(--bg-container);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: var(--shadow-lg);
+}
+
+.table-container h2 {
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    text-align: center;
+}
+
+.inscripciones-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+.inscripciones-table th {
+    background: var(--accent-color);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.inscripciones-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.inscripciones-table tr:hover {
+    background: var(--bg-card);
+}
+
+/* ===== BADGES DE ROL ===== */
 .role-badge {
     display: inline-block;
     padding: 5px 12px;
@@ -45,6 +122,7 @@
     font-size: 0.85em;
     font-weight: bold;
     color: white;
+    white-space: nowrap;
 }
 
 .role-badge.admin {
@@ -59,11 +137,13 @@
     background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
 }
 
+/* ===== ACCIONES DE USUARIO ===== */
 .user-actions {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     align-items: center;
     flex-wrap: wrap;
+    min-width: 250px;
 }
 
 .role-select {
@@ -74,8 +154,15 @@
     color: var(--text-primary);
     font-size: 0.9em;
     min-width: 120px;
+    cursor: pointer;
 }
 
+.role-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* ===== BOTONES DE ACCIÓN ===== */
 .btn-small {
     padding: 8px 12px;
     border: none;
@@ -83,6 +170,10 @@
     cursor: pointer;
     font-size: 0.9em;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 
 .btn-edit {
@@ -105,13 +196,42 @@
     transform: translateY(-2px);
 }
 
+/* ===== BOTÓN DE HISTORIAL (SOLO ICONO) ===== */
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #138496 0%, #0f6674 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-info:active {
+    transform: translateY(0);
+}
+
+/* ===== TEXTO DE SOLO LECTURA ===== */
 .read-only {
     color: var(--text-muted);
     font-style: italic;
     font-size: 0.9em;
+    padding: 8px 0;
 }
 
-/* Modal styles */
+/* ===== MODAL DE USUARIO ===== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -243,9 +363,65 @@
     transform: translateY(-2px);
 }
 
+/* ===== MODAL DE HISTORIAL ===== */
+#historialModal .modal-container {
+    max-width: 700px;
+}
+
+#historialModalContent {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+#historialModal table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+#historialModal th {
+    background: var(--accent-color);
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+#historialModal td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#historialModal tr:hover {
+    background: var(--bg-card);
+}
+
+/* ===== LOADING ===== */
+.loading-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .stats-container {
         grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
     }
     
     .actions-bar {
@@ -255,6 +431,37 @@
     
     #searchUser {
         max-width: none;
+        width: 100%;
+    }
+    
+    .user-actions {
+        flex-direction: column;
+        align-items: stretch;
+        min-width: auto;
+    }
+    
+    .role-select {
+        width: 100%;
+    }
+    
+    .btn-small,
+    .btn-info {
+        width: 100%;
+        height: 36px;
+    }
+    
+    .btn-info {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .inscripciones-table {
+        font-size: 0.9em;
+    }
+    
+    .inscripciones-table th,
+    .inscripciones-table td {
+        padding: 10px 8px;
     }
 }
 
@@ -263,11 +470,17 @@
         grid-template-columns: 1fr;
     }
     
-    .user-actions {
+    .modal-container {
+        padding: 15px;
+    }
+    
+    .form-actions {
         flex-direction: column;
     }
     
-    .role-select {
-        width: 100%;
+    .btn-info {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
     }
 }
