@@ -91,14 +91,14 @@ class GestionClasesManager {
 
         clasesFiltradas.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
 
-        const esAdmin = authSystem.isAdmin() || authSystem.isAdvancedUser();
-
         container.innerHTML = clasesFiltradas.map(clase => {
-            const estado = clase.estado || 'activa'; // Por defecto 'activa' para compatibilidad
+            const estado = clase.estado || 'activa';
             const estadoInfo = this.getEstadoInfo(estado);
             
-            // Verificar si tiene enlaces
-            const tieneEnlaces = clase.enlaces && clase.enlaces.length > 0;
+            // Verificar si tiene enlaces (formato antiguo o nuevo)
+            const tieneEnlaces = (clase.enlaces && 
+                ((clase.enlaces.youtube || clase.enlaces.powerpoint) || 
+                 (Array.isArray(clase.enlaces) && clase.enlaces.length > 0)));
             
             return `
             <div class="clase-card ${estado}">
@@ -138,18 +138,43 @@ class GestionClasesManager {
     }
 
     renderizarEnlaces(enlaces) {
-        if (!enlaces || enlaces.length === 0) {
+        if (!enlaces) {
             return '<span class="sin-enlaces">No hay material disponible</span>';
         }
         
-        return enlaces.map(enlace => {
-            const tipoInfo = this.getTipoInfo(enlace.tipo);
-            return `
-                <a href="${enlace.url}" target="_blank" class="material-link ${enlace.tipo}" title="${enlace.descripcion || tipoInfo.texto}">
-                    ${tipoInfo.icono} ${tipoInfo.texto}
-                </a>
-            `;
-        }).join('');
+        // Si es el formato antiguo (objeto con youtube/powerpoint)
+        if (enlaces.youtube || enlaces.powerpoint) {
+            const enlacesArray = [];
+            if (enlaces.youtube) {
+                enlacesArray.push(`
+                    <a href="${enlaces.youtube}" target="_blank" class="material-link youtube" title="Ver en YouTube">
+                        ▶️ YouTube
+                    </a>
+                `);
+            }
+            if (enlaces.powerpoint) {
+                enlacesArray.push(`
+                    <a href="${enlaces.powerpoint}" target="_blank" class="material-link powerpoint" title="Ver presentación">
+                        📊 Presentación
+                    </a>
+                `);
+            }
+            return enlacesArray.join('');
+        }
+        
+        // Si es el nuevo formato (array de enlaces)
+        if (Array.isArray(enlaces) && enlaces.length > 0) {
+            return enlaces.map(enlace => {
+                const tipoInfo = this.getTipoInfo(enlace.tipo);
+                return `
+                    <a href="${enlace.url}" target="_blank" class="material-link ${enlace.tipo}" title="${enlace.descripcion || tipoInfo.texto}">
+                        ${tipoInfo.icono} ${tipoInfo.texto}
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        return '<span class="sin-enlaces">No hay material disponible</span>';
     }
 
     getTipoInfo(tipo) {
@@ -175,7 +200,6 @@ class GestionClasesManager {
     }
 
     agregarEnlaceInicial() {
-        // Agregar un enlace vacío al iniciar
         this.agregarEnlace();
     }
 
@@ -186,7 +210,7 @@ class GestionClasesManager {
         enlaceDiv.className = 'enlace-item';
         enlaceDiv.innerHTML = `
             <div class="enlace-row">
-                <select class="enlace-tipo form-control" required>
+                <select class="enlace-tipo form-control">
                     <option value="">Seleccionar tipo</option>
                     <option value="youtube">▶️ Video (YouTube)</option>
                     <option value="vimeo">🎥 Video (Vimeo)</option>
@@ -202,14 +226,12 @@ class GestionClasesManager {
             </div>
         `;
         
-        // Agregar evento para eliminar
         const eliminarBtn = enlaceDiv.querySelector('.eliminar-enlace');
         eliminarBtn.addEventListener('click', () => {
             const container = document.getElementById('enlacesContainer');
             if (container.children.length > 1) {
                 enlaceDiv.remove();
             } else {
-                // Si es el último, limpiar en lugar de eliminar
                 const select = enlaceDiv.querySelector('.enlace-tipo');
                 const urlInput = enlaceDiv.querySelector('.enlace-url');
                 const descInput = enlaceDiv.querySelector('.enlace-descripcion');
@@ -241,8 +263,25 @@ class GestionClasesManager {
     async guardarClase(event) {
         event.preventDefault();
         
-        // Obtener enlaces del formulario
-        const enlaces = [];
+        // Validar campos requeridos
+        const nombre = document.getElementById('claseNombre')?.value || '';
+        const fecha = document.getElementById('claseFecha')?.value || '';
+        
+        if (!nombre) {
+            this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+            return;
+        }
+        
+        if (!fecha) {
+            this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+            return;
+        }
+        
+        const hora = document.getElementById('claseHora')?.value || '10:00';
+        const fechaCompleta = `${fecha}T${hora}:00`;
+        
+        // Obtener enlaces del formulario (formato nuevo)
+        const enlacesArray = [];
         const enlaceItems = document.querySelectorAll('#enlacesContainer .enlace-item');
         
         enlaceItems.forEach(item => {
@@ -250,9 +289,8 @@ class GestionClasesManager {
             const url = item.querySelector('.enlace-url')?.value;
             const descripcion = item.querySelector('.enlace-descripcion')?.value;
             
-            // Solo guardar si hay tipo y URL
             if (tipo && url) {
-                enlaces.push({
+                enlacesArray.push({
                     tipo: tipo,
                     url: url,
                     descripcion: descripcion || this.getTipoInfo(tipo).texto
@@ -260,46 +298,47 @@ class GestionClasesManager {
             }
         });
         
-        // Obtener fecha y hora
-        const fecha = document.getElementById('claseFecha')?.value || '';
-        const hora = document.getElementById('claseHora')?.value || '10:00';
+        // Por ahora, para compatibilidad con el servidor, también creamos el formato antiguo
+        // pero solo si hay enlaces del tipo correspondiente
+        const enlacesViejos = {
+            youtube: '',
+            powerpoint: ''
+        };
         
-        if (!fecha) {
-            this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
-            return;
-        }
-        
-        const fechaCompleta = `${fecha}T${hora}:00`;
+        enlacesArray.forEach(enlace => {
+            if (enlace.tipo === 'youtube') {
+                enlacesViejos.youtube = enlace.url;
+            } else if (enlace.tipo === 'powerpoint') {
+                enlacesViejos.powerpoint = enlace.url;
+            }
+        });
         
         // Obtener instructores
         const instructores = document.getElementById('claseInstructores')?.value
             ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()).filter(i => i)
             : [];
         
+        // Preparar datos en el formato que espera el servidor
         const claseData = {
-            nombre: document.getElementById('claseNombre')?.value || '',
+            nombre: nombre,
             descripcion: document.getElementById('claseDescripcion')?.value || '',
             fechaClase: fechaCompleta,
-            enlaces: enlaces, // Array de enlaces
+            // El servidor espera enlaces en formato objeto con youtube y powerpoint
+            enlaces: enlacesViejos,
+            // También guardamos el array para uso futuro (el servidor lo ignorará si no lo soporta)
+            enlacesArray: enlacesArray,
+            activa: true, // Por compatibilidad
             estado: document.getElementById('claseEstado')?.value || 'activa',
             instructores: instructores
         };
         
-        // Validar nombre
-        if (!claseData.nombre) {
-            this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
-            return;
-        }
-        
-        console.log('📤 Guardando clase:', claseData);
+        console.log('📤 Enviando datos al servidor:', claseData);
         
         try {
             if (this.editandoId) {
-                // Actualizar
                 await authSystem.makeRequest(`/clases-historicas/${this.editandoId}`, claseData, 'PUT');
                 this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
             } else {
-                // Crear nueva
                 await authSystem.makeRequest('/clases-historicas', claseData);
                 this.mostrarMensaje('✅ Clase creada correctamente', 'success');
             }
@@ -318,13 +357,13 @@ class GestionClasesManager {
 
         this.editandoId = id;
         
-        // Limpiar enlaces actuales
         const container = document.getElementById('enlacesContainer');
         container.innerHTML = '';
         
-        // Cargar enlaces existentes
-        if (clase.enlaces && clase.enlaces.length > 0) {
-            clase.enlaces.forEach(enlace => {
+        // Verificar si la clase tiene enlaces en el formato nuevo o viejo
+        if (clase.enlacesArray && clase.enlacesArray.length > 0) {
+            // Formato nuevo
+            clase.enlacesArray.forEach(enlace => {
                 this.agregarEnlace();
                 const items = document.querySelectorAll('#enlacesContainer .enlace-item');
                 const ultimoItem = items[items.length - 1];
@@ -333,11 +372,32 @@ class GestionClasesManager {
                 ultimoItem.querySelector('.enlace-url').value = enlace.url || '';
                 ultimoItem.querySelector('.enlace-descripcion').value = enlace.descripcion || '';
             });
-        } else {
-            this.agregarEnlace(); // Agregar uno vacío
+        } else if (clase.enlaces) {
+            // Formato viejo (objeto con youtube/powerpoint)
+            if (clase.enlaces.youtube) {
+                this.agregarEnlace();
+                const items = document.querySelectorAll('#enlacesContainer .enlace-item');
+                const ultimoItem = items[items.length - 1];
+                ultimoItem.querySelector('.enlace-tipo').value = 'youtube';
+                ultimoItem.querySelector('.enlace-url').value = clase.enlaces.youtube;
+                ultimoItem.querySelector('.enlace-descripcion').value = 'Video de YouTube';
+            }
+            
+            if (clase.enlaces.powerpoint) {
+                this.agregarEnlace();
+                const items = document.querySelectorAll('#enlacesContainer .enlace-item');
+                const ultimoItem = items[items.length - 1];
+                ultimoItem.querySelector('.enlace-tipo').value = 'powerpoint';
+                ultimoItem.querySelector('.enlace-url').value = clase.enlaces.powerpoint;
+                ultimoItem.querySelector('.enlace-descripcion').value = 'Presentación';
+            }
         }
         
-        // Cargar datos básicos
+        // Si no hay enlaces, agregar uno vacío
+        if (document.querySelectorAll('#enlacesContainer .enlace-item').length === 0) {
+            this.agregarEnlace();
+        }
+        
         document.getElementById('claseNombre').value = clase.nombre || '';
         document.getElementById('claseDescripcion').value = clase.descripcion || '';
         
@@ -350,7 +410,6 @@ class GestionClasesManager {
         document.getElementById('claseInstructores').value = clase.instructores?.join(', ') || '';
         document.getElementById('claseEstado').value = clase.estado || 'activa';
         
-        // Actualizar info de visibilidad
         this.actualizarInfoVisibilidad(clase.estado || 'activa');
         
         document.getElementById('formTitle').innerHTML = '✏️ Editando: ' + clase.nombre;
@@ -373,10 +432,9 @@ class GestionClasesManager {
         document.getElementById('claseHora').value = '10:00';
         document.getElementById('claseEstado').value = 'publicada';
         
-        // Limpiar enlaces
         const container = document.getElementById('enlacesContainer');
         container.innerHTML = '';
-        this.agregarEnlace(); // Agregar uno vacío
+        this.agregarEnlace();
         
         this.actualizarInfoVisibilidad('publicada');
         this.ocultarMensaje();
@@ -433,7 +491,6 @@ class GestionClasesManager {
     }
 }
 
-// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     window.gestionClasesManager = new GestionClasesManager();
 });
