@@ -4,11 +4,13 @@ console.log('👥 Módulo de Usuarios cargado');
 class UsuariosManager {
     constructor() {
         this.data = [];
+        this.inscripcionesData = []; // Para almacenar todas las inscripciones
         this.init();
     }
 
     async init() {
         await this.cargarDatos();
+        await this.cargarInscripciones(); // Cargar inscripciones para el historial
         this.setupEventListeners();
     }
 
@@ -21,6 +23,18 @@ class UsuariosManager {
         } catch (error) {
             console.error('❌ Error cargando usuarios:', error);
             this.mostrarError();
+        }
+    }
+
+    // Nuevo método para cargar todas las inscripciones
+    async cargarInscripciones() {
+        try {
+            const result = await authSystem.makeRequest('/inscripciones', null, 'GET');
+            this.inscripcionesData = result.data || [];
+            console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas para historial`);
+        } catch (error) {
+            console.error('❌ Error cargando inscripciones:', error);
+            this.inscripcionesData = [];
         }
     }
 
@@ -47,7 +61,7 @@ class UsuariosManager {
         if (usuariosFiltrados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="9" style="text-align: center; padding: 40px; color: var(--text-muted);">
                         No hay usuarios para mostrar
                     </td>
                 </tr>
@@ -57,7 +71,13 @@ class UsuariosManager {
 
         const esAdmin = authSystem.isAdmin();
 
-        tbody.innerHTML = usuariosFiltrados.map((usuario, index) => `
+        tbody.innerHTML = usuariosFiltrados.map((usuario, index) => {
+            // Calcular el total de asistencias para este usuario
+            const asistencias = this.inscripcionesData.filter(ins => 
+                ins.usuario?._id === usuario._id || ins.usuarioId === usuario._id
+            ).length;
+
+            return `
             <tr>
                 <td>${index + 1}</td>
                 <td>${usuario.apellidoNombre || 'N/A'}</td>
@@ -74,13 +94,94 @@ class UsuariosManager {
                                 <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Avanzado</option>
                                 <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''}>Admin</option>
                             </select>
-                            <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')">✏️</button>
-                            <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')">🗑️</button>
+                            <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')" title="Editar usuario">✏️</button>
+                            <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')" title="Eliminar usuario">🗑️</button>
                         ` : '<span class="read-only">Solo lectura</span>'}
+                        <!-- Nuevo botón para ver historial -->
+                        <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia">
+                            📋 Historial (${asistencias})
+                        </button>
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
+    }
+
+    // Nuevo método para ver el historial
+    async verHistorial(usuarioId) {
+        const usuario = this.data.find(u => u._id === usuarioId);
+        if (!usuario) return;
+
+        // Filtrar inscripciones del usuario
+        const asistencias = this.inscripcionesData.filter(ins => 
+            ins.usuario?._id === usuarioId || ins.usuarioId === usuarioId
+        );
+
+        const total = asistencias.length;
+
+        // Ordenar por fecha más reciente
+        asistencias.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        // Generar HTML para el modal
+        let asistenciasHTML = '';
+        if (asistencias.length === 0) {
+            asistenciasHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene asistencias registradas.</p>';
+        } else {
+            asistenciasHTML = `
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="background: var(--accent-color); color: white;">
+                            <th style="padding: 12px; text-align: left;">Clase</th>
+                            <th style="padding: 12px; text-align: left;">Turno</th>
+                            <th style="padding: 12px; text-align: left;">Fecha de Inscripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${asistencias.map(ins => `
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <td style="padding: 12px;">${ins.clase || 'N/A'}</td>
+                                <td style="padding: 12px;">${ins.turno || 'N/A'}</td>
+                                <td style="padding: 12px;">${ins.fecha ? new Date(ins.fecha).toLocaleString('es-AR') : 'N/A'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        const content = `
+            <div style="padding: 20px;">
+                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
+                    <div style="margin-bottom: 10px;">
+                        <strong style="font-size: 1.1em;">${usuario.apellidoNombre}</strong>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; color: var(--text-secondary);">
+                        <div>📋 Legajo: ${usuario.legajo}</div>
+                        <div>📧 Email: ${usuario.email}</div>
+                        <div>⏰ Turno: ${usuario.turno || 'No especificado'}</div>
+                        <div>🎭 Rol: ${this.getRoleText(usuario.role)}</div>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                    <strong style="font-size: 1.3em;">Total de asistencias: ${total}</strong>
+                </div>
+                
+                <h4 style="margin-bottom: 15px; color: var(--text-primary);">📅 Detalle de clases registradas:</h4>
+                ${asistenciasHTML}
+            </div>
+        `;
+
+        // Mostrar modal
+        const modal = document.getElementById('historialModal');
+        const contentDiv = document.getElementById('historialModalContent');
+        const title = document.getElementById('historialModalTitle');
+        
+        if (modal && contentDiv && title) {
+            title.textContent = `📋 Historial de Asistencia - ${usuario.apellidoNombre}`;
+            contentDiv.innerHTML = content;
+            modal.style.display = 'flex';
+        }
     }
 
     getRoleText(role) {
@@ -109,7 +210,7 @@ class UsuariosManager {
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: #ff6b6b;">
+                    <td colspan="9" style="text-align: center; padding: 40px; color: #ff6b6b;">
                         ⚠️ Error al cargar los usuarios
                     </td>
                 </tr>
@@ -247,12 +348,29 @@ class UsuariosManager {
             this.mostrarTabla(e.target.value);
         });
 
-        document.getElementById('refreshUsersBtn')?.addEventListener('click', () => {
-            this.cargarDatos();
+        document.getElementById('refreshUsersBtn')?.addEventListener('click', async () => {
+            await this.cargarDatos();
+            await this.cargarInscripciones(); // Recargar inscripciones también
         });
 
         document.querySelectorAll('.close-modal, .cancel-modal').forEach(btn => {
             btn.addEventListener('click', () => this.cerrarModal());
+        });
+
+        // Cerrar modal de historial
+        const closeHistorial = document.getElementById('closeHistorialModal');
+        if (closeHistorial) {
+            closeHistorial.addEventListener('click', () => {
+                document.getElementById('historialModal').style.display = 'none';
+            });
+        }
+
+        // Cerrar modal de historial haciendo click fuera
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('historialModal');
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
         });
 
         document.getElementById('userForm')?.addEventListener('submit', (e) => this.guardarUsuario(e));
