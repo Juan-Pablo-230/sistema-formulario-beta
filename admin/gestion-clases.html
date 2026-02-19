@@ -16,16 +16,16 @@
                 <div class="stat-value" id="totalClases">0</div>
             </div>
             <div class="stat-mini-card">
+                <div class="stat-label">Publicadas</div>
+                <div class="stat-value" id="clasesPublicadas">0</div>
+            </div>
+            <div class="stat-mini-card">
                 <div class="stat-label">Activas</div>
                 <div class="stat-value" id="clasesActivas">0</div>
             </div>
             <div class="stat-mini-card">
-                <div class="stat-label">Próximas (7 días)</div>
-                <div class="stat-value" id="clasesProximas">0</div>
-            </div>
-            <div class="stat-mini-card">
-                <div class="stat-label">Total Solicitudes</div>
-                <div class="stat-value" id="totalSolicitudes">0</div>
+                <div class="stat-label">Canceladas</div>
+                <div class="stat-value" id="clasesCanceladas">0</div>
             </div>
         </div>
 
@@ -41,19 +41,20 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Nombre de la Clase *</label>
-                        <input type="text" id="claseNombre" required class="form-control">
+                        <label>Nombre de la Clase <span class="required">*</span></label>
+                        <input type="text" id="claseNombre" required class="form-control" placeholder="Ej: Stroke / IAM Avanzado">
                     </div>
                     
                     <div class="form-group">
                         <label>Instructores</label>
                         <input type="text" id="claseInstructores" placeholder="Dr. Juan Pérez, Lic. María González" class="form-control">
+                        <small class="field-info">Separar por comas si hay múltiples instructores</small>
                     </div>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Fecha *</label>
+                        <label>Fecha <span class="required">*</span></label>
                         <input type="date" id="claseFecha" required class="form-control">
                     </div>
                     
@@ -65,30 +66,39 @@
                 
                 <div class="form-group">
                     <label>Descripción</label>
-                    <textarea id="claseDescripcion" rows="2" class="form-control"></textarea>
+                    <textarea id="claseDescripcion" rows="2" class="form-control" placeholder="Breve descripción de la clase..."></textarea>
                 </div>
                 
+                <!-- Selector de Estado de la Clase -->
+                <div class="form-group">
+                    <label>Estado de la Clase <span class="required">*</span></label>
+                    <select id="claseEstado" class="form-control" required>
+                        <option value="publicada" selected>📢 Publicada - Visible para usuarios con enlaces</option>
+                        <option value="activa">✅ Activa - Solo visible en panel admin</option>
+                        <option value="cancelada">❌ Cancelada - Solo visible en panel admin</option>
+                    </select>
+                    <small class="field-info" id="estadoInfo">
+                        📢 Publicada: Los usuarios pueden solicitar el material si tiene enlaces cargados
+                    </small>
+                </div>
+                
+                <!-- Sección de Enlaces Múltiples -->
                 <div class="enlaces-section">
-                    <h4>🔗 Enlaces del Material</h4>
+                    <div class="enlaces-header">
+                        <h4>🔗 Enlaces del Material</h4>
+                        <button type="button" id="agregarEnlaceBtn" class="btn btn-success btn-small">➕ Agregar Enlace</button>
+                    </div>
+                    <p class="field-info">Los enlaces son opcionales. Si no se cargan enlaces, la clase solo será visible en el panel de administración.</p>
                     
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>YouTube URL</label>
-                            <input type="url" id="claseYoutube" class="form-control" placeholder="https://youtube.com/...">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Presentación (PPT/PDF)</label>
-                            <input type="url" id="clasePowerpoint" class="form-control" placeholder="https://docs.google.com/...">
-                        </div>
+                    <div id="enlacesContainer">
+                        <!-- Los enlaces se agregarán dinámicamente aquí -->
                     </div>
                 </div>
                 
                 <div class="form-actions">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="claseActiva" checked>
-                        <span>Clase activa (visible para usuarios)</span>
-                    </label>
+                    <div class="estado-info" id="visibilidadInfo">
+                        <!-- Se actualizará dinámicamente según el estado -->
+                    </div>
                     
                     <div class="action-buttons">
                         <button type="submit" class="btn btn-success" id="submitClaseBtn">💾 Guardar Clase</button>
@@ -103,6 +113,12 @@
             <div class="list-header">
                 <h2>📋 Clases Existentes</h2>
                 <div class="list-actions">
+                    <select id="filtroEstado" class="filtro-select">
+                        <option value="todos">Todos los estados</option>
+                        <option value="publicada">📢 Publicadas</option>
+                        <option value="activa">✅ Activas</option>
+                        <option value="cancelada">❌ Canceladas</option>
+                    </select>
                     <input type="text" id="buscarClase" placeholder="🔍 Buscar clase..." class="search-input">
                     <button id="refrescarClasesBtn" class="btn btn-primary">🔄 Refrescar</button>
                 </div>
