@@ -480,7 +480,7 @@ app.get('/api/clases-historicas', async (req, res) => {
             .sort({ fechaClase: -1 })
             .toArray();
         
-        console.log(`✅ ${clases.length} clases históricas obtenidas (${clases.filter(c => c.activa).length} activas, ${clases.filter(c => !c.activa).length} inactivas)`);
+        console.log(`✅ ${clases.length} clases históricas obtenidas`);
         
         res.json({ 
             success: true, 
@@ -564,28 +564,32 @@ app.post('/api/clases-historicas', async (req, res) => {
             });
         }
         
-        const { nombre, descripcion, fechaClase, enlaces, activa, instructores, tags } = req.body;
+        const { nombre, descripcion, fechaClase, enlaces, instructores, tags, estado } = req.body;
         
-        // Validaciones básicas
+        // Validaciones básicas - solo nombre y fecha son obligatorios
         if (!nombre || !fechaClase) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Faltan campos requeridos' 
+                message: 'Faltan campos requeridos: nombre y fecha son obligatorios' 
             });
         }
         
         // Crear fecha manteniendo la hora local
         const fecha = new Date(fechaClase);
         
+        // Determinar el estado (si no viene, por defecto 'activa')
+        let estadoFinal = estado || 'activa';
+        
+        // Por compatibilidad, también guardamos activa como booleano
+        const activaBool = estadoFinal === 'activa' || estadoFinal === 'publicada';
+        
         const nuevaClase = {
             nombre,
             descripcion: descripcion || '',
             fechaClase: fecha,
-            enlaces: {
-                youtube: enlaces.youtube,
-                powerpoint: enlaces.powerpoint
-            },
-            activa: activa !== false,
+            enlaces: enlaces || { youtube: '', powerpoint: '' },
+            activa: activaBool, // Para compatibilidad con código anterior
+            estado: estadoFinal, // Nuevo campo con 3 estados
             instructores: instructores || [],
             tags: tags || [],
             fechaCreacion: new Date(),
@@ -596,7 +600,7 @@ app.post('/api/clases-historicas', async (req, res) => {
         
         console.log('✅ Clase creada:', result.insertedId);
         console.log('📅 Fecha guardada:', fecha);
-        console.log('🔘 Activa:', nuevaClase.activa);
+        console.log('📊 Estado guardado:', estadoFinal);
         
         res.json({ 
             success: true, 
@@ -642,28 +646,30 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        const { nombre, descripcion, fechaClase, enlaces, activa, instructores, tags } = req.body;
+        const { nombre, descripcion, fechaClase, enlaces, instructores, tags, estado } = req.body;
         
         // Validaciones básicas
         if (!nombre || !fechaClase) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Faltan campos requeridos' 
+                message: 'Faltan campos requeridos: nombre y fecha son obligatorios' 
             });
         }
         
         const fecha = new Date(fechaClase);
+        
+        // Determinar el estado
+        let estadoFinal = estado || 'activa';
+        const activaBool = estadoFinal === 'activa' || estadoFinal === 'publicada';
         
         const updateData = {
             $set: {
                 nombre,
                 descripcion: descripcion || '',
                 fechaClase: fecha,
-                enlaces: {
-                    youtube: enlaces.youtube,
-                    powerpoint: enlaces.powerpoint
-                },
-                activa: activa !== false,
+                enlaces: enlaces || { youtube: '', powerpoint: '' },
+                activa: activaBool,
+                estado: estadoFinal,
                 instructores: instructores || [],
                 tags: tags || [],
                 fechaActualizacion: new Date()
@@ -683,7 +689,7 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
         }
         
         console.log('✅ Clase actualizada:', id);
-        console.log('🔘 Estado activa:', activa);
+        console.log('📊 Estado actualizado:', estadoFinal);
         
         res.json({ 
             success: true, 
@@ -984,6 +990,7 @@ app.get('/api/material-historico/init', async (req, res) => {
                         powerpoint: "https://docs.google.com/presentation/d/1-telemetria"
                     },
                     activa: true,
+                    estado: 'publicada',
                     fechaCreacion: new Date()
                 },
                 {
@@ -995,6 +1002,7 @@ app.get('/api/material-historico/init', async (req, res) => {
                         powerpoint: "https://docs.google.com/presentation/d/1-rotacion"
                     },
                     activa: true,
+                    estado: 'publicada',
                     fechaCreacion: new Date()
                 }
             ];
@@ -1524,7 +1532,7 @@ app.get('/api/init-db', async (req, res) => {
         const db = await mongoDB.getDatabaseSafe('formulario');
         
         // Verificar/Crear colecciones
-        const collections = ['usuarios', 'inscripciones', 'material', 'clases', 'clases', 'solicitudMaterial'];
+        const collections = ['usuarios', 'inscripciones', 'material', 'clases', 'solicitudMaterial'];
         
         for (const collectionName of collections) {
             const collectionExists = await db.listCollections({ name: collectionName }).hasNext();
@@ -1548,6 +1556,7 @@ app.get('/api/init-db', async (req, res) => {
                 } else if (collectionName === 'clases') {
                     await db.collection(collectionName).createIndex({ fechaClase: -1 });
                     await db.collection(collectionName).createIndex({ nombre: 1 });
+                    await db.collection(collectionName).createIndex({ estado: 1 });
                     console.log(`✅ Índices creados para "${collectionName}"`);
                 } else if (collectionName === 'solicitudMaterial') {
                     await db.collection(collectionName).createIndex({ usuarioId: 1, claseId: 1 });
@@ -1589,6 +1598,7 @@ app.get('/api/init-db', async (req, res) => {
                 fechaClase: new Date('2025-12-04'),
                 fechaCierre: new Date('2025-12-04T10:00:00'),
                 activa: true,
+                estado: 'publicada',
                 instructores: ["Lic. Romina Seminario", "Lic. Mirta Díaz"]
             };
             
