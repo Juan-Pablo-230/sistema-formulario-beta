@@ -26,25 +26,15 @@ class UsuariosManager {
         }
     }
 
-    // CORREGIDO: Método para cargar todas las inscripciones
+    // Método para cargar todas las inscripciones
     async cargarInscripciones() {
         try {
             console.log('📥 Cargando inscripciones para historial...');
             const result = await authSystem.makeRequest('/inscripciones', null, 'GET');
             
-            // Verificar la estructura de los datos
             if (result.success && result.data) {
                 this.inscripcionesData = result.data;
                 console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas para historial`);
-                
-                // Mostrar las primeras inscripciones para debug
-                if (this.inscripcionesData.length > 0) {
-                    console.log('📋 Ejemplo de inscripción:', {
-                        usuarioId: this.inscripcionesData[0].usuarioId,
-                        usuario: this.inscripcionesData[0].usuario?._id,
-                        clase: this.inscripcionesData[0].clase
-                    });
-                }
             } else {
                 console.warn('⚠️ No se pudieron cargar las inscripciones');
                 this.inscripcionesData = [];
@@ -55,22 +45,15 @@ class UsuariosManager {
         }
     }
 
-    // CORREGIDO: Método para contar asistencias de un usuario
+    // Método para contar asistencias de un usuario
     contarAsistenciasUsuario(usuarioId) {
         if (!this.inscripcionesData || this.inscripcionesData.length === 0) {
             return 0;
         }
         
-        // Contar inscripciones que coincidan con el ID del usuario
         const asistencias = this.inscripcionesData.filter(ins => {
-            // Verificar si el usuarioId está en usuario._id o en usuarioId
             const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
                             (ins.usuarioId === usuarioId);
-            
-            if (coincide) {
-                console.log(`✅ Coincidencia encontrada para usuario ${usuarioId}:`, ins.clase);
-            }
-            
             return coincide;
         });
         
@@ -111,7 +94,6 @@ class UsuariosManager {
         const esAdmin = authSystem.isAdmin();
 
         tbody.innerHTML = usuariosFiltrados.map((usuario, index) => {
-            // CORREGIDO: Calcular el total de asistencias para este usuario
             const asistencias = this.contarAsistenciasUsuario(usuario._id);
 
             return `
@@ -124,51 +106,45 @@ class UsuariosManager {
                 <td><span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span></td>
                 <td>${usuario.fechaRegistro ? new Date(usuario.fechaRegistro).toLocaleString('es-AR') : 'N/A'}</td>
                 <td>
-                    <div class="user-actions">
+                    <div class="user-actions-stacked">
                         ${esAdmin ? `
                             <select class="role-select" onchange="usuariosManager.cambiarRol('${usuario._id}', this.value)">
-                                <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario</option>
-                                <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Avanzado</option>
-                                <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                <option value="user" ${usuario.role === 'user' ? 'selected' : ''}>Usuario Estándar</option>
+                                <option value="advanced" ${usuario.role === 'advanced' ? 'selected' : ''}>Usuario Avanzado</option>
+                                <option value="admin" ${usuario.role === 'admin' ? 'selected' : ''}>Administrador</option>
                             </select>
-                            <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')" title="Editar usuario">✏️</button>
-                            <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')" title="Eliminar usuario">🗑️</button>
-                        ` : '<span class="read-only">Solo lectura</span>'}
-                        <!-- Botón de historial SOLO con icono -->
-                        <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">
-                            📋
-                        </button>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')" title="Editar usuario">✏️</button>
+                                <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')" title="Eliminar usuario">🗑️</button>
+                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">📋</button>
+                            </div>
+                        ` : `
+                            <span class="read-only">Solo lectura</span>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">📋</button>
+                            </div>
+                        `}
                     </div>
                 </td>
             </tr>
         `}).join('');
     }
 
-    // CORREGIDO: Método para ver el historial
+    // Método para ver el historial
     async verHistorial(usuarioId) {
         const usuario = this.data.find(u => u._id === usuarioId);
         if (!usuario) return;
 
-        // CORREGIDO: Filtrar inscripciones del usuario correctamente
         const asistencias = this.inscripcionesData.filter(ins => {
-            // Intentar diferentes formas de coincidencia
             const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
                             (ins.usuarioId === usuarioId);
-            
-            if (coincide) {
-                console.log(`📝 Asistencia encontrada para ${usuario.apellidoNombre}:`, ins.clase);
-            }
-            
             return coincide;
         });
 
         const total = asistencias.length;
-        console.log(`📊 Total asistencias para ${usuario.apellidoNombre}: ${total}`);
 
-        // Ordenar por fecha más reciente
         asistencias.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-        // Generar HTML para el modal
         let asistenciasHTML = '';
         if (asistencias.length === 0) {
             asistenciasHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene asistencias registradas.</p>';
@@ -232,7 +208,6 @@ class UsuariosManager {
             </div>
         `;
 
-        // Mostrar modal
         const modal = document.getElementById('historialModal');
         const contentDiv = document.getElementById('historialModalContent');
         const title = document.getElementById('historialModalTitle');
@@ -241,8 +216,6 @@ class UsuariosManager {
             title.textContent = `📋 Historial de Asistencia`;
             contentDiv.innerHTML = content;
             modal.style.display = 'flex';
-            
-            console.log(`✅ Modal abierto para ${usuario.apellidoNombre} con ${total} asistencias`);
         }
     }
 
@@ -302,7 +275,6 @@ class UsuariosManager {
         const passwordGroup = document.getElementById('passwordGroup');
         
         if (usuario) {
-            // Modo edición
             title.textContent = '✏️ Editar Usuario';
             document.getElementById('userId').value = usuario._id;
             document.getElementById('userNombre').value = usuario.apellidoNombre || '';
@@ -314,7 +286,6 @@ class UsuariosManager {
             document.getElementById('userPassword').placeholder = 'Dejar en blanco para mantener';
             passwordGroup.style.display = 'block';
         } else {
-            // Modo creación
             title.textContent = '➕ Crear Usuario';
             form.reset();
             document.getElementById('userId').value = '';
@@ -354,13 +325,11 @@ class UsuariosManager {
 
         try {
             if (userId) {
-                // Actualizar
                 await authSystem.makeRequest(`/admin/usuarios/${userId}`, formData, 'PUT');
                 if (password) {
                     await authSystem.makeRequest(`/admin/usuarios/${userId}/password`, { newPassword: password }, 'PUT');
                 }
             } else {
-                // Crear nuevo
                 if (!password) {
                     alert('La contraseña es obligatoria para nuevos usuarios');
                     return;
@@ -370,7 +339,7 @@ class UsuariosManager {
             
             this.cerrarModal();
             await this.cargarDatos();
-            await this.cargarInscripciones(); // Recargar inscripciones también
+            await this.cargarInscripciones();
             alert(userId ? '✅ Usuario actualizado' : '✅ Usuario creado');
         } catch (error) {
             alert('❌ Error: ' + error.message);
@@ -418,7 +387,7 @@ class UsuariosManager {
             btn.disabled = true;
             
             await this.cargarDatos();
-            await this.cargarInscripciones(); // Recargar inscripciones también
+            await this.cargarInscripciones();
             
             btn.textContent = originalText;
             btn.disabled = false;
@@ -428,7 +397,6 @@ class UsuariosManager {
             btn.addEventListener('click', () => this.cerrarModal());
         });
 
-        // Cerrar modal de historial
         const closeHistorial = document.getElementById('closeHistorialModal');
         if (closeHistorial) {
             closeHistorial.addEventListener('click', () => {
@@ -436,7 +404,6 @@ class UsuariosManager {
             });
         }
 
-        // Cerrar modal de historial haciendo click fuera
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('historialModal');
             if (e.target === modal) {
@@ -460,7 +427,6 @@ class UsuariosManager {
     }
 }
 
-// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     window.usuariosManager = new UsuariosManager();
 });
