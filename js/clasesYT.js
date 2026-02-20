@@ -83,14 +83,16 @@ class ChatSimulado {
     agregarMensajeUsuario(nombre, texto) {
         const hora = new Date().toLocaleTimeString('es-AR', { 
             hour: '2-digit', 
-            minute: '2-digit' 
+            minute: '2-digit',
+            hour12: false
         });
         
         const mensaje = {
             tipo: 'usuario',
             nombre: nombre,
             texto: texto,
-            hora: hora
+            hora: hora,
+            hour12: false
         };
         
         this.mensajes.push(mensaje);
@@ -101,13 +103,15 @@ class ChatSimulado {
     agregarMensajeSistema(texto) {
         const hora = new Date().toLocaleTimeString('es-AR', { 
             hour: '2-digit', 
-            minute: '2-digit' 
+            minute: '2-digit',
+            hour12: false
         });
         
         const mensaje = {
             tipo: 'sistema',
             texto: texto,
-            hora: hora
+            hora: hora,
+            hour12: false
         };
         
         this.mensajes.push(mensaje);
