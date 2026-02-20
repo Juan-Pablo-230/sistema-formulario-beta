@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clase en Vivo - Sistema de Inscripciones</title>
+    
+    <!-- CSS del sistema principal -->
     <link rel="stylesheet" href="/css/styles.css">
+    <!-- CSS específico de la página de clases -->
     <link rel="stylesheet" href="/css/clasesYT.css">
+    
     <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
 </head>
 <body>
@@ -14,7 +18,7 @@
         <header class="clase-header">
             <h1 class="clase-titulo">
                 <span class="clase-icon">🎥</span>
-                Clase en Vivo
+                Clase en Vivo: Stroke / IAM
             </h1>
             
             <div class="header-info">
@@ -34,12 +38,12 @@
             </div>
         </header>
 
-        <!-- Grid principal: video + chat -->
+        <!-- Grid principal -->
         <div class="clase-grid" id="claseGrid">
             <!-- Columna del video -->
             <section class="video-column">
                 <div class="video-wrapper" id="videoWrapper">
-                    <!-- Tu iframe específico con el ID de transmisión -->
+                    <!-- Tu iframe de YouTube sin controles -->
                     <iframe 
                         width="560" 
                         height="315" 
@@ -52,51 +56,63 @@
                     </iframe>
                 </div>
                 
-                <!-- Información del usuario y la clase -->
-                <div class="video-info" id="videoInfo">
-                    <h2 class="clase-subtitulo" id="tituloClase">Transmisión: Stroke / IAM</h2>
-                    
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="info-icon">👤</span>
-                            <span class="info-label">Usuario:</span>
-                            <span class="info-value" id="nombreUsuario">Cargando...</span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-icon">📋</span>
-                            <span class="info-label">Legajo:</span>
-                            <span class="info-value" id="legajoUsuario">-</span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-icon">⏰</span>
-                            <span class="info-label">Turno:</span>
-                            <span class="info-value" id="turnoUsuario">-</span>
-                        </div>
+                <!-- Información del usuario -->
+                <div class="video-info">
+                    <div class="user-info-compact">
+                        <span class="info-icon">👤</span>
+                        <span class="info-value" id="nombreUsuario">Cargando...</span>
+                        <span class="info-separator">|</span>
+                        <span class="info-icon">📋</span>
+                        <span class="info-value" id="legajoUsuario">-</span>
+                        <span class="info-separator">|</span>
+                        <span class="info-icon">⏰</span>
+                        <span class="info-value" id="turnoUsuario">-</span>
                     </div>
                 </div>
             </section>
 
-            <!-- Columna del chat -->
+            <!-- Columna del chat (SIMULADO) -->
             <section class="chat-column">
                 <div class="chat-header">
                     <div class="chat-header-left">
                         <span class="chat-icon">💬</span>
-                        <span class="chat-titulo">Chat en Vivo</span>
+                        <span class="chat-titulo">Chat de la Clase</span>
                     </div>
                     <div class="chat-header-right">
                         <span class="chat-badge">🔴 EN VIVO</span>
                     </div>
                 </div>
                 
-                <div class="chat-container" id="chatContainer">
-                    <!-- Chat de YouTube para la misma transmisión -->
-                    <iframe 
-                        src="https://www.youtube.com/live_chat?v=cb12KmMMDJA&embed_domain=https://sistema-formulario-beta-production.up.railway.app"
-                        frameborder="0"
-                        allowfullscreen>
-                    </iframe>
+                <!-- SIMULACIÓN DEL CHAT (funciona 100% sin restricciones) -->
+                <div class="chat-simulado" id="chatSimulado">
+                    <!-- Mensajes de ejemplo (se actualizan con JS) -->
+                    <div class="chat-mensajes" id="chatMensajes">
+                        <div class="mensaje sistema">
+                            <span class="mensaje-hora">12:00</span>
+                            <span class="mensaje-contenido">🟢 Chat de la clase iniciado</span>
+                        </div>
+                        <div class="mensaje sistema">
+                            <span class="mensaje-hora">12:00</span>
+                            <span class="mensaje-contenido">👋 Bienvenidos a la clase de Stroke/IAM</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Área para escribir mensajes -->
+                    <div class="chat-input-area">
+                        <input type="text" 
+                               class="chat-input" 
+                               id="chatInput" 
+                               placeholder="Escribe un mensaje (simulado)..." 
+                               autocomplete="off">
+                        <button class="chat-enviar" id="btnEnviarChat" disabled>
+                            📤
+                        </button>
+                    </div>
+                    
+                    <!-- Mensaje informativo -->
+                    <div class="chat-nota">
+                        💡 Modo simulado - Los mensajes no se envían a YouTube
+                    </div>
                 </div>
             </section>
         </div>
@@ -108,7 +124,7 @@
     <!-- Scripts del sistema -->
     <script src="/js/auth.js"></script>
     <script src="/js/formularios.js"></script>
-    <!-- Script específico de la página de clases -->
+    <!-- Script específico -->
     <script src="/js/clasesYT.js"></script>
 </body>
 </html>
