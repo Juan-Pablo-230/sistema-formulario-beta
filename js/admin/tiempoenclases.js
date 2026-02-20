@@ -1,12 +1,13 @@
 // ============================================
-// tiempoenclases.js - Versión para campos acumulativos
+// tiempoenclases.js - VERSIÓN CORREGIDA (agrupa por usuario/clase)
 // ============================================
 
-console.log('⏱️ tiempoenclases.js - Modo ACUMULATIVO');
+console.log('⏱️ tiempoenclases.js - Versión CORREGIDA');
 
 class TiempoEnClasesManager {
     constructor() {
         this.data = [];
+        this.registrosAgrupados = [];
         this.filtros = {
             clase: 'todas',
             periodo: 'todo',
@@ -16,6 +17,7 @@ class TiempoEnClasesManager {
     }
 
     async init() {
+        console.log('🚀 Inicializando gestor de tiempos CORREGIDO...');
         await this.cargarDatos();
         this.setupEventListeners();
         this.cargarEstadisticas();
@@ -25,32 +27,104 @@ class TiempoEnClasesManager {
         try {
             console.log('📥 Cargando registros de tiempo desde MongoDB...');
             const result = await authSystem.makeRequest('/tiempo-clase', null, 'GET');
-            this.data = result.data || [];
-            console.log(`✅ ${this.data.length} registros cargados`);
+            
+            if (result.success && result.data) {
+                this.data = result.data;
+                console.log(`✅ ${this.data.length} registros crudos cargados`);
+                
+                // AGRUPAR POR USUARIO Y CLASE
+                this.agruparRegistros();
+                console.log(`📊 ${this.registrosAgrupados.length} registros agrupados`);
+            } else {
+                this.data = [];
+                this.registrosAgrupados = [];
+            }
+            
             this.mostrarTabla();
+            
         } catch (error) {
             console.error('❌ Error cargando datos:', error);
             this.mostrarError();
         }
     }
 
+    agruparRegistros() {
+        const grupos = new Map(); // Usamos Map para mejor rendimiento
+        
+        this.data.forEach(reg => {
+            // Crear una clave única: usuarioId_claseId
+            const key = `${reg.usuarioId}_${reg.claseId}`;
+            
+            if (!grupos.has(key)) {
+                // Nuevo grupo
+                grupos.set(key, {
+                    usuarioId: reg.usuarioId,
+                    usuarioNombre: reg.usuarioNombre,
+                    legajo: reg.legajo,
+                    turno: reg.turno,
+                    claseId: reg.claseId,
+                    claseNombre: reg.claseNombre,
+                    tiempoActivo: 0,
+                    tiempoInactivo: 0,
+                    ultimaActualizacion: reg.ultimaActualizacion || reg.fechaRegistro,
+                    cantidadRegistros: 0
+                });
+            }
+            
+            // Sumar los tiempos al grupo existente
+            const grupo = grupos.get(key);
+            grupo.tiempoActivo += reg.tiempoActivo || 0;
+            grupo.tiempoInactivo += reg.tiempoInactivo || 0;
+            grupo.cantidadRegistros++;
+            
+            // Actualizar última fecha si es más reciente
+            const fechaReg = new Date(reg.ultimaActualizacion || reg.fechaRegistro);
+            const fechaGrupo = new Date(grupo.ultimaActualizacion);
+            if (fechaReg > fechaGrupo) {
+                grupo.ultimaActualizacion = reg.ultimaActualizacion || reg.fechaRegistro;
+            }
+        });
+        
+        // Convertir Map a array y ordenar
+        this.registrosAgrupados = Array.from(grupos.values())
+            .sort((a, b) => new Date(b.ultimaActualizacion) - new Date(a.ultimaActualizacion));
+        
+        console.log('📊 Muestra de grupos:', this.registrosAgrupados.slice(0, 3));
+    }
+
     async cargarEstadisticas() {
         try {
-            const result = await authSystem.makeRequest('/tiempo-clase/estadisticas', null, 'GET');
-            if (result.success) {
-                document.getElementById('totalRegistros').textContent = result.data.totalRegistros;
-                document.getElementById('usuariosDistintos').textContent = result.data.usuariosUnicos;
-                document.getElementById('clasesDistintas').textContent = result.data.clasesUnicas;
-                
-                const totalSegundos = result.data.tiempoActivoTotal + result.data.tiempoInactivoTotal;
-                document.getElementById('tiempoTotal').textContent = this.formatearTiempo(totalSegundos);
-            }
+            // Calcular estadísticas desde los datos agrupados
+            const totalRegistros = this.registrosAgrupados.length;
+            const usuariosUnicos = new Set(this.registrosAgrupados.map(r => r.usuarioId)).size;
+            const clasesUnicas = new Set(this.registrosAgrupados.map(r => r.claseId)).size;
+            
+            const totalActivo = this.registrosAgrupados.reduce((sum, r) => sum + (r.tiempoActivo || 0), 0);
+            const totalInactivo = this.registrosAgrupados.reduce((sum, r) => sum + (r.tiempoInactivo || 0), 0);
+            const totalGeneral = totalActivo + totalInactivo;
+            
+            document.getElementById('totalRegistros').textContent = totalRegistros;
+            document.getElementById('usuariosDistintos').textContent = usuariosUnicos;
+            document.getElementById('clasesDistintas').textContent = clasesUnicas;
+            document.getElementById('tiempoTotal').textContent = this.formatearTiempo(totalGeneral);
+            
+            console.log('📊 Estadísticas calculadas:', {
+                registros: totalRegistros,
+                usuarios: usuariosUnicos,
+                clases: clasesUnicas,
+                activo: this.formatearTiempo(totalActivo),
+                inactivo: this.formatearTiempo(totalInactivo),
+                total: this.formatearTiempo(totalGeneral)
+            });
+            
         } catch (error) {
-            console.error('Error cargando estadísticas:', error);
+            console.error('Error calculando estadísticas:', error);
         }
     }
 
     formatearTiempo(segundos) {
+        if (!segundos && segundos !== 0) return '0s';
+        
         const horas = Math.floor(segundos / 3600);
         const minutos = Math.floor((segundos % 3600) / 60);
         const segs = segundos % 60;
@@ -64,15 +138,18 @@ class TiempoEnClasesManager {
         const tbody = document.getElementById('tiemposBody');
         if (!tbody) return;
 
-        if (this.data.length === 0) {
+        if (this.registrosAgrupados.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="empty-message">No hay registros de tiempo</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = this.data.map((item, index) => {
-            const activo = this.formatearTiempo(item.tiempoActivo || 0);
-            const inactivo = this.formatearTiempo(item.tiempoInactivo || 0);
-            const total = (item.tiempoActivo || 0) + (item.tiempoInactivo || 0);
+        tbody.innerHTML = this.registrosAgrupados.map((item, index) => {
+            const activo = this.formatearTiempo(item.tiempoActivo);
+            const inactivo = this.formatearTiempo(item.tiempoInactivo);
+            const total = item.tiempoActivo + item.tiempoInactivo;
+            
+            // Debug: mostrar los valores reales
+            console.log(`👤 ${item.usuarioNombre} - Activo: ${item.tiempoActivo}s (${activo}), Inactivo: ${item.tiempoInactivo}s (${inactivo})`);
             
             return `
             <tr>
@@ -81,7 +158,7 @@ class TiempoEnClasesManager {
                     <strong>${item.usuarioNombre}</strong>
                     <button class="btn-info btn-small" onclick="tiemposManager.verDetalle('${item.usuarioId}')" title="Ver detalle">📋</button>
                 </td>
-                <td>${item.legajo}</td>
+                <td>${item.legajo || '-'}</td>
                 <td>${item.claseNombre}</td>
                 <td><span class="tiempo-badge activo">🟢 ${activo}</span></td>
                 <td><span class="tiempo-badge inactivo">⚪ ${inactivo}</span></td>
@@ -92,25 +169,46 @@ class TiempoEnClasesManager {
 
     async verDetalle(usuarioId) {
         try {
-            const result = await authSystem.makeRequest(`/tiempo-clase/usuario/${usuarioId}`, null, 'GET');
+            // Filtrar los registros de este usuario
+            const registrosUsuario = this.data.filter(r => r.usuarioId === usuarioId);
             
-            if (!result.success || !result.data) {
-                alert('Error al cargar detalle');
+            if (registrosUsuario.length === 0) {
+                alert('No hay registros para este usuario');
                 return;
             }
             
-            const { usuario, registros } = result.data;
+            // Obtener datos del usuario del primer registro
+            const usuarioInfo = registrosUsuario[0];
             
-            const totalActivo = registros.reduce((sum, r) => sum + (r.tiempoActivo || 0), 0);
-            const totalInactivo = registros.reduce((sum, r) => sum + (r.tiempoInactivo || 0), 0);
+            // Calcular totales
+            const totalActivo = registrosUsuario.reduce((sum, r) => sum + (r.tiempoActivo || 0), 0);
+            const totalInactivo = registrosUsuario.reduce((sum, r) => sum + (r.tiempoInactivo || 0), 0);
+            
+            // Agrupar por clase para el detalle
+            const clasesMap = new Map();
+            registrosUsuario.forEach(reg => {
+                const key = reg.claseId;
+                if (!clasesMap.has(key)) {
+                    clasesMap.set(key, {
+                        claseNombre: reg.claseNombre,
+                        tiempoActivo: 0,
+                        tiempoInactivo: 0,
+                        registros: []
+                    });
+                }
+                const clase = clasesMap.get(key);
+                clase.tiempoActivo += reg.tiempoActivo || 0;
+                clase.tiempoInactivo += reg.tiempoInactivo || 0;
+                clase.registros.push(reg);
+            });
             
             const contenido = `
                 <div class="detalle-usuario">
-                    <h3>${usuario.apellidoNombre}</h3>
+                    <h3>${usuarioInfo.usuarioNombre}</h3>
                     <div class="detalle-info">
-                        <p><strong>Legajo:</strong> ${usuario.legajo}</p>
-                        <p><strong>Email:</strong> ${usuario.email}</p>
-                        <p><strong>Turno:</strong> ${usuario.turno || 'No especificado'}</p>
+                        <p><strong>Legajo:</strong> ${usuarioInfo.legajo || '-'}</p>
+                        <p><strong>Email:</strong> ${usuarioInfo.email || 'No disponible'}</p>
+                        <p><strong>Turno:</strong> ${usuarioInfo.turno || 'No especificado'}</p>
                     </div>
                     
                     <div class="detalle-resumen">
@@ -131,15 +229,15 @@ class TiempoEnClasesManager {
                 
                 <div class="detalle-clases">
                     <h4>📋 Detalle por clase</h4>
-                    ${registros.map(r => `
+                    ${Array.from(clasesMap.values()).map(clase => `
                         <div class="clase-item">
                             <div class="clase-header">
-                                <strong>${r.claseNombre}</strong>
-                                <span class="fecha">${new Date(r.ultimaActualizacion).toLocaleDateString('es-AR')}</span>
+                                <strong>${clase.claseNombre}</strong>
+                                <span class="badge">${clase.registros.length} sesiones</span>
                             </div>
                             <div class="clase-tiempos">
-                                <span class="activo">🟢 Activo: ${this.formatearTiempo(r.tiempoActivo || 0)}</span>
-                                <span class="inactivo">⚪ Inactivo: ${this.formatearTiempo(r.tiempoInactivo || 0)}</span>
+                                <span class="activo">🟢 Activo: ${this.formatearTiempo(clase.tiempoActivo)}</span>
+                                <span class="inactivo">⚪ Inactivo: ${this.formatearTiempo(clase.tiempoInactivo)}</span>
                             </div>
                         </div>
                     `).join('')}
@@ -164,10 +262,12 @@ class TiempoEnClasesManager {
 
     setupEventListeners() {
         document.getElementById('refreshBtn')?.addEventListener('click', () => {
+            console.log('🔄 Actualizando datos...');
             this.cargarDatos();
             this.cargarEstadisticas();
         });
         
+        // Cerrar modal
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.getElementById('detalleModal').style.display = 'none';
