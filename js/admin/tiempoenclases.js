@@ -1,8 +1,9 @@
 // ============================================
 // tiempoenclases.js - Gestión de registros de tiempo
+// Versión final: tiempo total en listado, detalle en modal
 // ============================================
 
-console.log('⏱️ tiempoenclases.js cargado');
+console.log('⏱️ tiempoenclases.js cargado - Versión final');
 
 class TiempoEnClasesManager {
     constructor() {
@@ -140,7 +141,7 @@ class TiempoEnClasesManager {
         if (datosFiltrados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="empty-message">
+                    <td colspan="7" class="empty-message">
                         No hay registros de tiempo para mostrar
                     </td>
                 </tr>
@@ -148,12 +149,15 @@ class TiempoEnClasesManager {
             return;
         }
 
-        // Ordenar por fecha más reciente
-        datosFiltrados.sort((a, b) => new Date(b.fechaRegistro) - new Date(a.fechaRegistro));
+        // Agrupar por usuario y clase para mostrar tiempo total
+        const registrosAgrupados = this.agruparRegistros(datosFiltrados);
 
-        tbody.innerHTML = datosFiltrados.map((item, index) => {
-            const tiempoFormateado = this.formatearTiempo(item.tiempoSegundos);
-            const fecha = new Date(item.fechaRegistro).toLocaleString('es-AR', {
+        // Ordenar por fecha más reciente del último registro
+        registrosAgrupados.sort((a, b) => new Date(b.ultimaFecha) - new Date(a.ultimaFecha));
+
+        tbody.innerHTML = registrosAgrupados.map((item, index) => {
+            const tiempoFormateado = this.formatearTiempo(item.tiempoTotal);
+            const fecha = new Date(item.ultimaFecha).toLocaleString('es-AR', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -162,27 +166,57 @@ class TiempoEnClasesManager {
                 hour12: false
             });
             
-            const estadoClass = item.activo ? 'activo' : 'inactivo';
-            const estadoTexto = item.activo ? '🟢 Activo' : '⚪ Inactivo';
-            
             // Determinar si el tiempo es alto (más de 2 horas)
-            const tiempoBadgeClass = item.tiempoSegundos > 7200 ? 'alto' : estadoClass;
+            const tiempoBadgeClass = item.tiempoTotal > 7200 ? 'alto' : 'normal';
             
             return `
             <tr>
                 <td>${index + 1}</td>
                 <td>
                     <strong>${item.usuarioNombre}</strong>
-                    <button class="btn-info btn-small" onclick="tiemposManager.verDetalle('${item.usuarioId}')" title="Ver detalle">📋</button>
+                    <button class="btn-info btn-small" onclick="tiemposManager.verDetalle('${item.usuarioId}')" title="Ver historial completo">📋</button>
                 </td>
                 <td>${item.legajo}</td>
                 <td><span class="turno-badge">${item.turno || 'No especificado'}</span></td>
                 <td>${item.claseNombre}</td>
                 <td><span class="tiempo-badge ${tiempoBadgeClass}">${tiempoFormateado}</span></td>
                 <td>${fecha}</td>
-                <td><span class="tiempo-badge ${estadoClass}">${estadoTexto}</span></td>
             </tr>
         `}).join('');
+    }
+
+    agruparRegistros(registros) {
+        const grupos = {};
+        
+        registros.forEach(reg => {
+            const key = `${reg.usuarioId}_${reg.claseId}`;
+            
+            if (!grupos[key]) {
+                grupos[key] = {
+                    usuarioId: reg.usuarioId,
+                    usuarioNombre: reg.usuarioNombre,
+                    legajo: reg.legajo,
+                    turno: reg.turno,
+                    claseId: reg.claseId,
+                    claseNombre: reg.claseNombre,
+                    tiempoTotal: 0,
+                    cantidadRegistros: 0,
+                    ultimaFecha: reg.fechaRegistro,
+                    todosRegistros: []
+                };
+            }
+            
+            grupos[key].tiempoTotal += reg.tiempoSegundos;
+            grupos[key].cantidadRegistros++;
+            grupos[key].todosRegistros.push(reg);
+            
+            // Actualizar última fecha si es más reciente
+            if (new Date(reg.fechaRegistro) > new Date(grupos[key].ultimaFecha)) {
+                grupos[key].ultimaFecha = reg.fechaRegistro;
+            }
+        });
+        
+        return Object.values(grupos);
     }
 
     formatearTiempo(segundos) {
@@ -212,7 +246,28 @@ class TiempoEnClasesManager {
             
             if (!usuario || registros.length === 0) return;
             
+            // Agrupar por clase para mostrar totales
+            const clasesMap = {};
+            registros.forEach(reg => {
+                if (!clasesMap[reg.claseId]) {
+                    clasesMap[reg.claseId] = {
+                        claseNombre: reg.claseNombre,
+                        tiempoTotal: 0,
+                        registros: []
+                    };
+                }
+                clasesMap[reg.claseId].tiempoTotal += reg.tiempoSegundos;
+                clasesMap[reg.claseId].registros.push(reg);
+            });
+            
             const totalSegundos = registros.reduce((sum, r) => sum + r.tiempoSegundos, 0);
+            
+            // Calcular tiempo activo (registros donde activo = true)
+            const tiempoActivo = registros
+                .filter(r => r.activo)
+                .reduce((sum, r) => sum + r.tiempoSegundos, 0);
+            
+            const tiempoInactivo = totalSegundos - tiempoActivo;
             
             const contenido = `
                 <div class="detalle-usuario">
@@ -230,25 +285,52 @@ class TiempoEnClasesManager {
                             <span class="label">Email</span>
                             <span class="value">${usuario.email}</span>
                         </div>
-                        <div class="detalle-item">
-                            <span class="label">Total sesiones</span>
-                            <span class="value">${registros.length}</span>
+                    </div>
+                    
+                    <div class="detalle-resumen">
+                        <div>
+                            <div class="label">Total sesiones</div>
+                            <div class="value">${registros.length}</div>
                         </div>
-                        <div class="detalle-item">
-                            <span class="label">Tiempo total</span>
-                            <span class="value">${this.formatearTiempo(totalSegundos)}</span>
+                        <div>
+                            <div class="label">Tiempo activo</div>
+                            <div class="value">${this.formatearTiempo(tiempoActivo)}</div>
+                        </div>
+                        <div>
+                            <div class="label">Tiempo inactivo</div>
+                            <div class="value">${this.formatearTiempo(tiempoInactivo)}</div>
                         </div>
                     </div>
                 </div>
+                
                 <div class="detalle-tiempos">
-                    <h4>📋 Historial de sesiones</h4>
-                    ${registros.map(r => `
-                        <div class="tiempo-item">
-                            <div>
-                                <div class="clase">${r.claseNombre}</div>
-                                <div class="fecha">${new Date(r.fechaRegistro).toLocaleDateString('es-AR')} ${new Date(r.fechaRegistro).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+                    <h4>📋 Historial completo de sesiones</h4>
+                    ${Object.values(clasesMap).map(clase => `
+                        <div style="margin-bottom: 20px;">
+                            <div class="clase-header" style="background: var(--bg-card); padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold;">${clase.claseNombre}</span>
+                                <span style="color: var(--accent-color); font-weight: bold;">Total: ${this.formatearTiempo(clase.tiempoTotal)}</span>
                             </div>
-                            <div class="duracion">${this.formatearTiempo(r.tiempoSegundos)}</div>
+                            ${clase.registros.map(r => `
+                                <div class="tiempo-item" style="margin-left: 15px;">
+                                    <div>
+                                        <div class="fecha">${new Date(r.fechaRegistro).toLocaleString('es-AR', { 
+                                            day: '2-digit', 
+                                            month: '2-digit', 
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false 
+                                        })}</div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 15px;">
+                                        <span class="duracion">${this.formatearTiempo(r.tiempoSegundos)}</span>
+                                        <span class="tiempo-badge ${r.activo ? 'activo' : 'inactivo'}" style="font-size: 0.8em;">
+                                            ${r.activo ? '🟢 Activo' : '⚪ Inactivo'}
+                                        </span>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     `).join('')}
                 </div>
@@ -299,18 +381,20 @@ class TiempoEnClasesManager {
             return;
         }
 
-        const headers = ['Usuario', 'Legajo', 'Turno', 'Clase', 'Tiempo (segundos)', 'Tiempo formateado', 'Fecha', 'Estado'];
+        // Agrupar para exportar
+        const registrosAgrupados = this.agruparRegistros(datos);
+
+        const headers = ['Usuario', 'Legajo', 'Turno', 'Clase', 'Tiempo Total', 'Cantidad Sesiones', 'Última Actividad'];
         const csv = [
             headers.join(','),
-            ...datos.map(item => [
+            ...registrosAgrupados.map(item => [
                 `"${item.usuarioNombre}"`,
                 `"${item.legajo}"`,
                 `"${item.turno || ''}"`,
                 `"${item.claseNombre}"`,
-                item.tiempoSegundos,
-                `"${this.formatearTiempo(item.tiempoSegundos)}"`,
-                `"${new Date(item.fechaRegistro).toLocaleString('es-AR')}"`,
-                item.activo ? 'Activo' : 'Inactivo'
+                `"${this.formatearTiempo(item.tiempoTotal)}"`,
+                item.cantidadRegistros,
+                `"${new Date(item.ultimaFecha).toLocaleString('es-AR')}"`
             ].join(','))
         ].join('\n');
 
@@ -328,7 +412,7 @@ class TiempoEnClasesManager {
         if (tbody) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="error-message">
+                    <td colspan="7" class="error-message">
                         ⚠️ Error al cargar los datos. Verifica la conexión con MongoDB.
                     </td>
                 </tr>

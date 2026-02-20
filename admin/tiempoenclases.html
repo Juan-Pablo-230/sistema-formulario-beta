@@ -78,14 +78,13 @@
                             <th>Legajo</th>
                             <th>Turno</th>
                             <th>Clase</th>
-                            <th>Tiempo</th>
+                            <th>Tiempo Total</th>
                             <th>Última actividad</th>
-                            <th>Estado</th>
                         </tr>
                     </thead>
                     <tbody id="tiemposBody">
                         <tr>
-                            <td colspan="8" class="loading-message">
+                            <td colspan="7" class="loading-message">
                                 <div class="spinner"></div>
                                 Cargando registros de tiempo...
                             </td>
@@ -98,9 +97,9 @@
 
     <!-- Modal para ver detalle de usuario -->
     <div id="detalleModal" class="modal-overlay" style="display: none;">
-        <div class="modal-container">
+        <div class="modal-container" style="max-width: 700px;">
             <div class="modal-header">
-                <h2 id="modalTitle">📋 Detalle de Tiempos</h2>
+                <h2 id="modalTitle">📋 Historial completo del usuario</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-content" id="detalleModalContent">
