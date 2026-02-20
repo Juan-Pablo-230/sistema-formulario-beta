@@ -67,10 +67,10 @@ class GestionClasesManager {
         }
         
         // Filtrar por estado
-        if (filtroEstado === 'activas') {
-            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
-        } else if (filtroEstado === 'publicadas') {
+        if (filtroEstado === 'publicadas') {
             clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'publicada');
+        } else if (filtroEstado === 'activas') {
+            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
         } else if (filtroEstado === 'canceladas') {
             clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'cancelada');
         }
@@ -196,7 +196,8 @@ class GestionClasesManager {
             : [];
         
         // Obtener el estado del selector
-        const estado = document.getElementById('claseEstado')?.value || 'activa';
+        const estadoSelect = document.getElementById('claseEstado');
+        const estado = estadoSelect ? estadoSelect.value : 'activa';
         
         // Preparar datos en el formato que espera el servidor
         const claseData = {
@@ -262,7 +263,7 @@ class GestionClasesManager {
         // Cargar tags
         document.getElementById('claseTags').value = clase.tags?.join(', ') || '';
         
-        // Cargar el estado - PRIORIDAD: usar el campo 'estado' si existe
+        // Cargar el estado - CON VERIFICACIÓN DE EXISTENCIA
         const estadoSelect = document.getElementById('claseEstado');
         if (estadoSelect) {
             if (clase.estado) {
@@ -272,6 +273,9 @@ class GestionClasesManager {
                 // Si no, derivar del campo activa (compatibilidad)
                 estadoSelect.value = clase.activa ? 'activa' : 'inactiva';
             }
+            console.log('✅ Estado cargado:', estadoSelect.value);
+        } else {
+            console.warn('⚠️ Selector de estado no encontrado en el DOM');
         }
         
         document.getElementById('formTitle').innerHTML = '✏️ Editando: ' + clase.nombre;
@@ -292,7 +296,12 @@ class GestionClasesManager {
     limpiarFormulario() {
         document.getElementById('claseForm').reset();
         document.getElementById('claseHora').value = '10:00';
-        document.getElementById('claseEstado').value = 'publicada';
+        
+        const estadoSelect = document.getElementById('claseEstado');
+        if (estadoSelect) {
+            estadoSelect.value = 'publicada';
+        }
+        
         this.ocultarMensaje();
     }
 
@@ -313,9 +322,6 @@ class GestionClasesManager {
         const publicadas = this.data.filter(c => c.estado === 'publicada').length;
         const activas = this.data.filter(c => c.estado === 'activa').length;
         const canceladas = this.data.filter(c => c.estado === 'cancelada').length;
-        
-        // Por compatibilidad, también contar las que solo tienen activa
-        const otras = this.data.filter(c => !c.estado).length;
 
         document.getElementById('totalClases').textContent = total;
         document.getElementById('clasesPublicadas').textContent = publicadas;

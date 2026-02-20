@@ -69,37 +69,45 @@
                     <textarea id="claseDescripcion" rows="2" class="form-control" placeholder="Breve descripción de la clase..."></textarea>
                 </div>
                 
-                <!-- Selector de Estado de la Clase -->
+                <!-- Selector de Estado de la Clase - CON ID CORRECTO -->
                 <div class="form-group">
-    <label>Estado de la Clase <span class="required">*</span></label>
-    <select id="claseEstado" class="form-control" required>
-        <option value="publicada">📢 Publicada - Visible para usuarios con enlaces</option>
-        <option value="activa">✅ Activa - Solo visible en panel admin</option>
-        <option value="cancelada">❌ Cancelada - Solo visible en panel admin</option>
-    </select>
-    <small class="field-info" id="estadoInfo">
-        📢 Publicada: Los usuarios pueden solicitar el material si tiene enlaces cargados
-    </small>
-</div>
+                    <label>Estado de la Clase <span class="required">*</span></label>
+                    <select id="claseEstado" class="form-control" required>
+                        <option value="publicada">📢 Publicada - Visible para usuarios con enlaces</option>
+                        <option value="activa">✅ Activa - Solo visible en panel admin</option>
+                        <option value="cancelada">❌ Cancelada - Solo visible en panel admin</option>
+                    </select>
+                    <small class="field-info" id="estadoInfo">
+                        📢 Publicada: Los usuarios pueden solicitar el material si tiene enlaces cargados
+                    </small>
+                </div>
                 
-                <!-- Sección de Enlaces Múltiples -->
+                <!-- Sección de Enlaces -->
                 <div class="enlaces-section">
-                    <div class="enlaces-header">
-                        <h4>🔗 Enlaces del Material</h4>
-                        <button type="button" id="agregarEnlaceBtn" class="btn btn-success btn-small">➕ Agregar Enlace</button>
-                    </div>
-                    <p class="field-info">Los enlaces son opcionales. Si no se cargan enlaces, la clase solo será visible en el panel de administración.</p>
+                    <h4>🔗 Enlaces del Material</h4>
+                    <p class="field-info">Los enlaces son opcionales</p>
                     
-                    <div id="enlacesContainer">
-                        <!-- Los enlaces se agregarán dinámicamente aquí -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>YouTube</label>
+                            <input type="url" id="claseYoutube" class="form-control" placeholder="https://youtube.com/...">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Presentación (PPT/PDF)</label>
+                            <input type="url" id="clasePowerpoint" class="form-control" placeholder="https://docs.google.com/...">
+                        </div>
                     </div>
                 </div>
                 
+                <!-- Tags (opcional) -->
+                <div class="form-group">
+                    <label>Tags (opcional)</label>
+                    <input type="text" id="claseTags" placeholder="stroke, iam, emergencia" class="form-control">
+                    <small class="field-info">Separar por comas para categorizar la clase</small>
+                </div>
+                
                 <div class="form-actions">
-                    <div class="estado-info" id="visibilidadInfo">
-                        <!-- Se actualizará dinámicamente según el estado -->
-                    </div>
-                    
                     <div class="action-buttons">
                         <button type="submit" class="btn btn-success" id="submitClaseBtn">💾 Guardar Clase</button>
                         <button type="button" id="limpiarFormBtn" class="btn btn-secondary">🗑️ Limpiar</button>
@@ -115,9 +123,9 @@
                 <div class="list-actions">
                     <select id="filtroEstado" class="filtro-select">
                         <option value="todos">Todos los estados</option>
-                        <option value="publicada">📢 Publicadas</option>
-                        <option value="activa">✅ Activas</option>
-                        <option value="cancelada">❌ Canceladas</option>
+                        <option value="publicadas">📢 Publicadas</option>
+                        <option value="activas">✅ Activas</option>
+                        <option value="canceladas">❌ Canceladas</option>
                     </select>
                     <input type="text" id="buscarClase" placeholder="🔍 Buscar clase..." class="search-input">
                     <button id="refrescarClasesBtn" class="btn btn-primary">🔄 Refrescar</button>
