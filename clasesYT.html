@@ -38,7 +38,7 @@
             </div>
         </header>
 
-        <!-- Grid principal -->
+        <!-- Grid principal: video + chat REAL -->
         <div class="clase-grid" id="claseGrid">
             <!-- Columna del video -->
             <section class="video-column">
@@ -71,48 +71,30 @@
                 </div>
             </section>
 
-            <!-- Columna del chat (SIMULADO) -->
+            <!-- Columna del CHAT REAL DE YOUTUBE -->
             <section class="chat-column">
                 <div class="chat-header">
                     <div class="chat-header-left">
                         <span class="chat-icon">💬</span>
-                        <span class="chat-titulo">Chat de la Clase</span>
+                        <span class="chat-titulo">Chat de YouTube</span>
                     </div>
                     <div class="chat-header-right">
                         <span class="chat-badge">🔴 EN VIVO</span>
                     </div>
                 </div>
                 
-                <!-- SIMULACIÓN DEL CHAT (funciona 100% sin restricciones) -->
-                <div class="chat-simulado" id="chatSimulado">
-                    <!-- Mensajes de ejemplo (se actualizan con JS) -->
-                    <div class="chat-mensajes" id="chatMensajes">
-                        <div class="mensaje sistema">
-                            <span class="mensaje-hora">12:00</span>
-                            <span class="mensaje-contenido">🟢 Chat de la clase iniciado</span>
-                        </div>
-                        <div class="mensaje sistema">
-                            <span class="mensaje-hora">12:00</span>
-                            <span class="mensaje-contenido">👋 Bienvenidos a la clase de Stroke/IAM</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Área para escribir mensajes -->
-                    <div class="chat-input-area">
-                        <input type="text" 
-                               class="chat-input" 
-                               id="chatInput" 
-                               placeholder="Escribe un mensaje (simulado)..." 
-                               autocomplete="off">
-                        <button class="chat-enviar" id="btnEnviarChat" disabled>
-                            📤
-                        </button>
-                    </div>
-                    
-                    <!-- Mensaje informativo -->
-                    <div class="chat-nota">
-                        💡 Modo simulado - Los mensajes no se envían a YouTube
-                    </div>
+                <!-- 
+                    CHAT REAL DE YOUTUBE
+                    El parámetro embed_domain se actualiza automáticamente con JavaScript
+                -->
+                <div class="chat-container" id="chatContainer">
+                    <iframe 
+                        id="chatIframe"
+                        src="about:blank"
+                        frameborder="0"
+                        allowfullscreen
+                        allow="autoplay; encrypted-media">
+                    </iframe>
                 </div>
             </section>
         </div>

@@ -1,8 +1,8 @@
 // ============================================
-// clasesYT.js - Chat simulado + TimeTracker
+// clasesYT.js - Versión con CHAT REAL de YouTube
 // ============================================
 
-console.log('🎥 clasesYT.js cargado - Modo Chat Simulado');
+console.log('🎥 clasesYT.js cargado - Modo CHAT REAL');
 
 // ============================================
 // CONFIGURACIÓN
@@ -11,209 +11,135 @@ const CONFIG = {
     VIDEO_ID: 'cb12KmMMDJA',
     INACTIVITY_LIMIT: 5000,
     DISPLAY_UPDATE_INTERVAL: 1000,
-    MAX_MENSAJES: 50
+    SAVE_INTERVAL: 30000
 };
 
 // ============================================
-// CLASE ChatSimulado
+// CLASE ChatReal - Maneja el iframe de YouTube
 // ============================================
-class ChatSimulado {
+class ChatReal {
     constructor() {
-        this.mensajesContainer = document.getElementById('chatMensajes');
-        this.input = document.getElementById('chatInput');
-        this.btnEnviar = document.getElementById('btnEnviarChat');
-        this.mensajes = [];
-        this.usuario = null;
-        this.inactivityTimer = null;
+        this.chatIframe = document.getElementById('chatIframe');
+        this.chatContainer = document.getElementById('chatContainer');
+        this.retryCount = 0;
+        this.maxRetries = 3;
         
         this.init();
     }
 
     init() {
-        console.log('💬 Inicializando Chat Simulado...');
+        console.log('💬 Inicializando Chat REAL de YouTube...');
         
-        // Cargar usuario
-        this.usuario = getCurrentUserSafe();
+        // Obtener el dominio actual (funciona en localhost y producción)
+        const domain = window.location.hostname;
         
-        // Configurar eventos
-        if (this.input) {
-            this.input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !this.input.disabled) {
-                    this.enviarMensaje();
-                }
-            });
-        }
+        // IMPORTANTE: Para pruebas locales, usar localhost
+        // Para producción, usar el dominio real
+        console.log('🌐 Dominio detectado:', domain);
         
-        // Mensajes automáticos de bienvenida
-        this.agregarMensajeSistema('🟢 Chat de la clase iniciado');
-        this.agregarMensajeSistema('👋 Bienvenidos a la clase de Stroke/IAM');
-        this.agregarMensajeSistema('📝 Los instructores: Lic. Daniel de la Rosa, Lic. Liliana Areco');
+        // Construir URL del chat con el dominio correcto
+        const chatUrl = `https://www.youtube.com/live_chat?v=${CONFIG.VIDEO_ID}&embed_domain=${domain}`;
         
-        // Simular actividad cada 30 segundos
-        setInterval(() => this.simularActividad(), 30000);
+        console.log('🔗 URL del chat:', chatUrl);
         
-        console.log('✅ Chat Simulado listo');
-    }
-
-    enviarMensaje() {
-        if (!this.input || !this.input.value.trim()) return;
-        
-        const texto = this.input.value.trim();
-        const usuario = this.usuario;
-        
-        if (!usuario) {
-            this.agregarMensajeSistema('❌ Debes iniciar sesión para enviar mensajes');
-            return;
-        }
-        
-        // Agregar mensaje del usuario
-        this.agregarMensajeUsuario(usuario.apellidoNombre || 'Usuario', texto);
-        
-        // Limpiar input
-        this.input.value = '';
-        
-        // Simular respuesta después de 1-3 segundos (30% de probabilidad)
-        if (Math.random() < 0.3) {
-            setTimeout(() => {
-                this.simularRespuesta(texto);
-            }, 1000 + Math.random() * 2000);
-        }
-    }
-
-    agregarMensajeUsuario(nombre, texto) {
-        const hora = new Date().toLocaleTimeString('es-AR', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false
-        });
-        
-        const mensaje = {
-            tipo: 'usuario',
-            nombre: nombre,
-            texto: texto,
-            hora: hora,
-            hour12: false
-        };
-        
-        this.mensajes.push(mensaje);
-        this.renderizarMensaje(mensaje);
-        this.limitarMensajes();
-    }
-
-    agregarMensajeSistema(texto) {
-        const hora = new Date().toLocaleTimeString('es-AR', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false
-        });
-        
-        const mensaje = {
-            tipo: 'sistema',
-            texto: texto,
-            hora: hora,
-            hour12: false
-        };
-        
-        this.mensajes.push(mensaje);
-        this.renderizarMensaje(mensaje);
-        this.limitarMensajes();
-    }
-
-    renderizarMensaje(mensaje) {
-        if (!this.mensajesContainer) return;
-        
-        const div = document.createElement('div');
-        div.className = `mensaje ${mensaje.tipo}`;
-        
-        if (mensaje.tipo === 'usuario') {
-            div.innerHTML = `
-                <span class="mensaje-hora">${mensaje.hora}</span>
-                <span class="mensaje-contenido">
-                    <strong>${mensaje.nombre}:</strong> ${this.escapeHTML(mensaje.texto)}
-                </span>
-            `;
-        } else {
-            div.innerHTML = `
-                <span class="mensaje-hora">${mensaje.hora}</span>
-                <span class="mensaje-contenido">${this.escapeHTML(mensaje.texto)}</span>
-            `;
-        }
-        
-        this.mensajesContainer.appendChild(div);
-        
-        // Scroll al último mensaje
-        setTimeout(() => {
-            if (this.mensajesContainer) {
-                this.mensajesContainer.scrollTop = this.mensajesContainer.scrollHeight;
-            }
-        }, 50);
-    }
-
-    simularRespuesta(mensajeUsuario) {
-        const respuestas = [
-            "👍 Gracias por tu mensaje",
-            "✅ Entendido",
-            "📝 Buena pregunta, lo veremos en breve",
-            "👌 Ok",
-            "🤔 Interesante punto",
-            "💡 Importante lo que mencionas",
-            "📚 Lo veremos en la siguiente unidad",
-            "✅ Anotado",
-            "👍 Excelente participación",
-            "🔍 Revisando tu consulta"
-        ];
-        
-        const respuesta = respuestas[Math.floor(Math.random() * respuestas.length)];
-        this.agregarMensajeSistema(`🤖 ${respuesta}`);
-    }
-
-    simularActividad() {
-        // Simular mensajes automáticos cada tanto
-        const mensajesAutomaticos = [
-            "📊 Clase de Stroke/IAM en curso",
-            "🔔 Recuerden que pueden hacer preguntas",
-            "📝 Material disponible al finalizar",
-            "⏱️ Clase transmitida en vivo",
-            "👥 Participantes: " + (50 + Math.floor(Math.random() * 50)) + " conectados"
-        ];
-        
-        if (Math.random() < 0.2) { // 20% de probabilidad cada 30 segundos
-            const mensaje = mensajesAutomaticos[Math.floor(Math.random() * mensajesAutomaticos.length)];
-            this.agregarMensajeSistema(mensaje);
-        }
-    }
-
-    limitarMensajes() {
-        if (this.mensajes.length > CONFIG.MAX_MENSAJES) {
-            const exceso = this.mensajes.length - CONFIG.MAX_MENSAJES;
-            this.mensajes.splice(0, exceso);
+        // Configurar el iframe
+        if (this.chatIframe) {
+            // Agregar atributos necesarios
+            this.chatIframe.setAttribute('allow', 'autoplay; encrypted-media; clipboard-write');
             
-            // Limpiar y re-renderizar
-            if (this.mensajesContainer) {
-                this.mensajesContainer.innerHTML = '';
-                this.mensajes.forEach(m => this.renderizarMensaje(m));
+            // Establecer la URL
+            this.chatIframe.src = chatUrl;
+            
+            // Escuchar eventos
+            this.chatIframe.addEventListener('load', () => this.handleLoad());
+            this.chatIframe.addEventListener('error', () => this.handleError());
+        }
+        
+        // Verificar después de 5 segundos
+        setTimeout(() => this.checkStatus(), 5000);
+    }
+
+    handleLoad() {
+        console.log('✅ Chat cargado correctamente');
+        this.retryCount = 0;
+    }
+
+    handleError() {
+        this.retryCount++;
+        console.warn(`⚠️ Error en chat (intento ${this.retryCount}/${this.maxRetries})`);
+        
+        if (this.retryCount <= this.maxRetries) {
+            // Reintentar después de 2 segundos
+            setTimeout(() => {
+                if (this.chatIframe) {
+                    this.chatIframe.src = this.chatIframe.src;
+                }
+            }, 2000);
+        } else {
+            this.showErrorMessage();
+        }
+    }
+
+    showErrorMessage() {
+        if (!this.chatContainer) return;
+        
+        this.chatContainer.innerHTML = `
+            <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                min-height: 400px;
+                padding: 30px;
+                text-align: center;
+                background: #1a1f25;
+            ">
+                <div style="font-size: 3em; margin-bottom: 20px;">💬</div>
+                <h3 style="color: #e0e0e0; margin-bottom: 15px;">
+                    Chat de YouTube
+                </h3>
+                <p style="color: #888; margin-bottom: 25px; max-width: 400px;">
+                    Para participar en el chat, abre YouTube en una nueva pestaña
+                </p>
+                <a href="https://www.youtube.com/live_chat?v=${CONFIG.VIDEO_ID}" 
+                   target="_blank"
+                   style="
+                        padding: 12px 25px;
+                        background: #4285f4;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                   ">
+                    <span>💬</span>
+                    Abrir Chat en YouTube
+                </a>
+                <p style="color: #666; margin-top: 20px; font-size: 0.85em;">
+                    Necesitas iniciar sesión en YouTube para participar
+                </p>
+            </div>
+        `;
+    }
+
+    checkStatus() {
+        // Verificar si el chat se cargó
+        try {
+            if (this.chatIframe && this.chatIframe.contentDocument) {
+                console.log('✅ Chat accesible');
             }
-        }
-    }
-
-    escapeHTML(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    habilitarInput(habilitado) {
-        if (this.input) {
-            this.input.disabled = !habilitado;
-        }
-        if (this.btnEnviar) {
-            this.btnEnviar.disabled = !habilitado;
+        } catch (e) {
+            // Error de CORS esperado - significa que el iframe cargó correctamente
+            console.log('✅ Chat cargado (con restricciones CORS normales)');
         }
     }
 }
 
 // ============================================
-// CLASE TimeTracker
+// CLASE TimeTracker (sin cambios)
 // ============================================
 class TimeTracker {
     constructor() {
@@ -319,7 +245,7 @@ class TimeTracker {
 // ============================================
 
 async function inicializarPagina() {
-    console.log('🚀 Inicializando página...');
+    console.log('🚀 Inicializando página con CHAT REAL...');
     
     try {
         await waitForAuthSystem();
@@ -343,13 +269,7 @@ async function inicializarPagina() {
         
         // Inicializar componentes
         window.timeTracker = new TimeTracker();
-        window.chatSimulado = new ChatSimulado();
-        
-        // Habilitar chat después de login
-        if (user) {
-            window.chatSimulado.habilitarInput(true);
-            window.chatSimulado.agregarMensajeSistema(`👤 ${user.apellidoNombre} se ha unido al chat`);
-        }
+        window.chatReal = new ChatReal();
         
         console.log('✅ Página inicializada');
         
@@ -364,5 +284,5 @@ document.addEventListener('DOMContentLoaded', inicializarPagina);
 // Debug
 window.debug = {
     tiempo: () => window.timeTracker?.getCurrentTime(),
-    chat: () => window.chatSimulado
+    chat: () => window.chatReal
 };
