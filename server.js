@@ -1487,7 +1487,7 @@ app.post('/api/tiempo-clase/guardar', async (req, res) => {
             });
         }
         
-        const { claseId, claseNombre, tiempoSegundos, esFinal } = req.body;
+        const { claseId, claseNombre, tiempoSegundos, esFinal, activo } = req.body;
         
         if (!claseId || !claseNombre || tiempoSegundos === undefined) {
             return res.status(400).json({ 
@@ -1510,6 +1510,12 @@ app.post('/api/tiempo-clase/guardar', async (req, res) => {
             });
         }
         
+        // Determinar el estado activo/inactivo:
+        // - activo = true: usuario está viendo la clase activamente
+        // - activo = false: usuario cambió de pestaña o cerró el navegador
+        // Si no se envía activo, lo determinamos por esFinal (por compatibilidad)
+        const estadoActivo = activo !== undefined ? activo : !esFinal;
+        
         // Crear registro de tiempo
         const nuevoRegistro = {
             usuarioId: new ObjectId(userHeader),
@@ -1520,13 +1526,13 @@ app.post('/api/tiempo-clase/guardar', async (req, res) => {
             claseNombre: claseNombre,
             tiempoSegundos: tiempoSegundos,
             esFinal: esFinal || false,
-            fechaRegistro: new Date(),
-            activo: !esFinal // Si es final, ya no está activo
+            activo: estadoActivo, // true = activo, false = inactivo
+            fechaRegistro: new Date()
         };
         
         const result = await db.collection('tiempo-en-clases').insertOne(nuevoRegistro);
         
-        console.log(`✅ Tiempo guardado: ${tiempoSegundos}s para ${usuario.apellidoNombre} en ${claseNombre}`);
+        console.log(`✅ Tiempo guardado: ${tiempoSegundos}s - ${estadoActivo ? 'ACTIVO' : 'INACTIVO'} para ${usuario.apellidoNombre} en ${claseNombre}`);
         
         res.json({ 
             success: true, 
