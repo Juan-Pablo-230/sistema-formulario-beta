@@ -67,7 +67,7 @@ app.get('/api/debug/routes', (req, res) => {
             '/api/env-check',
             '/api/clases-historicas',
             '/api/material-historico/solicitudes',
-            '/api/tiempo-clase/guardar (POST)',
+            '/api/tiempo-clase/actualizar (POST)',
             '/api/tiempo-clase (GET)',
             '/api/tiempo-clase/estadisticas (GET)',
             '/api/tiempo-clase/usuario/:usuarioId (GET)',
@@ -1471,28 +1471,28 @@ app.delete('/api/usuarios/cuenta', async (req, res) => {
     }
 });
 
-// ==================== RUTAS PARA TIEMPO EN CLASE ====================
+// ==================== RUTAS PARA TIEMPO EN CLASE (VERSIÓN ACUMULATIVA) ====================
 
-// Guardar tiempo de clase
-app.post('/api/tiempo-clase/guardar', async (req, res) => {
+// Guardar o actualizar tiempo de clase (versión acumulativa)
+app.post('/api/tiempo-clase/actualizar', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
         
-        console.log('⏱️ POST /api/tiempo-clase/guardar - Headers user-id:', userHeader);
+        console.log('⏱️ POST /api/tiempo-clase/actualizar - Usuario:', userHeader);
         
         if (!userHeader) {
             return res.status(401).json({ 
                 success: false, 
-                message: 'No autenticado - Falta user-id en headers' 
+                message: 'No autenticado' 
             });
         }
         
-        const { claseId, claseNombre, tiempoSegundos, esFinal, activo } = req.body;
+        const { claseId, claseNombre, tiempoActivo, tiempoInactivo, esFinal } = req.body;
         
-        if (!claseId || !claseNombre || tiempoSegundos === undefined) {
+        if (!claseId || !claseNombre || tiempoActivo === undefined || tiempoInactivo === undefined) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Faltan datos requeridos: claseId, claseNombre, tiempoSegundos' 
+                message: 'Faltan datos requeridos' 
             });
         }
         
@@ -1510,38 +1510,79 @@ app.post('/api/tiempo-clase/guardar', async (req, res) => {
             });
         }
         
-        // Determinar el estado activo/inactivo:
-        // - activo = true: usuario está viendo la clase activamente
-        // - activo = false: usuario cambió de pestaña o cerró el navegador
-        // Si no se envía activo, lo determinamos por esFinal (por compatibilidad)
-        const estadoActivo = activo !== undefined ? activo : !esFinal;
-        
-        // Crear registro de tiempo
-        const nuevoRegistro = {
+        // Buscar si ya existe un registro para este usuario y clase
+        const filtro = {
             usuarioId: new ObjectId(userHeader),
-            usuarioNombre: usuario.apellidoNombre,
-            legajo: usuario.legajo,
-            turno: usuario.turno,
-            claseId: claseId,
-            claseNombre: claseNombre,
-            tiempoSegundos: tiempoSegundos,
-            esFinal: esFinal || false,
-            activo: estadoActivo, // true = activo, false = inactivo
-            fechaRegistro: new Date()
+            claseId: claseId
         };
         
-        const result = await db.collection('tiempo-en-clases').insertOne(nuevoRegistro);
+        const registroExistente = await db.collection('tiempo-en-clases').findOne(filtro);
         
-        console.log(`✅ Tiempo guardado: ${tiempoSegundos}s - ${estadoActivo ? 'ACTIVO' : 'INACTIVO'} para ${usuario.apellidoNombre} en ${claseNombre}`);
+        const ahora = new Date();
+        
+        if (registroExistente) {
+            // ACTUALIZAR: sumar los nuevos tiempos
+            const updateData = {
+                $set: {
+                    usuarioNombre: usuario.apellidoNombre,
+                    legajo: usuario.legajo,
+                    turno: usuario.turno,
+                    claseNombre: claseNombre,
+                    ultimaActualizacion: ahora
+                },
+                $inc: {
+                    tiempoActivo: tiempoActivo,
+                    tiempoInactivo: tiempoInactivo
+                }
+            };
+            
+            // Si es final, marcar como completado
+            if (esFinal) {
+                updateData.$set.finalizado = true;
+                updateData.$set.fechaFinalizacion = ahora;
+            }
+            
+            await db.collection('tiempo-en-clases').updateOne(filtro, updateData);
+            
+            console.log(`✅ Tiempo ACTUALIZADO para ${usuario.apellidoNombre} en ${claseNombre}`);
+            console.log(`   + Activo: ${tiempoActivo}s, + Inactivo: ${tiempoInactivo}s`);
+            
+        } else {
+            // CREAR NUEVO REGISTRO
+            const nuevoRegistro = {
+                usuarioId: new ObjectId(userHeader),
+                usuarioNombre: usuario.apellidoNombre,
+                legajo: usuario.legajo,
+                turno: usuario.turno,
+                claseId: claseId,
+                claseNombre: claseNombre,
+                tiempoActivo: tiempoActivo,
+                tiempoInactivo: tiempoInactivo,
+                fechaInicio: ahora,
+                ultimaActualizacion: ahora,
+                finalizado: esFinal || false
+            };
+            
+            if (esFinal) {
+                nuevoRegistro.fechaFinalizacion = ahora;
+            }
+            
+            await db.collection('tiempo-en-clases').insertOne(nuevoRegistro);
+            
+            console.log(`✅ Nuevo registro CREADO para ${usuario.apellidoNombre} en ${claseNombre}`);
+        }
+        
+        // Obtener el registro actualizado para devolverlo
+        const registroActualizado = await db.collection('tiempo-en-clases').findOne(filtro);
         
         res.json({ 
             success: true, 
-            message: 'Tiempo registrado exitosamente',
-            data: { ...nuevoRegistro, _id: result.insertedId }
+            message: 'Tiempo actualizado correctamente',
+            data: registroActualizado
         });
         
     } catch (error) {
-        console.error('❌ Error guardando tiempo:', error);
+        console.error('❌ Error actualizando tiempo:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Error interno del servidor',
@@ -1550,13 +1591,11 @@ app.post('/api/tiempo-clase/guardar', async (req, res) => {
     }
 });
 
-// Obtener todos los registros de tiempo (con filtros opcionales)
+// Obtener todos los tiempos (con filtros)
 app.get('/api/tiempo-clase', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
-        const { clase, usuario, desde, hasta, activo } = req.query;
-        
-        console.log('📥 GET /api/tiempo-clase - Usuario:', userHeader);
+        const { clase, usuario } = req.query;
         
         if (!userHeader) {
             return res.status(401).json({ 
@@ -1567,7 +1606,7 @@ app.get('/api/tiempo-clase', async (req, res) => {
         
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        // Verificar permisos del usuario
+        // Verificar permisos
         const usuarioActual = await db.collection('usuarios').findOne({ 
             _id: new ObjectId(userHeader) 
         });
@@ -1582,45 +1621,26 @@ app.get('/api/tiempo-clase', async (req, res) => {
         // Construir filtros
         let filtro = {};
         
-        // Si no es admin ni avanzado, solo ver sus propios registros
+        // Si no es admin, solo ver sus propios registros
         if (usuarioActual.role !== 'admin' && usuarioActual.role !== 'advanced') {
             filtro.usuarioId = new ObjectId(userHeader);
         }
         
-        // Filtrar por clase específica
+        // Filtrar por clase
         if (clase && clase !== 'todas') {
             filtro.claseNombre = clase;
         }
         
-        // Filtrar por usuario específico (solo admins/avanzados)
+        // Filtrar por usuario específico
         if (usuario && (usuarioActual.role === 'admin' || usuarioActual.role === 'advanced')) {
             filtro.usuarioId = new ObjectId(usuario);
         }
         
-        // Filtrar por fecha desde
-        if (desde) {
-            filtro.fechaRegistro = { ...filtro.fechaRegistro, $gte: new Date(desde) };
-        }
-        
-        // Filtrar por fecha hasta
-        if (hasta) {
-            filtro.fechaRegistro = { ...filtro.fechaRegistro, $lte: new Date(hasta) };
-        }
-        
-        // Filtrar por estado activo
-        if (activo !== undefined) {
-            filtro.activo = activo === 'true';
-        }
-        
-        console.log('🔍 Filtros aplicados:', JSON.stringify(filtro, null, 2));
-        
         // Obtener registros
         const registros = await db.collection('tiempo-en-clases')
             .find(filtro)
-            .sort({ fechaRegistro: -1 })
+            .sort({ ultimaActualizacion: -1 })
             .toArray();
-        
-        console.log(`✅ ${registros.length} registros de tiempo obtenidos`);
         
         res.json({ 
             success: true, 
@@ -1628,16 +1648,15 @@ app.get('/api/tiempo-clase', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Error obteniendo registros de tiempo:', error);
+        console.error('❌ Error obteniendo tiempos:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
+            message: 'Error interno del servidor' 
         });
     }
 });
 
-// Obtener estadísticas de tiempo
+// Obtener estadísticas
 app.get('/api/tiempo-clase/estadisticas', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
@@ -1663,10 +1682,7 @@ app.get('/api/tiempo-clase/estadisticas', async (req, res) => {
             });
         }
         
-        // Construir pipeline de agregación
         let matchStage = {};
-        
-        // Si no es admin ni avanzado, solo sus estadísticas
         if (usuarioActual.role !== 'admin' && usuarioActual.role !== 'advanced') {
             matchStage.usuarioId = new ObjectId(userHeader);
         }
@@ -1677,12 +1693,10 @@ app.get('/api/tiempo-clase/estadisticas', async (req, res) => {
                 $group: {
                     _id: null,
                     totalRegistros: { $sum: 1 },
-                    tiempoTotalSegundos: { $sum: '$tiempoSegundos' },
+                    totalActivo: { $sum: '$tiempoActivo' },
+                    totalInactivo: { $sum: '$tiempoInactivo' },
                     usuariosUnicos: { $addToSet: '$usuarioId' },
-                    clasesUnicas: { $addToSet: '$claseNombre' },
-                    promedioTiempo: { $avg: '$tiempoSegundos' },
-                    maxTiempo: { $max: '$tiempoSegundos' },
-                    minTiempo: { $min: '$tiempoSegundos' }
+                    clasesUnicas: { $addToSet: '$claseNombre' }
                 }
             }
         ];
@@ -1691,58 +1705,12 @@ app.get('/api/tiempo-clase/estadisticas', async (req, res) => {
             .aggregate(pipeline)
             .toArray();
         
-        // Estadísticas por clase
-        const porClase = await db.collection('tiempo-en-clases')
-            .aggregate([
-                { $match: matchStage },
-                {
-                    $group: {
-                        _id: '$claseNombre',
-                        registros: { $sum: 1 },
-                        tiempoTotal: { $sum: '$tiempoSegundos' },
-                        usuarios: { $addToSet: '$usuarioId' }
-                    }
-                },
-                { $sort: { tiempoTotal: -1 } }
-            ])
-            .toArray();
-        
-        // Estadísticas por día (últimos 30 días)
-        const fechaLimite = new Date();
-        fechaLimite.setDate(fechaLimite.getDate() - 30);
-        
-        const porDia = await db.collection('tiempo-en-clases')
-            .aggregate([
-                { 
-                    $match: { 
-                        ...matchStage,
-                        fechaRegistro: { $gte: fechaLimite } 
-                    } 
-                },
-                {
-                    $group: {
-                        _id: { 
-                            $dateToString: { format: '%Y-%m-%d', date: '$fechaRegistro' } 
-                        },
-                        registros: { $sum: 1 },
-                        tiempoTotal: { $sum: '$tiempoSegundos' }
-                    }
-                },
-                { $sort: { _id: 1 } }
-            ])
-            .toArray();
-        
         const resultado = {
             totalRegistros: estadisticas[0]?.totalRegistros || 0,
-            tiempoTotalSegundos: estadisticas[0]?.tiempoTotalSegundos || 0,
-            tiempoTotalHoras: ((estadisticas[0]?.tiempoTotalSegundos || 0) / 3600).toFixed(1),
+            tiempoActivoTotal: estadisticas[0]?.totalActivo || 0,
+            tiempoInactivoTotal: estadisticas[0]?.totalInactivo || 0,
             usuariosUnicos: estadisticas[0]?.usuariosUnicos?.length || 0,
-            clasesUnicas: estadisticas[0]?.clasesUnicas?.length || 0,
-            promedioTiempo: Math.round(estadisticas[0]?.promedioTiempo || 0),
-            maxTiempo: estadisticas[0]?.maxTiempo || 0,
-            minTiempo: estadisticas[0]?.minTiempo || 0,
-            porClase: porClase,
-            porDia: porDia
+            clasesUnicas: estadisticas[0]?.clasesUnicas?.length || 0
         };
         
         res.json({ 
@@ -1751,11 +1719,10 @@ app.get('/api/tiempo-clase/estadisticas', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Error obteniendo estadísticas de tiempo:', error);
+        console.error('❌ Error obteniendo estadísticas:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
+            message: 'Error interno del servidor' 
         });
     }
 });
@@ -1799,7 +1766,7 @@ app.get('/api/tiempo-clase/usuario/:usuarioId', async (req, res) => {
         // Obtener registros del usuario
         const registros = await db.collection('tiempo-en-clases')
             .find({ usuarioId: new ObjectId(usuarioId) })
-            .sort({ fechaRegistro: -1 })
+            .sort({ ultimaActualizacion: -1 })
             .toArray();
         
         // Obtener información del usuario
@@ -1839,10 +1806,10 @@ app.get('/api/tiempo-clase/init', async (req, res) => {
             await db.createCollection('tiempo-en-clases');
             
             // Crear índices
+            await db.collection('tiempo-en-clases').createIndex({ usuarioId: 1, claseId: 1 }, { unique: true });
             await db.collection('tiempo-en-clases').createIndex({ usuarioId: 1 });
             await db.collection('tiempo-en-clases').createIndex({ claseId: 1 });
-            await db.collection('tiempo-en-clases').createIndex({ fechaRegistro: -1 });
-            await db.collection('tiempo-en-clases').createIndex({ activo: 1 });
+            await db.collection('tiempo-en-clases').createIndex({ ultimaActualizacion: -1 });
             
             console.log('✅ Colección "tiempo-en-clases" creada con índices');
         } else {
@@ -1904,10 +1871,10 @@ app.get('/api/init-db', async (req, res) => {
                     await db.collection(collectionName).createIndex({ fechaSolicitud: -1 });
                     console.log(`✅ Índices creados para "${collectionName}"`);
                 } else if (collectionName === 'tiempo-en-clases') {
+                    await db.collection(collectionName).createIndex({ usuarioId: 1, claseId: 1 }, { unique: true });
                     await db.collection(collectionName).createIndex({ usuarioId: 1 });
                     await db.collection(collectionName).createIndex({ claseId: 1 });
-                    await db.collection(collectionName).createIndex({ fechaRegistro: -1 });
-                    await db.collection(collectionName).createIndex({ activo: 1 });
+                    await db.collection(collectionName).createIndex({ ultimaActualizacion: -1 });
                     console.log(`✅ Índices creados para "${collectionName}"`);
                 }
                 
@@ -2007,7 +1974,7 @@ async function startServer() {
             console.log(`🏥 Health: /api/health`);
             console.log(`🧪 Test: /api/test/simple`);
             console.log(`🔄 Init DB: /api/init-db`);
-            console.log(`⏱️ Tiempo clase: /api/tiempo-clase`);
+            console.log(`⏱️ Tiempo clase (acumulativo): /api/tiempo-clase`);
             console.log('==========================================\n');
         });
         

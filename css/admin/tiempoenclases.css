@@ -1,6 +1,6 @@
 /* ============================================
    tiempoenclases.css - Estilos para la sección de tiempos
-   Versión final con estilos para el modal de detalle
+   Versión acumulativa
    ============================================ */
 
 /* ===== ESTADÍSTICAS ===== */
@@ -47,77 +47,26 @@
 }
 
 .stat-value {
-    font-size: 2.2em;
+    font-size: 1.8em;
     font-weight: 700;
     line-height: 1.2;
-}
-
-.stat-unit {
-    font-size: 0.8em;
-    opacity: 0.8;
-    margin-top: 4px;
 }
 
 /* ===== FILTROS ===== */
 .filtros-container {
     background: var(--bg-card);
-    padding: 20px;
+    padding: 15px 20px;
     border-radius: 10px;
     margin-bottom: 25px;
     border: 1px solid var(--border-color);
 }
 
-.filtros-wrapper {
-    display: flex;
-    gap: 20px;
-    align-items: flex-end;
-    flex-wrap: wrap;
-}
-
-.filtro-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 180px;
-}
-
-.filtro-group label {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9em;
-}
-
-.filtro-select,
-.filtro-input {
-    padding: 10px 12px;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-input);
-    color: var(--text-primary);
-    font-size: 0.95em;
-    transition: all 0.3s ease;
-}
-
-.filtro-select:focus,
-.filtro-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
-}
-
-.filtros-actions {
-    display: flex;
-    gap: 10px;
-    margin-left: auto;
-}
-
-/* ===== TABLA DE TIEMPOS ===== */
+/* ===== TABLA ===== */
 .table-container {
     background: var(--bg-container);
     padding: 25px;
     border-radius: 15px;
     box-shadow: var(--shadow-lg);
-    margin-bottom: 25px;
 }
 
 .table-container h2 {
@@ -152,10 +101,6 @@
     color: var(--text-primary);
 }
 
-.admin-table tbody tr {
-    transition: background-color 0.3s ease;
-}
-
 .admin-table tbody tr:hover {
     background: var(--bg-card);
 }
@@ -182,27 +127,10 @@
     border: 1px solid var(--border-color);
 }
 
-.tiempo-badge.alto {
-    background: rgba(234, 67, 53, 0.1);
-    color: var(--error-500);
-    border: 1px solid rgba(234, 67, 53, 0.3);
-}
-
-.tiempo-badge.normal {
+.tiempo-badge.total {
     background: rgba(66, 133, 244, 0.1);
     color: var(--accent-color);
     border: 1px solid rgba(66, 133, 244, 0.3);
-}
-
-/* ===== BADGES DE TURNO ===== */
-.turno-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.85em;
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
 }
 
 /* ===== BOTÓN DE DETALLE ===== */
@@ -226,13 +154,11 @@
 .btn-info:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, #138496 0%, #0f6674 100%);
 }
 
-/* ===== MODAL DE DETALLE ===== */
+/* ===== MODAL ===== */
 #detalleModal .modal-container {
-    max-width: 700px;
-    width: 90%;
+    max-width: 600px;
 }
 
 .detalle-usuario {
@@ -240,13 +166,11 @@
     padding: 20px;
     border-radius: 10px;
     margin-bottom: 20px;
-    border-left: 4px solid var(--accent-color);
 }
 
 .detalle-usuario h3 {
     color: var(--text-primary);
     margin-bottom: 15px;
-    font-size: 1.3em;
 }
 
 .detalle-info {
@@ -256,108 +180,93 @@
     margin-bottom: 20px;
 }
 
-.detalle-item {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.detalle-item .label {
-    font-size: 0.85em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.detalle-item .value {
-    font-size: 1.1em;
-    font-weight: 600;
-    color: var(--text-primary);
+.detalle-info p {
+    margin: 0;
+    color: var(--text-secondary);
 }
 
 .detalle-resumen {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 15px;
+    gap: 15px;
 }
 
-.detalle-resumen > div {
-    background: var(--accent-color);
-    color: white;
+.resumen-card {
     padding: 15px;
     border-radius: 8px;
     text-align: center;
+    color: white;
 }
 
-.detalle-resumen > div:nth-child(2) {
-    background: #34a853;
+.resumen-card.activo {
+    background: var(--success-500);
 }
 
-.detalle-resumen > div:nth-child(3) {
-    background: #ea4335;
+.resumen-card.inactivo {
+    background: var(--text-muted);
 }
 
-.detalle-resumen .label {
+.resumen-card.total {
+    background: var(--accent-color);
+}
+
+.resumen-card .label {
     font-size: 0.85em;
     opacity: 0.9;
     margin-bottom: 5px;
+    display: block;
 }
 
-.detalle-resumen .value {
-    font-size: 1.4em;
+.resumen-card .value {
+    font-size: 1.3em;
     font-weight: bold;
 }
 
-.detalle-tiempos {
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 10px;
-}
-
-.detalle-tiempos h4 {
+.detalle-clases h4 {
     color: var(--text-primary);
-    margin-bottom: 15px;
-    font-size: 1.1em;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--border-color);
+    margin: 20px 0 15px;
 }
 
-.clase-header {
+.clase-item {
     background: var(--bg-card);
-    padding: 12px;
+    padding: 15px;
     border-radius: 8px;
     margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     border-left: 4px solid var(--accent-color);
 }
 
-.tiempo-item {
+.clase-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border-color);
-    margin-left: 15px;
+    margin-bottom: 10px;
 }
 
-.tiempo-item:last-child {
-    border-bottom: none;
+.clase-header strong {
+    color: var(--text-primary);
+    font-size: 1.1em;
 }
 
-.tiempo-item .fecha {
+.clase-header .fecha {
+    color: var(--text-muted);
     font-size: 0.9em;
-    color: var(--text-secondary);
 }
 
-.tiempo-item .duracion {
-    font-weight: 600;
-    color: var(--accent-color);
-    font-size: 1em;
-    min-width: 80px;
-    text-align: right;
+.clase-tiempos {
+    display: flex;
+    gap: 20px;
+}
+
+.clase-tiempos span {
+    font-size: 0.95em;
+}
+
+.clase-tiempos .activo {
+    color: var(--success-500);
+}
+
+.clase-tiempos .inactivo {
+    color: var(--text-muted);
 }
 
 /* ===== LOADING ===== */
@@ -406,82 +315,20 @@
 }
 
 @media (max-width: 768px) {
-    .filtros-wrapper {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filtro-group {
-        min-width: auto;
-    }
-    
-    .filtros-actions {
-        margin-left: 0;
-        justify-content: stretch;
-    }
-    
-    .filtros-actions button {
-        flex: 1;
-    }
-    
     .stats-grid {
         grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .admin-table {
-        font-size: 0.85em;
-    }
-    
-    .admin-table th,
-    .admin-table td {
-        padding: 10px;
-    }
-    
-    .tiempo-badge {
-        padding: 4px 8px;
-        font-size: 0.8em;
     }
     
     .detalle-info {
         grid-template-columns: 1fr;
-        gap: 10px;
     }
     
     .detalle-resumen {
         grid-template-columns: 1fr;
-        gap: 8px;
     }
     
-    .clase-header {
+    .clase-tiempos {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .tiempo-item {
-        flex-direction: column;
-        align-items: flex-start;
         gap: 5px;
-    }
-    
-    .tiempo-item .duracion {
-        text-align: left;
-    }
-}
-
-@media (max-width: 480px) {
-    .table-container {
-        padding: 15px;
-    }
-    
-    .stat-value {
-        font-size: 1.8em;
-    }
-    
-    .btn-info {
-        width: 25px;
-        height: 25px;
-        font-size: 0.9em;
     }
 }

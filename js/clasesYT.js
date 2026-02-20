@@ -1,8 +1,8 @@
 // ============================================
-// clasesYT.js - Versión CORREGIDA con acumulación de tiempo
+// clasesYT.js - VERSIÓN ACUMULATIVA (un solo registro por usuario/clase)
 // ============================================
 
-console.log('🎥 clasesYT.js cargado - Versión CORREGIDA');
+console.log('🎥 clasesYT.js - Modo ACUMULATIVO');
 
 // ============================================
 // CONFIGURACIÓN
@@ -11,271 +11,247 @@ const CONFIG = {
     VIDEO_ID: 'cb12KmMMDJA',
     DISPLAY_UPDATE_INTERVAL: 1000,
     SAVE_INTERVAL: 30000, // Guardar cada 30 segundos
-    MAX_MENSAJES: 50
+    UMBRAL_MINIMO: 1 // Mínimo 1 segundo para guardar
 };
 
 // ============================================
-// CLASE TimeTracker - VERSIÓN CORREGIDA
+// CLASE TimeTracker - VERSIÓN ACUMULATIVA
 // ============================================
 class TimeTracker {
     constructor() {
-        // TIEMPO TOTAL ACUMULADO (esto persiste siempre)
-        this.totalActiveTime = 0;
+        // Acumuladores de la sesión actual
+        this.tiempoActivoSesion = 0;
+        this.tiempoInactivoSesion = 0;
         
-        // Tiempo de la sesión actual (se reinicia al volver)
-        this.sessionStartTime = null;
+        // Totales acumulados (se sincronizan con MongoDB)
+        this.tiempoActivoTotal = 0;
+        this.tiempoInactivoTotal = 0;
         
-        // Estado actual
-        this.isActive = true; // Comienza activo
+        // Control de sesión
+        this.sessionStartTime = Date.now();
+        this.isActive = true;
+        this.sessionId = this.generarSessionId();
         
+        // Control de guardado
+        this.lastSaveTime = 0;
+        this.pendienteGuardar = false;
+        
+        // Elementos DOM
         this.displayElement = document.getElementById('tiempoActivo');
         this.messageElement = document.getElementById('statusMessage');
         
-        // Obtener parámetros de la URL
+        // Datos de la clase
         const urlParams = new URLSearchParams(window.location.search);
         this.claseId = urlParams.get('claseId') || 'clase_stroke_iam';
         this.claseNombre = urlParams.get('clase') || 'Stroke / IAM';
         
-        // Cargar tiempo guardado en localStorage (por si acaso)
-        this.cargarTiempoGuardado();
-        
         this.init();
     }
 
-    /**
-     * Carga el tiempo guardado en localStorage (respaldo)
-     */
-    cargarTiempoGuardado() {
-        try {
-            const user = getCurrentUserSafe();
-            if (!user) return;
-            
-            const key = `tiempo_total_${user._id}_${this.claseId}`;
-            const guardado = localStorage.getItem(key);
-            
-            if (guardado) {
-                const data = JSON.parse(guardado);
-                this.totalActiveTime = data.totalActiveTime || 0;
-                console.log(`💾 Tiempo recuperado de localStorage: ${this.totalActiveTime}s`);
-            }
-        } catch (error) {
-            console.error('Error cargando tiempo guardado:', error);
-        }
+    generarSessionId() {
+        return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    /**
-     * Guarda el tiempo en localStorage (respaldo)
-     */
-    guardarTiempoLocal() {
-        try {
-            const user = getCurrentUserSafe();
-            if (!user) return;
-            
-            const key = `tiempo_total_${user._id}_${this.claseId}`;
-            localStorage.setItem(key, JSON.stringify({
-                totalActiveTime: this.totalActiveTime,
-                lastUpdate: new Date().toISOString()
-            }));
-        } catch (error) {
-            console.error('Error guardando tiempo local:', error);
-        }
-    }
-
-    init() {
-        console.log('⏱️ Inicializando TimeTracker CORREGIDO...');
-        console.log(`📚 Clase: ${this.claseNombre} (${this.claseId})`);
-        console.log(`⏱️ Tiempo acumulado inicial: ${this.totalActiveTime}s`);
+    async init() {
+        console.log('⏱️ Inicializando TimeTracker ACUMULATIVO...');
+        console.log(`📚 Clase: ${this.claseNombre}`);
         
-        // Iniciar la sesión actual
-        this.sessionStartTime = Date.now();
+        // Intentar cargar datos guardados
+        await this.cargarDatosGuardados();
         
-        // Evento para cambio de visibilidad de la pestaña
+        // Eventos
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                this.handleTabChange(false); // Salió de la pestaña -> INACTIVO
+                this.handleSalidaPestana();
             } else {
-                this.handleTabChange(true); // Volvió a la pestaña -> ACTIVO
+                this.handleRegresoPestana();
             }
         });
 
-        // Evento para cuando se cierra la página
         window.addEventListener('beforeunload', () => {
-            this.handlePageClose();
+            this.handleCierrePagina();
         });
 
+        // Iniciar sesión activa
+        this.sessionStartTime = Date.now();
+        this.isActive = true;
+        
         // Actualizar display cada segundo
         setInterval(() => this.updateDisplay(), CONFIG.DISPLAY_UPDATE_INTERVAL);
         
-        // Guardar automáticamente cada 30 segundos
-        setInterval(() => {
-            if (this.isActive) {
-                this.saveCurrentTime(false);
-            }
-        }, CONFIG.SAVE_INTERVAL);
+        // Guardado automático cada 30 segundos
+        setInterval(() => this.guardadoAutomatico(), CONFIG.SAVE_INTERVAL);
         
-        console.log('✅ TimeTracker inicializado');
+        console.log('✅ TimeTracker listo');
+        console.log(`📊 Estado inicial - Activo: ${this.tiempoActivoTotal}s, Inactivo: ${this.tiempoInactivoTotal}s`);
     }
 
-    /**
-     * Maneja cambio de visibilidad de la pestaña
-     * @param {boolean} isVisible - true si la pestaña es visible
-     */
-    handleTabChange(isVisible) {
-        if (isVisible) {
-            // VOLVIÓ A LA PESTAÑA
-            console.log('👁️ Pestaña visible - REANUDANDO');
-            
-            // Actualizar el tiempo total con lo que se acumuló en la sesión anterior
-            if (this.sessionStartTime) {
-                const tiempoSesion = Date.now() - this.sessionStartTime;
-                // NO sumamos aquí porque ya se sumó al salir
-            }
-            
-            // Iniciar nueva sesión
-            this.sessionStartTime = Date.now();
-            this.isActive = true;
-            
-            console.log(`⏱️ Tiempo total actual: ${this.totalActiveTime}s`);
-            
-        } else {
-            // SALE DE LA PESTAÑA
-            console.log('👁️ Pestaña oculta - GUARDANDO como INACTIVO');
-            
-            // Calcular tiempo de esta sesión
-            if (this.sessionStartTime) {
-                const tiempoSesion = Date.now() - this.sessionStartTime;
-                this.totalActiveTime += tiempoSesion;
-                console.log(`⏱️ Sesión actual: ${Math.floor(tiempoSesion / 1000)}s - Total acumulado: ${Math.floor(this.totalActiveTime / 1000)}s`);
-            }
-            
-            // Guardar como INACTIVO
-            this.saveCurrentTime(true); // true = es inactivo
-            this.isActive = false;
-        }
-    }
-
-    /**
-     * Maneja el cierre de la página
-     */
-    handlePageClose() {
-        console.log('🚪 Cerrando página - Guardando final');
-        
-        // Calcular tiempo de la última sesión
-        if (this.sessionStartTime && this.isActive) {
-            const tiempoSesion = Date.now() - this.sessionStartTime;
-            this.totalActiveTime += tiempoSesion;
-        }
-        
-        // Guardar como INACTIVO final
-        this.saveCurrentTime(true);
-        
-        // Limpiar localStorage
+    async cargarDatosGuardados() {
         try {
+            if (!isLoggedInSafe()) return;
+            
             const user = getCurrentUserSafe();
-            if (user) {
-                const key = `tiempo_total_${user._id}_${this.claseId}`;
-                localStorage.removeItem(key);
+            const result = await makeRequestSafe(`/tiempo-clase?clase=${this.claseId}`, null, 'GET');
+            
+            if (result.success && result.data && result.data.length > 0) {
+                // Buscar el registro de esta clase
+                const registro = result.data.find(r => r.claseId === this.claseId);
+                if (registro) {
+                    this.tiempoActivoTotal = registro.tiempoActivo || 0;
+                    this.tiempoInactivoTotal = registro.tiempoInactivo || 0;
+                    console.log(`💾 Datos cargados desde MongoDB:`);
+                    console.log(`   Activo: ${this.tiempoActivoTotal}s, Inactivo: ${this.tiempoInactivoTotal}s`);
+                }
             }
-        } catch (error) {}
+        } catch (error) {
+            console.log('ℹ️ No hay datos previos en MongoDB');
+        }
     }
 
-    /**
-     * Guarda el tiempo actual en el servidor
-     * @param {boolean} esInactivo - true si es por inactividad
-     */
-    async saveCurrentTime(esInactivo = false) {
-        const seconds = Math.floor(this.totalActiveTime / 1000);
+    handleSalidaPestana() {
+        if (!this.isActive) return;
         
-        console.log(`⏱️ Guardando: ${seconds}s - ${esInactivo ? 'INACTIVO' : 'ACTIVO'}`);
+        console.log('👁️ Saliendo de la pestaña - Calculando tiempo activo...');
         
-        // Guardar en servidor
-        await this.saveToServer(seconds, esInactivo);
+        // Calcular tiempo activo de esta sesión
+        const tiempoSesion = Math.floor((Date.now() - this.sessionStartTime) / 1000);
         
-        // Respaldo en localStorage
-        this.guardarTiempoLocal();
+        if (tiempoSesion >= CONFIG.UMBRAL_MINIMO) {
+            this.tiempoActivoSesion = tiempoSesion;
+            this.tiempoActivoTotal += tiempoSesion;
+            console.log(`⏱️ Tiempo activo de esta sesión: ${tiempoSesion}s`);
+            console.log(`📊 Total activo acumulado: ${this.tiempoActivoTotal}s`);
+            
+            // Marcar para guardar
+            this.pendienteGuardar = true;
+        }
+        
+        this.isActive = false;
+        this.sessionStartTime = null;
+        
+        // Guardar inmediatamente
+        this.guardarEnMongoDB(false);
+    }
+
+    handleRegresoPestana() {
+        console.log('👁️ Volviendo a la pestaña');
+        
+        // Calcular tiempo inactivo (tiempo que estuvo fuera)
+        if (!this.isActive && this.sessionStartTime) {
+            const tiempoFuera = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+            
+            if (tiempoFuera >= CONFIG.UMBRAL_MINIMO) {
+                this.tiempoInactivoSesion = tiempoFuera;
+                this.tiempoInactivoTotal += tiempoFuera;
+                console.log(`⏱️ Tiempo inactivo fuera: ${tiempoFuera}s`);
+                console.log(`📊 Total inactivo acumulado: ${this.tiempoInactivoTotal}s`);
+                
+                // Marcar para guardar
+                this.pendienteGuardar = true;
+            }
+        }
+        
+        // Reiniciar sesión activa
+        this.sessionStartTime = Date.now();
+        this.isActive = true;
+        
+        // Guardar el tiempo inactivo
+        if (this.pendienteGuardar) {
+            this.guardarEnMongoDB(false);
+        }
+    }
+
+    handleCierrePagina() {
+        console.log('🚪 Cerrando página - Guardando tiempos finales...');
+        
+        if (this.isActive && this.sessionStartTime) {
+            const tiempoSesion = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+            if (tiempoSesion >= CONFIG.UMBRAL_MINIMO) {
+                this.tiempoActivoTotal += tiempoSesion;
+                this.tiempoActivoSesion += tiempoSesion;
+                console.log(`⏱️ Último tiempo activo: ${tiempoSesion}s`);
+            }
+        }
+        
+        // Guardado final
+        this.guardarEnMongoDB(true);
+    }
+
+    guardadoAutomatico() {
+        if (this.pendienteGuardar) {
+            console.log('⏲️ Guardado automático...');
+            this.guardarEnMongoDB(false);
+        }
+    }
+
+    async guardarEnMongoDB(esFinal = false) {
+        if (!isLoggedInSafe()) return;
+        
+        // Si no hay nada pendiente, no guardar
+        if (this.tiempoActivoSesion === 0 && this.tiempoInactivoSesion === 0 && !esFinal) {
+            return;
+        }
+        
+        const user = getCurrentUserSafe();
+        
+        console.log(`📤 Enviando a MongoDB:`);
+        console.log(`   + Activo: ${this.tiempoActivoSesion}s`);
+        console.log(`   + Inactivo: ${this.tiempoInactivoSesion}s`);
+        console.log(`   Total Activo: ${this.tiempoActivoTotal}s`);
+        console.log(`   Total Inactivo: ${this.tiempoInactivoTotal}s`);
+        
+        try {
+            const result = await makeRequestSafe('/tiempo-clase/actualizar', {
+                claseId: this.claseId,
+                claseNombre: this.claseNombre,
+                tiempoActivo: this.tiempoActivoSesion,
+                tiempoInactivo: this.tiempoInactivoSesion,
+                esFinal: esFinal
+            });
+            
+            if (result.success) {
+                console.log('✅ Tiempos actualizados en MongoDB');
+                
+                // Resetear contadores de sesión después de guardar
+                this.tiempoActivoSesion = 0;
+                this.tiempoInactivoSesion = 0;
+                this.pendienteGuardar = false;
+                this.lastSaveTime = Date.now();
+            }
+        } catch (error) {
+            console.error('❌ Error guardando:', error);
+            // Los tiempos pendientes se mantienen para el próximo intento
+        }
     }
 
     updateDisplay() {
         if (!this.displayElement) return;
         
-        let currentTotal = this.totalActiveTime;
+        let totalActual = this.tiempoActivoTotal;
         
-        // Si está activo, sumar el tiempo de la sesión actual
         if (this.isActive && this.sessionStartTime) {
-            currentTotal += (Date.now() - this.sessionStartTime);
+            totalActual += Math.floor((Date.now() - this.sessionStartTime) / 1000);
         }
         
-        const seconds = Math.floor(currentTotal / 1000);
-        this.displayElement.textContent = seconds;
+        this.displayElement.textContent = totalActual;
     }
 
     getCurrentTime() {
-        let currentTotal = this.totalActiveTime;
-        
+        let total = this.tiempoActivoTotal;
         if (this.isActive && this.sessionStartTime) {
-            currentTotal += (Date.now() - this.sessionStartTime);
+            total += Math.floor((Date.now() - this.sessionStartTime) / 1000);
         }
-        
-        return Math.floor(currentTotal / 1000);
-    }
-
-    /**
-     * Guarda el tiempo en el servidor
-     * @param {number} seconds - Tiempo total en segundos
-     * @param {boolean} esInactivo - true si es un registro de inactividad
-     */
-    async saveToServer(seconds, esInactivo = false) {
-        if (!isLoggedInSafe()) return;
-        
-        const user = getCurrentUserSafe();
-        
-        // activo = true SOLO cuando está en la pestaña Y no es inactivo
-        const activo = this.isActive && !esInactivo;
-        
-        console.log(`📤 Enviando a MongoDB: ${seconds}s - ${activo ? 'ACTIVO' : 'INACTIVO'}`);
-        
-        try {
-            const result = await makeRequestSafe('/tiempo-clase/guardar', {
-                claseId: this.claseId,
-                claseNombre: this.claseNombre,
-                tiempoSegundos: seconds,
-                esFinal: esInactivo,
-                activo: activo
-            });
-            
-            if (result.success) {
-                console.log(`✅ Guardado OK (${activo ? 'ACTIVO' : 'INACTIVO'})`);
-                
-                if (esInactivo) {
-                    this.showMessage('⏸️ Sesión pausada', 'info');
-                }
-            }
-        } catch (error) {
-            console.error('❌ Error guardando:', error);
-        }
-    }
-
-    showMessage(text, type = 'success') {
-        if (!this.messageElement) return;
-        
-        this.messageElement.textContent = text;
-        this.messageElement.className = `status-message ${type}`;
-        this.messageElement.style.display = 'block';
-        
-        setTimeout(() => {
-            this.messageElement.style.animation = 'fadeOut 0.3s ease forwards';
-            setTimeout(() => {
-                this.messageElement.style.display = 'none';
-                this.messageElement.style.animation = '';
-            }, 300);
-        }, 3000);
+        return total;
     }
 
     resetCounter() {
-        this.totalActiveTime = 0;
+        this.tiempoActivoTotal = 0;
+        this.tiempoInactivoTotal = 0;
+        this.tiempoActivoSesion = 0;
+        this.tiempoInactivoSesion = 0;
         this.sessionStartTime = Date.now();
+        this.pendienteGuardar = true;
         this.updateDisplay();
-        this.guardarTiempoLocal();
         console.log('🔄 Contador reiniciado');
     }
 }
@@ -289,91 +265,29 @@ class ChatReal {
         this.chatContainer = document.getElementById('chatContainer');
         this.retryCount = 0;
         this.maxRetries = 3;
-        
         this.init();
     }
 
     init() {
-        console.log('💬 Inicializando Chat REAL de YouTube...');
-        
         const domain = window.location.hostname;
-        console.log('🌐 Dominio detectado:', domain);
-        
         const chatUrl = `https://www.youtube.com/live_chat?v=${CONFIG.VIDEO_ID}&embed_domain=${domain}`;
         
         if (this.chatIframe) {
-            this.chatIframe.setAttribute('allow', 'autoplay; encrypted-media; clipboard-write');
             this.chatIframe.src = chatUrl;
-            this.chatIframe.addEventListener('load', () => this.handleLoad());
             this.chatIframe.addEventListener('error', () => this.handleError());
         }
-        
         setTimeout(() => this.checkStatus(), 5000);
-    }
-
-    handleLoad() {
-        console.log('✅ Chat cargado correctamente');
-        this.retryCount = 0;
     }
 
     handleError() {
         this.retryCount++;
-        console.warn(`⚠️ Error en chat (intento ${this.retryCount}/${this.maxRetries})`);
-        
         if (this.retryCount <= this.maxRetries) {
             setTimeout(() => {
                 if (this.chatIframe) {
                     this.chatIframe.src = this.chatIframe.src;
                 }
             }, 2000);
-        } else {
-            this.showErrorMessage();
         }
-    }
-
-    showErrorMessage() {
-        if (!this.chatContainer) return;
-        
-        this.chatContainer.innerHTML = `
-            <div style="
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                min-height: 400px;
-                padding: 30px;
-                text-align: center;
-                background: #1a1f25;
-            ">
-                <div style="font-size: 3em; margin-bottom: 20px;">💬</div>
-                <h3 style="color: #e0e0e0; margin-bottom: 15px;">
-                    Chat de YouTube
-                </h3>
-                <p style="color: #888; margin-bottom: 25px; max-width: 400px;">
-                    Para participar en el chat, abre YouTube en una nueva pestaña
-                </p>
-                <a href="https://www.youtube.com/live_chat?v=${CONFIG.VIDEO_ID}" 
-                   target="_blank"
-                   style="
-                        padding: 12px 25px;
-                        background: #4285f4;
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 8px;
-                   ">
-                    <span>💬</span>
-                    Abrir Chat en YouTube
-                </a>
-                <p style="color: #666; margin-top: 20px; font-size: 0.85em;">
-                    Necesitas iniciar sesión en YouTube para participar
-                </p>
-            </div>
-        `;
     }
 
     checkStatus() {
@@ -382,7 +296,7 @@ class ChatReal {
                 console.log('✅ Chat accesible');
             }
         } catch (e) {
-            console.log('✅ Chat cargado (con restricciones CORS normales)');
+            console.log('✅ Chat cargado');
         }
     }
 }
@@ -392,160 +306,66 @@ class ChatReal {
 // ============================================
 
 function showLoading(message = 'Cargando...') {
-    const existingOverlay = document.querySelector('.loading-overlay');
-    if (existingOverlay) existingOverlay.remove();
-    
     const overlay = document.createElement('div');
     overlay.className = 'loading-overlay';
-    overlay.innerHTML = `
-        <div style="text-align: center; color: white;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 20px; font-size: 1.1em;">${message}</p>
-        </div>
-    `;
-    
+    overlay.innerHTML = `<div style="text-align: center; color: white;"><div class="loading-spinner"></div><p>${message}</p></div>`;
     document.body.appendChild(overlay);
 }
 
 function hideLoading() {
     const overlay = document.querySelector('.loading-overlay');
-    if (overlay) {
-        overlay.style.animation = 'fadeOut 0.3s ease forwards';
-        setTimeout(() => overlay.remove(), 300);
-    }
+    if (overlay) overlay.remove();
 }
 
 function updateUserInfo() {
     if (!isLoggedInSafe()) return;
-    
     const user = getCurrentUserSafe();
-    if (!user) return;
-    
-    const nombreEl = document.getElementById('nombreUsuario');
-    const legajoEl = document.getElementById('legajoUsuario');
-    const turnoEl = document.getElementById('turnoUsuario');
-    
-    if (nombreEl) {
-        nombreEl.textContent = user.apellidoNombre || 'Usuario';
-        
-        if (user.role === 'admin') {
-            nombreEl.innerHTML += ' <span style="background:rgba(102,126,234,0.3); padding:2px 8px; border-radius:12px; font-size:0.8em; margin-left:8px;">👑 Admin</span>';
-        } else if (user.role === 'advanced') {
-            nombreEl.innerHTML += ' <span style="background:rgba(240,147,251,0.3); padding:2px 8px; border-radius:12px; font-size:0.8em; margin-left:8px;">⭐ Avanzado</span>';
-        }
-    }
-    
-    if (legajoEl) legajoEl.textContent = user.legajo || '-';
-    if (turnoEl) turnoEl.textContent = user.turno || '-';
-}
-
-function setupURLParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    const claseParam = urlParams.get('clase');
-    if (claseParam) {
-        const tituloEl = document.getElementById('tituloClase');
-        if (tituloEl) {
-            tituloEl.textContent = decodeURIComponent(claseParam);
-        }
-    }
+    document.getElementById('nombreUsuario').textContent = user?.apellidoNombre || 'Usuario';
+    document.getElementById('legajoUsuario').textContent = user?.legajo || '-';
+    document.getElementById('turnoUsuario').textContent = user?.turno || '-';
 }
 
 // ============================================
-// INICIALIZACIÓN PRINCIPAL
+// INICIALIZACIÓN
 // ============================================
 
 async function inicializarPagina() {
-    console.log('🚀 Inicializando página con TimeTracker CORREGIDO...');
-    
     showLoading('Verificando acceso...');
     
     try {
-        setupURLParams();
-        
         await waitForAuthSystem();
         
         if (!isLoggedInSafe()) {
-            console.log('🔐 Usuario no logueado, mostrando modal...');
             hideLoading();
-            
             try {
                 await authSystem.showLoginModal();
             } catch (error) {
-                console.log('❌ Usuario canceló el login');
                 window.location.href = '/index.html';
                 return;
             }
-            
             showLoading('Cargando clase...');
         }
         
         updateUserInfo();
         
-        // Inicializar componentes
         window.timeTracker = new TimeTracker();
         window.chatReal = new ChatReal();
         
         hideLoading();
-        
-        const msg = document.getElementById('statusMessage');
-        if (msg) {
-            msg.textContent = '✅ Clase iniciada correctamente';
-            msg.className = 'status-message success';
-            msg.style.display = 'block';
-            
-            setTimeout(() => {
-                msg.style.animation = 'fadeOut 0.3s ease forwards';
-                setTimeout(() => {
-                    msg.style.display = 'none';
-                    msg.style.animation = '';
-                }, 300);
-            }, 3000);
-        }
-        
-        console.log('✅ Página de clase inicializada correctamente');
-        console.log(`⏱️ Tiempo inicial: ${window.timeTracker.getCurrentTime()}s`);
+        console.log('✅ Todo listo');
         
     } catch (error) {
-        console.error('❌ Error inicializando:', error);
-        
+        console.error('❌ Error:', error);
         hideLoading();
-        
-        const msg = document.getElementById('statusMessage');
-        if (msg) {
-            msg.textContent = '❌ Error al cargar la página: ' + error.message;
-            msg.className = 'status-message error';
-            msg.style.display = 'block';
-            
-            setTimeout(() => {
-                window.location.href = '/index.html';
-            }, 3000);
-        }
     }
 }
 
-// Iniciar
 document.addEventListener('DOMContentLoaded', inicializarPagina);
 
-// Funciones de debug MEJORADAS
+// Debug
 window.debug = {
-    tiempo: () => {
-        const t = window.timeTracker;
-        if (!t) return 'No inicializado';
-        return {
-            total: t.totalActiveTime,
-            sesion: t.sessionStartTime ? Date.now() - t.sessionStartTime : 0,
-            actual: t.getCurrentTime(),
-            activo: t.isActive
-        };
-    },
-    reset: () => window.timeTracker?.resetCounter(),
-    estado: () => window.timeTracker?.isActive ? 'ACTIVO' : 'INACTIVO',
-    chat: () => window.chatReal,
-    user: () => getCurrentUserSafe()
+    tiempo: () => window.timeTracker?.getCurrentTime() || 0,
+    activo: () => window.timeTracker?.tiempoActivoTotal || 0,
+    inactivo: () => window.timeTracker?.tiempoInactivoTotal || 0,
+    reset: () => window.timeTracker?.resetCounter()
 };
-
-console.log('🎯 Funciones de debug disponibles:');
-console.log('   debug.tiempo() - Muestra detalles del tiempo');
-console.log('   debug.reset() - Reinicia contador');
-console.log('   debug.estado() - Muestra ACTIVO/INACTIVO');
