@@ -1,22 +1,240 @@
 // ============================================
-// clasesYT.js - Versión con CHAT REAL de YouTube y MongoDB
+// clasesYT.js - Versión con inactividad SOLO por cambio/cierre de pestaña
 // ============================================
 
-console.log('🎥 clasesYT.js cargado - Modo CHAT REAL con MongoDB');
+console.log('🎥 clasesYT.js cargado - Inactividad solo por cambio/cierre de pestaña');
 
 // ============================================
 // CONFIGURACIÓN
 // ============================================
 const CONFIG = {
     VIDEO_ID: 'cb12KmMMDJA',
-    INACTIVITY_LIMIT: 5000,
     DISPLAY_UPDATE_INTERVAL: 1000,
-    SAVE_INTERVAL: 30000,
+    SAVE_INTERVAL: 30000, // Guardar cada 30 segundos mientras está activo
     MAX_MENSAJES: 50
 };
 
 // ============================================
-// CLASE ChatReal - Maneja el iframe de YouTube
+// CLASE TimeTracker - NUEVA VERSIÓN
+// ============================================
+class TimeTracker {
+    constructor() {
+        this.startTime = Date.now();
+        this.totalActiveTime = 0;
+        this.isTracking = false;
+        this.lastSaveTime = Date.now();
+        
+        this.displayElement = document.getElementById('tiempoActivo');
+        this.messageElement = document.getElementById('statusMessage');
+        
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        this.claseId = urlParams.get('claseId') || 'clase_stroke_iam';
+        this.claseNombre = urlParams.get('clase') || 'Stroke / IAM';
+        
+        this.init();
+    }
+
+    init() {
+        console.log('⏱️ Inicializando TimeTracker...');
+        console.log(`📚 Clase: ${this.claseNombre} (${this.claseId})`);
+        
+        // Evento para cuando la página deja de ser visible (cambio de pestaña)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.handleTabChange(false); // Salió de la pestaña -> INACTIVO
+            } else {
+                this.handleTabChange(true); // Volvió a la pestaña -> ACTIVO
+            }
+        });
+
+        // Evento para cuando se cierra la página
+        window.addEventListener('beforeunload', () => {
+            this.handlePageClose();
+        });
+
+        // Iniciar tracking
+        this.resumeTracking();
+        
+        // Actualizar display cada segundo
+        setInterval(() => this.updateDisplay(), CONFIG.DISPLAY_UPDATE_INTERVAL);
+        
+        // Guardar automáticamente cada 30 segundos mientras está activo
+        setInterval(() => {
+            if (this.isTracking) {
+                this.saveCurrentTime(false);
+            }
+        }, CONFIG.SAVE_INTERVAL);
+        
+        console.log('✅ TimeTracker inicializado');
+    }
+
+    /**
+     * Maneja cambio de visibilidad de la pestaña
+     * @param {boolean} isVisible - true si la pestaña es visible, false si está oculta
+     */
+    handleTabChange(isVisible) {
+        if (isVisible) {
+            console.log('👁️ Pestaña visible - REANUDANDO tracking (ACTIVO)');
+            this.resumeTracking();
+        } else {
+            console.log('👁️ Pestaña oculta - DETENIENDO tracking (INACTIVO)');
+            this.stopTracking(true); // true = es inactivo por cambio de pestaña
+        }
+    }
+
+    /**
+     * Maneja el cierre de la página
+     */
+    handlePageClose() {
+        console.log('🚪 Cerrando página - Guardando como INACTIVO');
+        this.saveCurrentTime(true); // true = es final (inactivo)
+    }
+
+    /**
+     * Reanuda el tracking (ACTIVO)
+     */
+    resumeTracking() {
+        if (this.isTracking) return;
+        
+        this.isTracking = true;
+        this.startTime = Date.now();
+        console.log('▶️ Tracking ACTIVO reanudado');
+    }
+
+    /**
+     * Detiene el tracking y guarda como INACTIVO
+     * @param {boolean} esInactivo - true si es por inactividad (cambio/cierre de pestaña)
+     */
+    stopTracking(esInactivo = false) {
+        if (!this.isTracking) return;
+        
+        this.isTracking = false;
+        this.saveCurrentTime(esInactivo);
+        console.log(`⏸️ Tracking detenido - ${esInactivo ? 'INACTIVO' : 'pausa temporal'}`);
+    }
+
+    /**
+     * Guarda el tiempo actual
+     * @param {boolean} esInactivo - true si es un registro de inactividad
+     */
+    saveCurrentTime(esInactivo = false) {
+        const now = Date.now();
+        const tiempoTranscurrido = now - this.startTime;
+        
+        // Solo acumulamos tiempo si estábamos en estado activo
+        if (this.isTracking) {
+            this.totalActiveTime += tiempoTranscurrido;
+        }
+        
+        this.startTime = now;
+        this.updateDisplay();
+        
+        // Guardar en servidor
+        this.saveToServer(esInactivo);
+    }
+
+    updateDisplay() {
+        if (!this.displayElement) return;
+        
+        const currentTotal = this.totalActiveTime + 
+            (this.isTracking ? (Date.now() - this.startTime) : 0);
+        const seconds = Math.floor(currentTotal / 1000);
+        
+        this.displayElement.textContent = seconds;
+    }
+
+    getCurrentTime() {
+        const total = this.totalActiveTime + 
+            (this.isTracking ? (Date.now() - this.startTime) : 0);
+        return Math.floor(total / 1000);
+    }
+
+    /**
+     * Guarda el tiempo en el servidor
+     * @param {boolean} esInactivo - true si es un registro de inactividad
+     */
+    async saveToServer(esInactivo = false) {
+        // Verificar si el usuario está logueado
+        if (!isLoggedInSafe()) return;
+        
+        const user = getCurrentUserSafe();
+        const seconds = this.getCurrentTime();
+        
+        // Determinar el tipo de registro:
+        // - activo = true: el usuario está viendo la clase activamente
+        // - activo = false: el usuario cambió de pestaña o cerró el navegador
+        const activo = !esInactivo;
+        
+        console.log(`⏱️ Guardando: ${seconds}s - ${activo ? 'ACTIVO' : 'INACTIVO'}`);
+        
+        try {
+            const result = await makeRequestSafe('/tiempo-clase/guardar', {
+                claseId: this.claseId,
+                claseNombre: this.claseNombre,
+                tiempoSegundos: seconds,
+                esFinal: esInactivo,
+                activo: activo // ¡NUEVO! Enviamos explícitamente el estado
+            });
+            
+            if (result.success) {
+                console.log(`✅ Tiempo guardado en MongoDB (${activo ? 'ACTIVO' : 'INACTIVO'})`);
+                
+                // Si es inactivo, mostramos un mensaje
+                if (esInactivo) {
+                    this.showMessage('⏸️ Sesión pausada - Has cambiado de pestaña', 'info');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error guardando tiempo:', error);
+            this.saveToLocalStorage(seconds, activo);
+        }
+    }
+
+    saveToLocalStorage(seconds, activo) {
+        const user = getCurrentUserSafe();
+        if (!user) return;
+        
+        const key = `tiempo_backup_${user._id}_${this.claseId}`;
+        const backup = {
+            usuarioId: user._id,
+            claseId: this.claseId,
+            claseNombre: this.claseNombre,
+            tiempo: seconds,
+            activo: activo,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem(key, JSON.stringify(backup));
+        console.log('💾 Backup guardado en localStorage');
+    }
+
+    showMessage(text, type = 'success') {
+        if (!this.messageElement) return;
+        
+        this.messageElement.textContent = text;
+        this.messageElement.className = `status-message ${type}`;
+        this.messageElement.style.display = 'block';
+        
+        setTimeout(() => {
+            this.messageElement.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => {
+                this.messageElement.style.display = 'none';
+                this.messageElement.style.animation = '';
+            }, 300);
+        }, 3000);
+    }
+
+    resetCounter() {
+        this.totalActiveTime = 0;
+        this.startTime = Date.now();
+        this.updateDisplay();
+        console.log('🔄 Contador reiniciado');
+    }
+}
+
+// ============================================
+// CLASE ChatReal (sin cambios)
 // ============================================
 class ChatReal {
     constructor() {
@@ -31,30 +249,18 @@ class ChatReal {
     init() {
         console.log('💬 Inicializando Chat REAL de YouTube...');
         
-        // Obtener el dominio actual (funciona en localhost y producción)
         const domain = window.location.hostname;
-        
         console.log('🌐 Dominio detectado:', domain);
         
-        // Construir URL del chat con el dominio correcto
         const chatUrl = `https://www.youtube.com/live_chat?v=${CONFIG.VIDEO_ID}&embed_domain=${domain}`;
         
-        console.log('🔗 URL del chat:', chatUrl);
-        
-        // Configurar el iframe
         if (this.chatIframe) {
-            // Agregar atributos necesarios
             this.chatIframe.setAttribute('allow', 'autoplay; encrypted-media; clipboard-write');
-            
-            // Establecer la URL
             this.chatIframe.src = chatUrl;
-            
-            // Escuchar eventos
             this.chatIframe.addEventListener('load', () => this.handleLoad());
             this.chatIframe.addEventListener('error', () => this.handleError());
         }
         
-        // Verificar después de 5 segundos
         setTimeout(() => this.checkStatus(), 5000);
     }
 
@@ -68,7 +274,6 @@ class ChatReal {
         console.warn(`⚠️ Error en chat (intento ${this.retryCount}/${this.maxRetries})`);
         
         if (this.retryCount <= this.maxRetries) {
-            // Reintentar después de 2 segundos
             setTimeout(() => {
                 if (this.chatIframe) {
                     this.chatIframe.src = this.chatIframe.src;
@@ -125,198 +330,13 @@ class ChatReal {
     }
 
     checkStatus() {
-        // Verificar si el chat se cargó
         try {
             if (this.chatIframe && this.chatIframe.contentDocument) {
                 console.log('✅ Chat accesible');
             }
         } catch (e) {
-            // Error de CORS esperado - significa que el iframe cargó correctamente
             console.log('✅ Chat cargado (con restricciones CORS normales)');
         }
-    }
-}
-
-// ============================================
-// CLASE TimeTracker - Con guardado en MongoDB
-// ============================================
-class TimeTracker {
-    constructor() {
-        this.startTime = Date.now();
-        this.totalActiveTime = 0;
-        this.inactivityTimer = null;
-        this.isTracking = false;
-        
-        this.displayElement = document.getElementById('tiempoActivo');
-        this.messageElement = document.getElementById('statusMessage');
-        
-        // Obtener parámetros de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        this.claseId = urlParams.get('claseId') || 'clase_stroke_iam';
-        this.claseNombre = urlParams.get('clase') || 'Stroke / IAM';
-        
-        this.init();
-    }
-
-    init() {
-        console.log('⏱️ Inicializando TimeTracker...');
-        console.log(`📚 Clase: ${this.claseNombre} (${this.claseId})`);
-        
-        const activityEvents = [
-            'mousemove', 'keydown', 'scroll', 
-            'click', 'touchstart', 'touchmove'
-        ];
-        
-        activityEvents.forEach(eventType => {
-            document.addEventListener(eventType, () => this.handleUserActivity());
-        });
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.stopTracking();
-            } else {
-                this.resumeTracking();
-            }
-        });
-
-        window.addEventListener('beforeunload', () => {
-            this.saveCurrentTime(true);
-        });
-
-        this.resumeTracking();
-        setInterval(() => this.updateDisplay(), CONFIG.DISPLAY_UPDATE_INTERVAL);
-        
-        console.log('✅ TimeTracker inicializado');
-    }
-
-    handleUserActivity() {
-        if (!this.isTracking) return;
-        
-        if (this.inactivityTimer) {
-            clearTimeout(this.inactivityTimer);
-        }
-        
-        this.inactivityTimer = setTimeout(() => {
-            this.saveCurrentTime();
-        }, CONFIG.INACTIVITY_LIMIT);
-    }
-
-    stopTracking() {
-        if (!this.isTracking) return;
-        
-        this.isTracking = false;
-        this.saveCurrentTime();
-        
-        if (this.inactivityTimer) {
-            clearTimeout(this.inactivityTimer);
-            this.inactivityTimer = null;
-        }
-    }
-
-    resumeTracking() {
-        if (this.isTracking) return;
-        
-        this.isTracking = true;
-        this.startTime = Date.now();
-        this.handleUserActivity();
-    }
-
-    saveCurrentTime(isFinal = false) {
-        const now = Date.now();
-        this.totalActiveTime += (now - this.startTime);
-        this.startTime = now;
-        this.updateDisplay();
-        
-        // Guardar en servidor cada 30 segundos o al final
-        if (isFinal || this.totalActiveTime % 30000 < 1000) {
-            this.saveToServer(isFinal);
-        }
-    }
-
-    updateDisplay() {
-        if (!this.displayElement) return;
-        
-        const currentTotal = this.totalActiveTime + 
-            (this.isTracking ? (Date.now() - this.startTime) : 0);
-        const seconds = Math.floor(currentTotal / 1000);
-        
-        this.displayElement.textContent = seconds;
-    }
-
-    getCurrentTime() {
-        const total = this.totalActiveTime + 
-            (this.isTracking ? (Date.now() - this.startTime) : 0);
-        return Math.floor(total / 1000);
-    }
-
-    async saveToServer(isFinal = false) {
-        // Verificar si el usuario está logueado
-        if (!isLoggedInSafe()) return;
-        
-        const user = getCurrentUserSafe();
-        const seconds = this.getCurrentTime();
-        
-        console.log(`⏱️ ${isFinal ? 'FINAL - ' : ''}Guardando tiempo:`, seconds, 'segundos');
-        
-        try {
-            const result = await makeRequestSafe('/tiempo-clase/guardar', {
-                claseId: this.claseId,
-                claseNombre: this.claseNombre,
-                tiempoSegundos: seconds,
-                esFinal: isFinal
-            });
-            
-            if (result.success) {
-                console.log('✅ Tiempo guardado en MongoDB');
-                if (isFinal) {
-                    this.showMessage('✅ Tiempo total registrado', 'success');
-                }
-            }
-        } catch (error) {
-            console.error('❌ Error guardando tiempo:', error);
-            // Backup en localStorage
-            this.saveToLocalStorage(seconds);
-        }
-    }
-
-    saveToLocalStorage(seconds) {
-        const user = getCurrentUserSafe();
-        if (!user) return;
-        
-        const key = `tiempo_backup_${user._id}_${this.claseId}`;
-        const backup = {
-            usuarioId: user._id,
-            claseId: this.claseId,
-            claseNombre: this.claseNombre,
-            tiempo: seconds,
-            timestamp: new Date().toISOString()
-        };
-        
-        localStorage.setItem(key, JSON.stringify(backup));
-        console.log('💾 Backup guardado en localStorage');
-    }
-
-    showMessage(text, type = 'success') {
-        if (!this.messageElement) return;
-        
-        this.messageElement.textContent = text;
-        this.messageElement.className = `status-message ${type}`;
-        this.messageElement.style.display = 'block';
-        
-        setTimeout(() => {
-            this.messageElement.style.animation = 'fadeOut 0.3s ease forwards';
-            setTimeout(() => {
-                this.messageElement.style.display = 'none';
-                this.messageElement.style.animation = '';
-            }, 300);
-        }, 3000);
-    }
-
-    resetCounter() {
-        this.totalActiveTime = 0;
-        this.startTime = Date.now();
-        this.updateDisplay();
-        console.log('🔄 Contador reiniciado');
     }
 }
 
@@ -389,7 +409,7 @@ function setupURLParams() {
 // ============================================
 
 async function inicializarPagina() {
-    console.log('🚀 Inicializando página con CHAT REAL y MongoDB...');
+    console.log('🚀 Inicializando página con nueva lógica de inactividad...');
     
     showLoading('Verificando acceso...');
     
@@ -421,7 +441,6 @@ async function inicializarPagina() {
         
         hideLoading();
         
-        // Mostrar mensaje de bienvenida
         const msg = document.getElementById('statusMessage');
         if (msg) {
             msg.textContent = '✅ Clase iniciada correctamente';
@@ -464,6 +483,7 @@ document.addEventListener('DOMContentLoaded', inicializarPagina);
 window.debug = {
     tiempo: () => window.timeTracker?.getCurrentTime(),
     reset: () => window.timeTracker?.resetCounter(),
+    estado: () => window.timeTracker?.isTracking ? 'ACTIVO' : 'INACTIVO',
     chat: () => window.chatReal,
     user: () => getCurrentUserSafe()
 };
@@ -471,4 +491,5 @@ window.debug = {
 console.log('🎯 Funciones de debug disponibles:');
 console.log('   debug.tiempo() - Muestra tiempo actual');
 console.log('   debug.reset() - Reinicia contador');
+console.log('   debug.estado() - Muestra ACTIVO/INACTIVO');
 console.log('   debug.user() - Muestra info del usuario');
