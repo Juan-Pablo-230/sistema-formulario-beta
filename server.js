@@ -537,7 +537,7 @@ app.get('/api/clases-historicas/:id', async (req, res) => {
     }
 });
 
-// Crear nueva clase histórica
+// Crear nueva clase histórica - CORREGIDO: Manejo correcto de fechas locales
 app.post('/api/clases-historicas', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
@@ -574,8 +574,28 @@ app.post('/api/clases-historicas', async (req, res) => {
             });
         }
         
-        // Crear fecha manteniendo la hora local
-        const fecha = new Date(fechaClase);
+        // CORRECCIÓN: Crear fecha SIN convertir a UTC
+        // En lugar de new Date(fechaClase) que interpreta como UTC,
+        // creamos la fecha manteniendo la hora local
+        let fecha;
+        
+        // Si fechaClase viene como string ISO (YYYY-MM-DDTHH:mm:ss)
+        if (fechaClase.includes('T')) {
+            const [fechaPart, horaPart] = fechaClase.split('T');
+            const [year, month, day] = fechaPart.split('-').map(Number);
+            const [hour, minute] = horaPart.split(':').map(Number);
+            
+            // Crear fecha en hora local (sin UTC)
+            fecha = new Date(year, month - 1, day, hour, minute, 0);
+        } else {
+            // Si viene solo fecha, usar con hora 00:00 local
+            const [year, month, day] = fechaClase.split('-').map(Number);
+            fecha = new Date(year, month - 1, day, 0, 0, 0);
+        }
+        
+        console.log('📅 Fecha recibida:', fechaClase);
+        console.log('📅 Fecha guardada (local):', fecha.toString());
+        console.log('📅 Fecha guardada (ISO):', fecha.toISOString());
         
         // Determinar el estado (si no viene, por defecto 'activa')
         let estadoFinal = estado || 'activa';
@@ -586,20 +606,20 @@ app.post('/api/clases-historicas', async (req, res) => {
         const nuevaClase = {
             nombre,
             descripcion: descripcion || '',
-            fechaClase: fecha,
+            fechaClase: fecha, // Guardamos la fecha local
             enlaces: enlaces || { youtube: '', powerpoint: '' },
             activa: activaBool, // Para compatibilidad con código anterior
             estado: estadoFinal, // Nuevo campo con 3 estados
             instructores: instructores || [],
             tags: tags || [],
-            fechaCreacion: new Date(),
+            fechaCreacion: new Date(), // Esta sí puede ser UTC para el timestamp
             creadoPor: new ObjectId(userHeader)
         };
         
         const result = await db.collection('clases').insertOne(nuevaClase);
         
         console.log('✅ Clase creada:', result.insertedId);
-        console.log('📅 Fecha guardada:', fecha);
+        console.log('📅 Fecha guardada (local):', fecha.toString());
         console.log('📊 Estado guardado:', estadoFinal);
         
         res.json({ 
@@ -618,7 +638,7 @@ app.post('/api/clases-historicas', async (req, res) => {
     }
 });
 
-// Actualizar clase histórica
+// Actualizar clase histórica - CORREGIDO: Manejo correcto de fechas locales
 app.put('/api/clases-historicas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -656,7 +676,23 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        const fecha = new Date(fechaClase);
+        // CORRECCIÓN: Crear fecha SIN convertir a UTC
+        let fecha;
+        
+        if (fechaClase.includes('T')) {
+            const [fechaPart, horaPart] = fechaClase.split('T');
+            const [year, month, day] = fechaPart.split('-').map(Number);
+            const [hour, minute] = horaPart.split(':').map(Number);
+            
+            // Crear fecha en hora local
+            fecha = new Date(year, month - 1, day, hour, minute, 0);
+        } else {
+            const [year, month, day] = fechaClase.split('-').map(Number);
+            fecha = new Date(year, month - 1, day, 0, 0, 0);
+        }
+        
+        console.log('📅 Fecha actualización recibida:', fechaClase);
+        console.log('📅 Fecha actualización guardada (local):', fecha.toString());
         
         // Determinar el estado
         let estadoFinal = estado || 'activa';
@@ -672,7 +708,7 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
                 estado: estadoFinal,
                 instructores: instructores || [],
                 tags: tags || [],
-                fechaActualizacion: new Date()
+                fechaActualizacion: new Date() // Timestamp en UTC
             }
         };
         
