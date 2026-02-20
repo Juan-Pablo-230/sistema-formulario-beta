@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiempo en Clase - Panel Admin</title>
+    <link rel="stylesheet" href="/css/admin/admin.css">
+    <link rel="stylesheet" href="/css/admin/tiempoenclases.css">
+</head>
+<body>
+    <div class="section-container">
+        <!-- Estadísticas generales -->
+        <div class="stats-grid">
+            <div class="stat-mini-card">
+                <div class="stat-label">Total Registros</div>
+                <div class="stat-value" id="totalRegistros">0</div>
+            </div>
+            <div class="stat-mini-card">
+                <div class="stat-label">Usuarios Distintos</div>
+                <div class="stat-value" id="usuariosDistintos">0</div>
+            </div>
+            <div class="stat-mini-card">
+                <div class="stat-label">Clases Distintas</div>
+                <div class="stat-value" id="clasesDistintas">0</div>
+            </div>
+            <div class="stat-mini-card">
+                <div class="stat-label">Tiempo Total</div>
+                <div class="stat-value" id="tiempoTotal">0</div>
+                <div class="stat-unit">horas</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-container">
+            <div class="filtros-wrapper">
+                <div class="filtro-group">
+                    <label>📅 Clase:</label>
+                    <select id="filtroClase" class="filtro-select">
+                        <option value="todas">Todas las clases</option>
+                    </select>
+                </div>
+                
+                <div class="filtro-group">
+                    <label>📆 Período:</label>
+                    <select id="filtroPeriodo" class="filtro-select">
+                        <option value="todo">Todo</option>
+                        <option value="hoy">Hoy</option>
+                        <option value="semana">Última semana</option>
+                        <option value="mes">Último mes</option>
+                    </select>
+                </div>
+                
+                <div class="filtro-group">
+                    <label>🔍 Buscar:</label>
+                    <input type="text" id="filtroUsuario" class="filtro-input" placeholder="Nombre o legajo...">
+                </div>
+                
+                <div class="filtros-actions">
+                    <button id="refreshBtn" class="btn btn-primary btn-small">
+                        🔄 Actualizar
+                    </button>
+                    <button id="exportBtn" class="btn btn-success btn-small">
+                        📥 Exportar CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de tiempos -->
+        <div class="table-container">
+            <h2>⏱️ Registro de Tiempo en Clase</h2>
+            <div class="table-responsive">
+                <table class="admin-table" id="tablaTiempos">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Usuario</th>
+                            <th>Legajo</th>
+                            <th>Turno</th>
+                            <th>Clase</th>
+                            <th>Tiempo</th>
+                            <th>Última actividad</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tiemposBody">
+                        <tr>
+                            <td colspan="8" class="loading-message">
+                                <div class="spinner"></div>
+                                Cargando registros de tiempo...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para ver detalle de usuario -->
+    <div id="detalleModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="modalTitle">📋 Detalle de Tiempos</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-content" id="detalleModalContent">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin/admin-core.js"></script>
+    <script src="/js/admin/tiempoenclases.js"></script>
+</body>
+</html>

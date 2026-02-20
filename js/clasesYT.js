@@ -1,8 +1,8 @@
 // ============================================
-// clasesYT.js - Versión con CHAT REAL de YouTube
+// clasesYT.js - Versión con CHAT REAL de YouTube y MongoDB
 // ============================================
 
-console.log('🎥 clasesYT.js cargado - Modo CHAT REAL');
+console.log('🎥 clasesYT.js cargado - Modo CHAT REAL con MongoDB');
 
 // ============================================
 // CONFIGURACIÓN
@@ -11,7 +11,8 @@ const CONFIG = {
     VIDEO_ID: 'cb12KmMMDJA',
     INACTIVITY_LIMIT: 5000,
     DISPLAY_UPDATE_INTERVAL: 1000,
-    SAVE_INTERVAL: 30000
+    SAVE_INTERVAL: 30000,
+    MAX_MENSAJES: 50
 };
 
 // ============================================
@@ -33,8 +34,6 @@ class ChatReal {
         // Obtener el dominio actual (funciona en localhost y producción)
         const domain = window.location.hostname;
         
-        // IMPORTANTE: Para pruebas locales, usar localhost
-        // Para producción, usar el dominio real
         console.log('🌐 Dominio detectado:', domain);
         
         // Construir URL del chat con el dominio correcto
@@ -139,7 +138,7 @@ class ChatReal {
 }
 
 // ============================================
-// CLASE TimeTracker (sin cambios)
+// CLASE TimeTracker - Con guardado en MongoDB
 // ============================================
 class TimeTracker {
     constructor() {
@@ -151,11 +150,17 @@ class TimeTracker {
         this.displayElement = document.getElementById('tiempoActivo');
         this.messageElement = document.getElementById('statusMessage');
         
+        // Obtener parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        this.claseId = urlParams.get('claseId') || 'clase_stroke_iam';
+        this.claseNombre = urlParams.get('clase') || 'Stroke / IAM';
+        
         this.init();
     }
 
     init() {
         console.log('⏱️ Inicializando TimeTracker...');
+        console.log(`📚 Clase: ${this.claseNombre} (${this.claseId})`);
         
         const activityEvents = [
             'mousemove', 'keydown', 'scroll', 
@@ -221,6 +226,11 @@ class TimeTracker {
         this.totalActiveTime += (now - this.startTime);
         this.startTime = now;
         this.updateDisplay();
+        
+        // Guardar en servidor cada 30 segundos o al final
+        if (isFinal || this.totalActiveTime % 30000 < 1000) {
+            this.saveToServer(isFinal);
+        }
     }
 
     updateDisplay() {
@@ -238,51 +248,227 @@ class TimeTracker {
             (this.isTracking ? (Date.now() - this.startTime) : 0);
         return Math.floor(total / 1000);
     }
+
+    async saveToServer(isFinal = false) {
+        // Verificar si el usuario está logueado
+        if (!isLoggedInSafe()) return;
+        
+        const user = getCurrentUserSafe();
+        const seconds = this.getCurrentTime();
+        
+        console.log(`⏱️ ${isFinal ? 'FINAL - ' : ''}Guardando tiempo:`, seconds, 'segundos');
+        
+        try {
+            const result = await makeRequestSafe('/tiempo-clase/guardar', {
+                claseId: this.claseId,
+                claseNombre: this.claseNombre,
+                tiempoSegundos: seconds,
+                esFinal: isFinal
+            });
+            
+            if (result.success) {
+                console.log('✅ Tiempo guardado en MongoDB');
+                if (isFinal) {
+                    this.showMessage('✅ Tiempo total registrado', 'success');
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error guardando tiempo:', error);
+            // Backup en localStorage
+            this.saveToLocalStorage(seconds);
+        }
+    }
+
+    saveToLocalStorage(seconds) {
+        const user = getCurrentUserSafe();
+        if (!user) return;
+        
+        const key = `tiempo_backup_${user._id}_${this.claseId}`;
+        const backup = {
+            usuarioId: user._id,
+            claseId: this.claseId,
+            claseNombre: this.claseNombre,
+            tiempo: seconds,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem(key, JSON.stringify(backup));
+        console.log('💾 Backup guardado en localStorage');
+    }
+
+    showMessage(text, type = 'success') {
+        if (!this.messageElement) return;
+        
+        this.messageElement.textContent = text;
+        this.messageElement.className = `status-message ${type}`;
+        this.messageElement.style.display = 'block';
+        
+        setTimeout(() => {
+            this.messageElement.style.animation = 'fadeOut 0.3s ease forwards';
+            setTimeout(() => {
+                this.messageElement.style.display = 'none';
+                this.messageElement.style.animation = '';
+            }, 300);
+        }, 3000);
+    }
+
+    resetCounter() {
+        this.totalActiveTime = 0;
+        this.startTime = Date.now();
+        this.updateDisplay();
+        console.log('🔄 Contador reiniciado');
+    }
 }
 
 // ============================================
-// INICIALIZACIÓN
+// FUNCIONES DE UTILIDAD
+// ============================================
+
+function showLoading(message = 'Cargando...') {
+    const existingOverlay = document.querySelector('.loading-overlay');
+    if (existingOverlay) existingOverlay.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.innerHTML = `
+        <div style="text-align: center; color: white;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 20px; font-size: 1.1em;">${message}</p>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+}
+
+function hideLoading() {
+    const overlay = document.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => overlay.remove(), 300);
+    }
+}
+
+function updateUserInfo() {
+    if (!isLoggedInSafe()) return;
+    
+    const user = getCurrentUserSafe();
+    if (!user) return;
+    
+    const nombreEl = document.getElementById('nombreUsuario');
+    const legajoEl = document.getElementById('legajoUsuario');
+    const turnoEl = document.getElementById('turnoUsuario');
+    
+    if (nombreEl) {
+        nombreEl.textContent = user.apellidoNombre || 'Usuario';
+        
+        if (user.role === 'admin') {
+            nombreEl.innerHTML += ' <span style="background:rgba(102,126,234,0.3); padding:2px 8px; border-radius:12px; font-size:0.8em; margin-left:8px;">👑 Admin</span>';
+        } else if (user.role === 'advanced') {
+            nombreEl.innerHTML += ' <span style="background:rgba(240,147,251,0.3); padding:2px 8px; border-radius:12px; font-size:0.8em; margin-left:8px;">⭐ Avanzado</span>';
+        }
+    }
+    
+    if (legajoEl) legajoEl.textContent = user.legajo || '-';
+    if (turnoEl) turnoEl.textContent = user.turno || '-';
+}
+
+function setupURLParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    const claseParam = urlParams.get('clase');
+    if (claseParam) {
+        const tituloEl = document.getElementById('tituloClase');
+        if (tituloEl) {
+            tituloEl.textContent = decodeURIComponent(claseParam);
+        }
+    }
+}
+
+// ============================================
+// INICIALIZACIÓN PRINCIPAL
 // ============================================
 
 async function inicializarPagina() {
-    console.log('🚀 Inicializando página con CHAT REAL...');
+    console.log('🚀 Inicializando página con CHAT REAL y MongoDB...');
+    
+    showLoading('Verificando acceso...');
     
     try {
+        setupURLParams();
+        
         await waitForAuthSystem();
         
         if (!isLoggedInSafe()) {
+            console.log('🔐 Usuario no logueado, mostrando modal...');
+            hideLoading();
+            
             try {
                 await authSystem.showLoginModal();
             } catch (error) {
+                console.log('❌ Usuario canceló el login');
                 window.location.href = '/index.html';
                 return;
             }
+            
+            showLoading('Cargando clase...');
         }
         
-        // Actualizar información del usuario
-        const user = getCurrentUserSafe();
-        if (user) {
-            document.getElementById('nombreUsuario').textContent = user.apellidoNombre || 'Usuario';
-            document.getElementById('legajoUsuario').textContent = user.legajo || '-';
-            document.getElementById('turnoUsuario').textContent = user.turno || '-';
-        }
+        updateUserInfo();
         
         // Inicializar componentes
         window.timeTracker = new TimeTracker();
         window.chatReal = new ChatReal();
         
-        console.log('✅ Página inicializada');
+        hideLoading();
+        
+        // Mostrar mensaje de bienvenida
+        const msg = document.getElementById('statusMessage');
+        if (msg) {
+            msg.textContent = '✅ Clase iniciada correctamente';
+            msg.className = 'status-message success';
+            msg.style.display = 'block';
+            
+            setTimeout(() => {
+                msg.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => {
+                    msg.style.display = 'none';
+                    msg.style.animation = '';
+                }, 300);
+            }, 3000);
+        }
+        
+        console.log('✅ Página de clase inicializada correctamente');
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error inicializando:', error);
+        
+        hideLoading();
+        
+        const msg = document.getElementById('statusMessage');
+        if (msg) {
+            msg.textContent = '❌ Error al cargar la página: ' + error.message;
+            msg.className = 'status-message error';
+            msg.style.display = 'block';
+            
+            setTimeout(() => {
+                window.location.href = '/index.html';
+            }, 3000);
+        }
     }
 }
 
 // Iniciar
 document.addEventListener('DOMContentLoaded', inicializarPagina);
 
-// Debug
+// Funciones de debug
 window.debug = {
     tiempo: () => window.timeTracker?.getCurrentTime(),
-    chat: () => window.chatReal
+    reset: () => window.timeTracker?.resetCounter(),
+    chat: () => window.chatReal,
+    user: () => getCurrentUserSafe()
 };
+
+console.log('🎯 Funciones de debug disponibles:');
+console.log('   debug.tiempo() - Muestra tiempo actual');
+console.log('   debug.reset() - Reinicia contador');
+console.log('   debug.user() - Muestra info del usuario');
