@@ -1,5 +1,5 @@
 /* ============================================
-   clasesYT.css - Versión CORREGIDA
+   clasesYT.css - Versión con alturas iguales
    ============================================ */
 
 /* ===== CONTENEDOR PRINCIPAL ===== */
@@ -87,9 +87,9 @@
 /* ===== GRID PRINCIPAL ===== */
 .clase-grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr; /* Ajustado para dar más espacio al chat */
+    grid-template-columns: 1.5fr 1fr;
     gap: 25px;
-    min-height: 70vh;
+    align-items: stretch; /* Hace que ambas columnas tengan la misma altura */
 }
 
 /* ===== COLUMNA DE VIDEO ===== */
@@ -100,7 +100,7 @@
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
-    height: fit-content; /* Evita que se estire */
+    height: 100%; /* Ocupa toda la altura de la celda del grid */
 }
 
 .video-wrapper {
@@ -108,7 +108,7 @@
     width: 100%;
     padding-bottom: 56.25%; /* 16:9 */
     background: #000;
-    line-height: 0; /* Elimina espacio extra */
+    line-height: 0;
 }
 
 .video-wrapper iframe {
@@ -124,6 +124,7 @@
     padding: 15px 20px;
     background: #2a2f36;
     border-top: 1px solid #3a3f46;
+    flex-shrink: 0; /* Evita que se comprima */
 }
 
 /* Información de usuario compacta */
@@ -159,7 +160,7 @@
     display: flex;
     flex-direction: column;
     border: 1px solid #3a3f46;
-    height: fit-content; /* Se ajusta al contenido */
+    height: 100%; /* Ocupa toda la altura de la celda del grid */
 }
 
 .chat-header {
@@ -169,6 +170,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0; /* Evita que se comprima */
 }
 
 .chat-header-left {
@@ -194,10 +196,10 @@
     font-weight: 600;
 }
 
-/* Contenedor del iframe del chat */
+/* Contenedor del iframe del chat - AHORA OCUPADA EL ESPACIO RESTANTE */
 .chat-container {
-    width: 100%;
-    height: 600px; /* Altura fija para el chat */
+    flex: 1; /* Ocupa todo el espacio disponible */
+    min-height: 0; /* Importante para flexbox */
     background: #1a1f25;
     overflow: hidden;
 }
@@ -254,10 +256,6 @@
     .clase-grid {
         grid-template-columns: 1.2fr 1fr;
     }
-    
-    .chat-container {
-        height: 500px;
-    }
 }
 
 @media (max-width: 1024px) {
@@ -272,10 +270,7 @@
     
     .chat-column {
         order: 2;
-    }
-    
-    .chat-container {
-        height: 450px;
+        min-height: 500px; /* Altura mínima en móvil */
     }
 }
 
@@ -309,8 +304,8 @@
         gap: 8px;
     }
     
-    .chat-container {
-        height: 400px;
+    .chat-column {
+        min-height: 450px;
     }
 }
 
@@ -355,8 +350,8 @@
         display: none;
     }
     
-    .chat-container {
-        height: 350px;
+    .chat-column {
+        min-height: 400px;
     }
 }
 
@@ -365,8 +360,18 @@
     .clase-container {
         max-width: 1600px;
     }
-    
-    .chat-container {
-        height: 700px;
-    }
+}
+
+/* ===== UTILIDADES ===== */
+.h-100 {
+    height: 100%;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-1 {
+    flex: 1;
 }
