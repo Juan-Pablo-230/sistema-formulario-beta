@@ -66,23 +66,38 @@ class SolicitudesMaterialManager {
     }
 
     mostrarTabla() {
-        const tbody = document.getElementById('solicitudesBody');
-        if (!tbody) return;
+    const tbody = document.getElementById('solicitudesBody');
+    if (!tbody) return;
 
-        const datosFiltrados = this.filtrarDatos();
+    const datosFiltrados = this.filtrarDatos();
 
-        if (datosFiltrados.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="empty-message">
-                        No hay solicitudes para mostrar
-                    </td>
-                </tr>
-            `;
-            return;
+    if (datosFiltrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="empty-message">
+                    No hay solicitudes para mostrar
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = datosFiltrados.map((item, index) => {
+        // Formatear fecha con hour12: false para forzar 24h
+        let fechaFormateada = 'N/A';
+        if (item.fechaSolicitud) {
+            const fecha = new Date(item.fechaSolicitud);
+            fechaFormateada = fecha.toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false // 🔥 ESTO ES LO QUE FALTABA
+            });
         }
-
-        tbody.innerHTML = datosFiltrados.map((item, index) => `
+        
+        return `
             <tr>
                 <td>${index + 1}</td>
                 <td>${item.usuario?.apellidoNombre || 'N/A'}</td>
@@ -90,7 +105,7 @@ class SolicitudesMaterialManager {
                 <td>${this.formatearTurno(item.usuario?.turno || item.turno)}</td>
                 <td>${item.claseNombre || 'N/A'}</td>
                 <td><a href="mailto:${item.usuario?.email || item.email}" class="email-link">${item.usuario?.email || item.email || 'N/A'}</a></td>
-                <td>${item.fechaSolicitud ? new Date(item.fechaSolicitud).toLocaleString('es-AR') : 'N/A'}</td>
+                <td>${fechaFormateada}</td>
                 <td>
                     <div class="material-badge">
                         ${item.youtube ? `<a href="${item.youtube}" target="_blank" class="material-link youtube">▶️ YouTube</a>` : ''}
@@ -98,8 +113,9 @@ class SolicitudesMaterialManager {
                     </div>
                 </td>
             </tr>
-        `).join('');
-    }
+        `;
+    }).join('');
+}
 
     formatearTurno(turno) {
         if (!turno) return '<span class="turno-badge default">No especificado</span>';

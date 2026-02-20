@@ -50,117 +50,131 @@ class GestionClasesManager {
         }
     }
 
-    mostrarLista(filtroTexto = '', filtroEstado = 'todos') {
-        const container = document.getElementById('clasesList');
-        if (!container) return;
+mostrarLista(filtroTexto = '', filtroEstado = 'todos') {
+    const container = document.getElementById('clasesList');
+    if (!container) return;
 
-        let clasesFiltradas = this.data;
-        
-        // Filtrar por texto
-        if (filtroTexto) {
-            const termino = filtroTexto.toLowerCase();
-            clasesFiltradas = clasesFiltradas.filter(c => 
-                c.nombre?.toLowerCase().includes(termino) ||
-                c.descripcion?.toLowerCase().includes(termino) ||
-                (c.instructores && c.instructores.some(i => i.toLowerCase().includes(termino)))
-            );
-        }
-        
-        // Filtrar por estado
-        if (filtroEstado === 'publicadas') {
-            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'publicada');
-        } else if (filtroEstado === 'activas') {
-            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
-        } else if (filtroEstado === 'canceladas') {
-            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'cancelada');
-        }
-
-        if (clasesFiltradas.length === 0) {
-            container.innerHTML = `
-                <div class="empty-message">
-                    No hay clases para mostrar
-                </div>
-            `;
-            return;
-        }
-
-        clasesFiltradas.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
-
-        container.innerHTML = clasesFiltradas.map(clase => {
-            // Determinar el estado
-            const estado = clase.estado || (clase.activa ? 'activa' : 'inactiva');
-            
-            // Verificar si tiene enlaces
-            const tieneYoutube = clase.enlaces?.youtube ? true : false;
-            const tienePowerpoint = clase.enlaces?.powerpoint ? true : false;
-            
-            // Icono y texto según estado
-            let estadoIcono = '';
-            let estadoTexto = '';
-            let estadoClass = '';
-            
-            if (estado === 'publicada') {
-                estadoIcono = '📢';
-                estadoTexto = 'Publicada';
-                estadoClass = 'publicada';
-            } else if (estado === 'activa') {
-                estadoIcono = '✅';
-                estadoTexto = 'Activa';
-                estadoClass = 'activa';
-            } else if (estado === 'cancelada') {
-                estadoIcono = '❌';
-                estadoTexto = 'Cancelada';
-                estadoClass = 'cancelada';
-            } else {
-                estadoIcono = clase.activa ? '✅' : '❌';
-                estadoTexto = clase.activa ? 'Activa' : 'Inactiva';
-                estadoClass = clase.activa ? 'activa' : 'inactiva';
-            }
-            
-            return `
-            <div class="clase-card ${estadoClass}">
-                <div class="clase-header">
-                    <span class="clase-titulo">${clase.nombre}</span>
-                    <span class="clase-estado ${estadoClass}">
-                        ${estadoIcono} ${estadoTexto}
-                    </span>
-                </div>
-                
-                ${clase.descripcion ? `<p class="clase-descripcion">${clase.descripcion}</p>` : ''}
-                
-                <div class="clase-detalles">
-                    <span>📅 ${clase.fechaClase ? new Date(clase.fechaClase).toLocaleString('es-AR') : 'N/A'}</span>
-                    ${clase.instructores?.length ? `<span>👥 ${clase.instructores.join(', ')}</span>` : ''}
-                </div>
-                
-                <div class="clase-enlaces">
-                    ${tieneYoutube ? `
-                        <a href="${clase.enlaces.youtube}" target="_blank" class="material-link youtube" title="Ver en YouTube">
-                            ▶️ YouTube
-                        </a>
-                    ` : ''}
-                    ${tienePowerpoint ? `
-                        <a href="${clase.enlaces.powerpoint}" target="_blank" class="material-link powerpoint" title="Ver presentación">
-                            📊 Presentación
-                        </a>
-                    ` : ''}
-                    ${!tieneYoutube && !tienePowerpoint ? 
-                        '<span class="sin-enlaces">Sin material disponible</span>' : ''}
-                </div>
-                
-                ${clase.tags?.length ? `
-                    <div class="clase-tags">
-                        ${clase.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
-                    </div>
-                ` : ''}
-                
-                <div class="clase-acciones">
-                    <button class="btn-small btn-edit" onclick="gestionClasesManager.editarClase('${clase._id}')">✏️ Editar</button>
-                    <button class="btn-small btn-danger" onclick="gestionClasesManager.eliminarClase('${clase._id}')">🗑️ Eliminar</button>
-                </div>
-            </div>
-        `}).join('');
+    let clasesFiltradas = this.data;
+    
+    // Filtrar por texto
+    if (filtroTexto) {
+        const termino = filtroTexto.toLowerCase();
+        clasesFiltradas = clasesFiltradas.filter(c => 
+            c.nombre?.toLowerCase().includes(termino) ||
+            c.descripcion?.toLowerCase().includes(termino) ||
+            (c.instructores && c.instructores.some(i => i.toLowerCase().includes(termino)))
+        );
     }
+    
+    // Filtrar por estado
+    if (filtroEstado === 'publicadas') {
+        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'publicada');
+    } else if (filtroEstado === 'activas') {
+        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
+    } else if (filtroEstado === 'canceladas') {
+        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'cancelada');
+    }
+
+    if (clasesFiltradas.length === 0) {
+        container.innerHTML = `
+            <div class="empty-message">
+                No hay clases para mostrar
+            </div>
+        `;
+        return;
+    }
+
+    clasesFiltradas.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
+
+    container.innerHTML = clasesFiltradas.map(clase => {
+        // Determinar el estado
+        const estado = clase.estado || (clase.activa ? 'activa' : 'inactiva');
+        
+        // Verificar si tiene enlaces
+        const tieneYoutube = clase.enlaces?.youtube ? true : false;
+        const tienePowerpoint = clase.enlaces?.powerpoint ? true : false;
+        
+        // Formatear fecha con hour12: false para forzar 24h
+        let fechaFormateada = 'N/A';
+        if (clase.fechaClase) {
+            const fecha = new Date(clase.fechaClase);
+            fechaFormateada = fecha.toLocaleString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false // 🔥 FORZAR FORMATO 24h
+            });
+        }
+        
+        // Icono y texto según estado
+        let estadoIcono = '';
+        let estadoTexto = '';
+        let estadoClass = '';
+        
+        if (estado === 'publicada') {
+            estadoIcono = '📢';
+            estadoTexto = 'Publicada';
+            estadoClass = 'publicada';
+        } else if (estado === 'activa') {
+            estadoIcono = '✅';
+            estadoTexto = 'Activa';
+            estadoClass = 'activa';
+        } else if (estado === 'cancelada') {
+            estadoIcono = '❌';
+            estadoTexto = 'Cancelada';
+            estadoClass = 'cancelada';
+        } else {
+            estadoIcono = clase.activa ? '✅' : '❌';
+            estadoTexto = clase.activa ? 'Activa' : 'Inactiva';
+            estadoClass = clase.activa ? 'activa' : 'inactiva';
+        }
+        
+        return `
+        <div class="clase-card ${estadoClass}">
+            <div class="clase-header">
+                <span class="clase-titulo">${clase.nombre}</span>
+                <span class="clase-estado ${estadoClass}">
+                    ${estadoIcono} ${estadoTexto}
+                </span>
+            </div>
+            
+            ${clase.descripcion ? `<p class="clase-descripcion">${clase.descripcion}</p>` : ''}
+            
+            <div class="clase-detalles">
+                <span>📅 ${fechaFormateada}</span>
+                ${clase.instructores?.length ? `<span>👥 ${clase.instructores.join(', ')}</span>` : ''}
+            </div>
+            
+            <div class="clase-enlaces">
+                ${tieneYoutube ? `
+                    <a href="${clase.enlaces.youtube}" target="_blank" class="material-link youtube" title="Ver en YouTube">
+                        ▶️ YouTube
+                    </a>
+                ` : ''}
+                ${tienePowerpoint ? `
+                    <a href="${clase.enlaces.powerpoint}" target="_blank" class="material-link powerpoint" title="Ver presentación">
+                        📊 Presentación
+                    </a>
+                ` : ''}
+                ${!tieneYoutube && !tienePowerpoint ? 
+                    '<span class="sin-enlaces">Sin material disponible</span>' : ''}
+            </div>
+            
+            ${clase.tags?.length ? `
+                <div class="clase-tags">
+                    ${clase.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+                </div>
+            ` : ''}
+            
+            <div class="clase-acciones">
+                <button class="btn-small btn-edit" onclick="gestionClasesManager.editarClase('${clase._id}')">✏️ Editar</button>
+                <button class="btn-small btn-danger" onclick="gestionClasesManager.eliminarClase('${clase._id}')">🗑️ Eliminar</button>
+            </div>
+        </div>
+    `}).join('');
+}
 
     // En la función guardarClase(), asegurar que la fecha se envía en formato correcto
 async guardarClase(event) {
