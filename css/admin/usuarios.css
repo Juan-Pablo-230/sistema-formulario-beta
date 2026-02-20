@@ -522,6 +522,136 @@
     vertical-align: middle;
 }
 
+/* Añadir al final del archivo o en la sección de estadísticas */
+
+/* Estilos para las tarjetas de estadísticas en el modal */
+.stats-grid-mini {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.stat-mini-card {
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.stat-mini-card .stat-value {
+    font-size: var(--font-size-xxl);
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.stat-mini-card .stat-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
+}
+
+/* Estilos para los badges de tipo en el historial */
+.tipo-badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-lg);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tipo-badge.inscripcion {
+    background: rgba(66, 133, 244, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(66, 133, 244, 0.3);
+}
+
+.tipo-badge.solicitud {
+    background: rgba(52, 168, 83, 0.1);
+    color: var(--success-500);
+    border: 1px solid rgba(52, 168, 83, 0.3);
+}
+
+/* Estilos para los enlaces de material en la tabla */
+.material-links-mini {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.material-link-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-size: var(--font-size-xs);
+    transition: all var(--transition-fast);
+}
+
+.material-link-mini.youtube {
+    background: #ff0000;
+    color: white;
+}
+
+.material-link-mini.youtube:hover {
+    background: #cc0000;
+    transform: translateY(-1px);
+}
+
+.material-link-mini.powerpoint {
+    background: #d24726;
+    color: white;
+}
+
+.material-link-mini.powerpoint:hover {
+    background: #b33e1f;
+    transform: translateY(-1px);
+}
+
+/* Ajustes para la tabla del historial */
+#historialModal table {
+    font-size: var(--font-size-sm);
+}
+
+#historialModal th {
+    white-space: nowrap;
+}
+
+#historialModal td {
+    vertical-align: middle;
+}
+
+/* Tooltip mejorado para el botón */
+.btn-info[title] {
+    position: relative;
+}
+
+/* Responsive para el modal */
+@media (max-width: 768px) {
+    .stats-grid-mini {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    #historialModal table {
+        font-size: var(--font-size-xs);
+    }
+    
+    #historialModal th,
+    #historialModal td {
+        padding: var(--spacing-sm);
+    }
+    
+    .material-link-mini {
+        font-size: var(--font-size-xs);
+        padding: 1px 4px;
+    }
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }

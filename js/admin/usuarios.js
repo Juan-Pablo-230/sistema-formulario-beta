@@ -5,12 +5,14 @@ class UsuariosManager {
     constructor() {
         this.data = [];
         this.inscripcionesData = []; // Para almacenar todas las inscripciones
+        this.solicitudesData = []; // Para almacenar todas las solicitudes de material
         this.init();
     }
 
     async init() {
         await this.cargarDatos();
         await this.cargarInscripciones(); // Cargar inscripciones para el historial
+        await this.cargarSolicitudes(); // Cargar solicitudes de material para el historial
         this.setupEventListeners();
     }
 
@@ -45,19 +47,48 @@ class UsuariosManager {
         }
     }
 
-    // Método para contar asistencias de un usuario
-    contarAsistenciasUsuario(usuarioId) {
-        if (!this.inscripcionesData || this.inscripcionesData.length === 0) {
-            return 0;
+    // Método para cargar todas las solicitudes de material
+    async cargarSolicitudes() {
+        try {
+            console.log('📥 Cargando solicitudes de material para historial...');
+            const result = await authSystem.makeRequest('/material-historico/solicitudes', null, 'GET');
+            
+            if (result.success && result.data) {
+                this.solicitudesData = result.data;
+                console.log(`✅ ${this.solicitudesData.length} solicitudes de material cargadas para historial`);
+            } else {
+                console.warn('⚠️ No se pudieron cargar las solicitudes de material');
+                this.solicitudesData = [];
+            }
+        } catch (error) {
+            console.error('❌ Error cargando solicitudes de material:', error);
+            this.solicitudesData = [];
+        }
+    }
+
+    // Método para contar el total de actividades de un usuario (inscripciones + solicitudes)
+    contarActividadesUsuario(usuarioId) {
+        let total = 0;
+        
+        // Contar inscripciones
+        if (this.inscripcionesData && this.inscripcionesData.length > 0) {
+            const inscripciones = this.inscripcionesData.filter(ins => 
+                (ins.usuario && ins.usuario._id === usuarioId) || 
+                (ins.usuarioId === usuarioId)
+            );
+            total += inscripciones.length;
         }
         
-        const asistencias = this.inscripcionesData.filter(ins => {
-            const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
-                            (ins.usuarioId === usuarioId);
-            return coincide;
-        });
+        // Contar solicitudes de material
+        if (this.solicitudesData && this.solicitudesData.length > 0) {
+            const solicitudes = this.solicitudesData.filter(sol => 
+                sol.usuarioId === usuarioId || 
+                (sol.usuario && sol.usuario._id === usuarioId)
+            );
+            total += solicitudes.length;
+        }
         
-        return asistencias.length;
+        return total;
     }
 
     actualizarUI() {
@@ -94,7 +125,7 @@ class UsuariosManager {
         const esAdmin = authSystem.isAdmin();
 
         tbody.innerHTML = usuariosFiltrados.map((usuario, index) => {
-            const asistencias = this.contarAsistenciasUsuario(usuario._id);
+            const totalActividades = this.contarActividadesUsuario(usuario._id);
 
             return `
             <tr>
@@ -116,12 +147,12 @@ class UsuariosManager {
                             <div class="action-buttons">
                                 <button class="btn-small btn-edit" onclick="usuariosManager.editarUsuario('${usuario._id}')" title="Editar usuario">✏️</button>
                                 <button class="btn-small btn-danger" onclick="usuariosManager.eliminarUsuario('${usuario._id}')" title="Eliminar usuario">🗑️</button>
-                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">📋</button>
+                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial completo (${totalActividades} actividades)">📋</button>
                             </div>
                         ` : `
                             <span class="read-only">Solo lectura</span>
                             <div class="action-buttons">
-                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial de asistencia (${asistencias} asistencias)">📋</button>
+                                <button class="btn-small btn-info" onclick="usuariosManager.verHistorial('${usuario._id}')" title="Ver historial completo (${totalActividades} actividades)">📋</button>
                             </div>
                         `}
                     </div>
@@ -130,43 +161,78 @@ class UsuariosManager {
         `}).join('');
     }
 
-    // Método para ver el historial
+    // Método para ver el historial completo (inscripciones + solicitudes)
     async verHistorial(usuarioId) {
         const usuario = this.data.find(u => u._id === usuarioId);
         if (!usuario) return;
 
-        const asistencias = this.inscripcionesData.filter(ins => {
-            const coincide = (ins.usuario && ins.usuario._id === usuarioId) || 
-                            (ins.usuarioId === usuarioId);
-            return coincide;
-        });
+        // Obtener inscripciones del usuario
+        const inscripciones = this.inscripcionesData.filter(ins => 
+            (ins.usuario && ins.usuario._id === usuarioId) || 
+            (ins.usuarioId === usuarioId)
+        );
 
-        const total = asistencias.length;
+        // Obtener solicitudes de material del usuario
+        const solicitudes = this.solicitudesData.filter(sol => 
+            sol.usuarioId === usuarioId || 
+            (sol.usuario && sol.usuario._id === usuarioId)
+        );
 
-        asistencias.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        const totalInscripciones = inscripciones.length;
+        const totalSolicitudes = solicitudes.length;
+        const totalActividades = totalInscripciones + totalSolicitudes;
 
-        let asistenciasHTML = '';
-        if (asistencias.length === 0) {
-            asistenciasHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene asistencias registradas.</p>';
+        // Ordenar por fecha más reciente (combinando ambos arrays)
+        const todasActividades = [
+            ...inscripciones.map(ins => ({
+                tipo: 'inscripcion',
+                clase: ins.clase || 'N/A',
+                turno: ins.turno || 'N/A',
+                fecha: ins.fecha,
+                detalles: ins,
+                material: null
+            })),
+            ...solicitudes.map(sol => ({
+                tipo: 'solicitud',
+                clase: sol.claseNombre || sol.clase || 'N/A',
+                turno: sol.turno || (sol.usuario?.turno) || 'N/A',
+                fecha: sol.fechaSolicitud,
+                detalles: sol,
+                youtube: sol.youtube,
+                powerpoint: sol.powerpoint
+            }))
+        ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        // Generar HTML para las actividades
+        let actividadesHTML = '';
+        if (todasActividades.length === 0) {
+            actividadesHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene actividades registradas.</p>';
         } else {
-            asistenciasHTML = `
+            actividadesHTML = `
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
                         <thead>
                             <tr style="background: var(--accent-color); color: white;">
                                 <th style="padding: 12px; text-align: left;">#</th>
+                                <th style="padding: 12px; text-align: left;">Tipo</th>
                                 <th style="padding: 12px; text-align: left;">Clase</th>
                                 <th style="padding: 12px; text-align: left;">Turno</th>
-                                <th style="padding: 12px; text-align: left;">Fecha de Inscripción</th>
+                                <th style="padding: 12px; text-align: left;">Fecha</th>
+                                <th style="padding: 12px; text-align: left;">Detalles</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${asistencias.map((ins, index) => `
+                            ${todasActividades.map((act, index) => `
                                 <tr style="border-bottom: 1px solid var(--border-color);">
                                     <td style="padding: 12px;">${index + 1}</td>
-                                    <td style="padding: 12px; font-weight: 500;">${ins.clase || 'N/A'}</td>
-                                    <td style="padding: 12px;">${ins.turno || 'N/A'}</td>
-                                    <td style="padding: 12px;">${ins.fecha ? new Date(ins.fecha).toLocaleString('es-AR', {
+                                    <td style="padding: 12px;">
+                                        ${act.tipo === 'inscripcion' 
+                                            ? '<span style="background: rgba(66, 133, 244, 0.1); color: var(--accent-color); padding: 4px 8px; border-radius: 12px;">📋 Inscripción</span>' 
+                                            : '<span style="background: rgba(52, 168, 83, 0.1); color: var(--success-500); padding: 4px 8px; border-radius: 12px;">📚 Solicitud Material</span>'}
+                                    </td>
+                                    <td style="padding: 12px; font-weight: 500;">${act.clase}</td>
+                                    <td style="padding: 12px;">${act.turno}</td>
+                                    <td style="padding: 12px;">${act.fecha ? new Date(act.fecha).toLocaleString('es-AR', {
                                         day: '2-digit',
                                         month: '2-digit',
                                         year: 'numeric',
@@ -174,6 +240,14 @@ class UsuariosManager {
                                         minute: '2-digit',
                                         hour12: false
                                     }) : 'N/A'}</td>
+                                    <td style="padding: 12px;">
+                                        ${act.tipo === 'solicitud' && (act.youtube || act.powerpoint) ? `
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                ${act.youtube ? `<a href="${act.youtube}" target="_blank" class="material-link youtube" style="font-size: 0.8em; padding: 2px 6px;">▶️ YouTube</a>` : ''}
+                                                ${act.powerpoint ? `<a href="${act.powerpoint}" target="_blank" class="material-link powerpoint" style="font-size: 0.8em; padding: 2px 6px;">📊 PPT</a>` : ''}
+                                            </div>
+                                        ` : act.tipo === 'inscripcion' ? 'Inscripción a clase' : 'Sin detalles'}
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -182,6 +256,7 @@ class UsuariosManager {
             `;
         }
 
+        // Generar resumen de estadísticas
         const content = `
             <div style="padding: 20px;">
                 <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-container) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
@@ -196,15 +271,25 @@ class UsuariosManager {
                     </div>
                 </div>
                 
-                <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
-                    <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Total de asistencias</div>
-                    <strong style="font-size: 2.5em;">${total}</strong>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div style="background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Total Actividades</div>
+                        <strong style="font-size: 2em;">${totalActividades}</strong>
+                    </div>
+                    <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Inscripciones</div>
+                        <strong style="font-size: 2em;">${totalInscripciones}</strong>
+                    </div>
+                    <div style="background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Solicitudes Material</div>
+                        <strong style="font-size: 2em;">${totalSolicitudes}</strong>
+                    </div>
                 </div>
                 
                 <h4 style="margin-bottom: 15px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                    <span>📅</span> Detalle de clases registradas
+                    <span>📅</span> Historial completo de actividades
                 </h4>
-                ${asistenciasHTML}
+                ${actividadesHTML}
             </div>
         `;
 
@@ -213,7 +298,7 @@ class UsuariosManager {
         const title = document.getElementById('historialModalTitle');
         
         if (modal && contentDiv && title) {
-            title.textContent = `📋 Historial de Asistencia`;
+            title.textContent = `📋 Historial de Actividades - ${usuario.apellidoNombre}`;
             contentDiv.innerHTML = content;
             modal.style.display = 'flex';
         }
@@ -340,6 +425,7 @@ class UsuariosManager {
             this.cerrarModal();
             await this.cargarDatos();
             await this.cargarInscripciones();
+            await this.cargarSolicitudes();
             alert(userId ? '✅ Usuario actualizado' : '✅ Usuario creado');
         } catch (error) {
             alert('❌ Error: ' + error.message);
@@ -388,6 +474,7 @@ class UsuariosManager {
             
             await this.cargarDatos();
             await this.cargarInscripciones();
+            await this.cargarSolicitudes();
             
             btn.textContent = originalText;
             btn.disabled = false;
