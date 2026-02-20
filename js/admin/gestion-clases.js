@@ -162,80 +162,82 @@ class GestionClasesManager {
         `}).join('');
     }
 
-    async guardarClase(event) {
-        event.preventDefault();
-        
-        // Validar campos requeridos
-        const nombre = document.getElementById('claseNombre')?.value.trim();
-        const fecha = document.getElementById('claseFecha')?.value;
-        const youtube = document.getElementById('claseYoutube')?.value.trim();
-        const powerpoint = document.getElementById('clasePowerpoint')?.value.trim();
-        
-        // Validaciones
-        if (!nombre) {
-            this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
-            return;
-        }
-        
-        if (!fecha) {
-            this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
-            return;
-        }
-        
-        const hora = document.getElementById('claseHora')?.value || '10:00';
-        const fechaCompleta = `${fecha}T${hora}:00`;
-        
-        // Procesar instructores
-        const instructores = document.getElementById('claseInstructores')?.value
-            ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()).filter(i => i)
-            : [];
-        
-        // Procesar tags
-        const tags = document.getElementById('claseTags')?.value
-            ? document.getElementById('claseTags').value.split(',').map(t => t.trim()).filter(t => t)
-            : [];
-        
-        // Obtener el estado del selector
-        const estadoSelect = document.getElementById('claseEstado');
-        const estado = estadoSelect ? estadoSelect.value : 'activa';
-        
-        // Preparar datos en el formato que espera el servidor
-        const claseData = {
-            nombre: nombre,
-            descripcion: document.getElementById('claseDescripcion')?.value || '',
-            fechaClase: fechaCompleta,
-            enlaces: {
-                youtube: youtube || '',
-                powerpoint: powerpoint || ''
-            },
-            estado: estado, // Enviamos el estado explícitamente
-            instructores: instructores,
-            tags: tags
-        };
-        
-        console.log('📤 Enviando datos al servidor:', JSON.stringify(claseData, null, 2));
-        
-        try {
-            let response;
-            if (this.editandoId) {
-                // Actualizar clase existente
-                response = await authSystem.makeRequest(`/clases-historicas/${this.editandoId}`, claseData, 'PUT');
-                this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
-            } else {
-                // Crear nueva clase
-                response = await authSystem.makeRequest('/clases-historicas', claseData);
-                this.mostrarMensaje('✅ Clase creada correctamente', 'success');
-            }
-            
-            console.log('✅ Respuesta del servidor:', response);
-            
-            this.cancelarEdicion();
-            await this.cargarDatos();
-        } catch (error) {
-            console.error('❌ Error detallado:', error);
-            this.mostrarMensaje('❌ Error: ' + error.message, 'error');
-        }
+    // En la función guardarClase(), asegurar que la fecha se envía en formato correcto
+async guardarClase(event) {
+    event.preventDefault();
+    
+    // Validar campos requeridos
+    const nombre = document.getElementById('claseNombre')?.value.trim();
+    const fecha = document.getElementById('claseFecha')?.value;
+    const youtube = document.getElementById('claseYoutube')?.value.trim();
+    const powerpoint = document.getElementById('clasePowerpoint')?.value.trim();
+    
+    // Validaciones
+    if (!nombre) {
+        this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+        return;
     }
+    
+    if (!fecha) {
+        this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+        return;
+    }
+    
+    const hora = document.getElementById('claseHora')?.value || '10:00';
+    // Asegurar formato YYYY-MM-DDTHH:mm:ss
+    const fechaCompleta = `${fecha}T${hora}:00`;
+    
+    console.log('📤 Enviando fecha al servidor:', fechaCompleta);
+    
+    // Procesar instructores
+    const instructores = document.getElementById('claseInstructores')?.value
+        ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()).filter(i => i)
+        : [];
+    
+    // Procesar tags
+    const tags = document.getElementById('claseTags')?.value
+        ? document.getElementById('claseTags').value.split(',').map(t => t.trim()).filter(t => t)
+        : [];
+    
+    // Obtener el estado del selector
+    const estadoSelect = document.getElementById('claseEstado');
+    const estado = estadoSelect ? estadoSelect.value : 'activa';
+    
+    // Preparar datos en el formato que espera el servidor
+    const claseData = {
+        nombre: nombre,
+        descripcion: document.getElementById('claseDescripcion')?.value || '',
+        fechaClase: fechaCompleta,
+        enlaces: {
+            youtube: youtube || '',
+            powerpoint: powerpoint || ''
+        },
+        estado: estado,
+        instructores: instructores,
+        tags: tags
+    };
+    
+    console.log('📤 Enviando datos al servidor:', JSON.stringify(claseData, null, 2));
+    
+    try {
+        let response;
+        if (this.editandoId) {
+            response = await authSystem.makeRequest(`/clases-historicas/${this.editandoId}`, claseData, 'PUT');
+            this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
+        } else {
+            response = await authSystem.makeRequest('/clases-historicas', claseData);
+            this.mostrarMensaje('✅ Clase creada correctamente', 'success');
+        }
+        
+        console.log('✅ Respuesta del servidor:', response);
+        
+        this.cancelarEdicion();
+        await this.cargarDatos();
+    } catch (error) {
+        console.error('❌ Error detallado:', error);
+        this.mostrarMensaje('❌ Error: ' + error.message, 'error');
+    }
+}
 
     editarClase(id) {
         const clase = this.data.find(c => c._id === id);
