@@ -1,8 +1,8 @@
 // ============================================
-// clasesYT.js - Versión con inactividad SOLO por cambio/cierre de pestaña
+// clasesYT.js - Versión CORREGIDA con acumulación de tiempo
 // ============================================
 
-console.log('🎥 clasesYT.js cargado - Inactividad solo por cambio/cierre de pestaña');
+console.log('🎥 clasesYT.js cargado - Versión CORREGIDA');
 
 // ============================================
 // CONFIGURACIÓN
@@ -10,19 +10,23 @@ console.log('🎥 clasesYT.js cargado - Inactividad solo por cambio/cierre de pe
 const CONFIG = {
     VIDEO_ID: 'cb12KmMMDJA',
     DISPLAY_UPDATE_INTERVAL: 1000,
-    SAVE_INTERVAL: 30000, // Guardar cada 30 segundos mientras está activo
+    SAVE_INTERVAL: 30000, // Guardar cada 30 segundos
     MAX_MENSAJES: 50
 };
 
 // ============================================
-// CLASE TimeTracker - NUEVA VERSIÓN
+// CLASE TimeTracker - VERSIÓN CORREGIDA
 // ============================================
 class TimeTracker {
     constructor() {
-        this.startTime = Date.now();
+        // TIEMPO TOTAL ACUMULADO (esto persiste siempre)
         this.totalActiveTime = 0;
-        this.isTracking = false;
-        this.lastSaveTime = Date.now();
+        
+        // Tiempo de la sesión actual (se reinicia al volver)
+        this.sessionStartTime = null;
+        
+        // Estado actual
+        this.isActive = true; // Comienza activo
         
         this.displayElement = document.getElementById('tiempoActivo');
         this.messageElement = document.getElementById('statusMessage');
@@ -32,14 +36,60 @@ class TimeTracker {
         this.claseId = urlParams.get('claseId') || 'clase_stroke_iam';
         this.claseNombre = urlParams.get('clase') || 'Stroke / IAM';
         
+        // Cargar tiempo guardado en localStorage (por si acaso)
+        this.cargarTiempoGuardado();
+        
         this.init();
     }
 
+    /**
+     * Carga el tiempo guardado en localStorage (respaldo)
+     */
+    cargarTiempoGuardado() {
+        try {
+            const user = getCurrentUserSafe();
+            if (!user) return;
+            
+            const key = `tiempo_total_${user._id}_${this.claseId}`;
+            const guardado = localStorage.getItem(key);
+            
+            if (guardado) {
+                const data = JSON.parse(guardado);
+                this.totalActiveTime = data.totalActiveTime || 0;
+                console.log(`💾 Tiempo recuperado de localStorage: ${this.totalActiveTime}s`);
+            }
+        } catch (error) {
+            console.error('Error cargando tiempo guardado:', error);
+        }
+    }
+
+    /**
+     * Guarda el tiempo en localStorage (respaldo)
+     */
+    guardarTiempoLocal() {
+        try {
+            const user = getCurrentUserSafe();
+            if (!user) return;
+            
+            const key = `tiempo_total_${user._id}_${this.claseId}`;
+            localStorage.setItem(key, JSON.stringify({
+                totalActiveTime: this.totalActiveTime,
+                lastUpdate: new Date().toISOString()
+            }));
+        } catch (error) {
+            console.error('Error guardando tiempo local:', error);
+        }
+    }
+
     init() {
-        console.log('⏱️ Inicializando TimeTracker...');
+        console.log('⏱️ Inicializando TimeTracker CORREGIDO...');
         console.log(`📚 Clase: ${this.claseNombre} (${this.claseId})`);
+        console.log(`⏱️ Tiempo acumulado inicial: ${this.totalActiveTime}s`);
         
-        // Evento para cuando la página deja de ser visible (cambio de pestaña)
+        // Iniciar la sesión actual
+        this.sessionStartTime = Date.now();
+        
+        // Evento para cambio de visibilidad de la pestaña
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 this.handleTabChange(false); // Salió de la pestaña -> INACTIVO
@@ -53,15 +103,12 @@ class TimeTracker {
             this.handlePageClose();
         });
 
-        // Iniciar tracking
-        this.resumeTracking();
-        
         // Actualizar display cada segundo
         setInterval(() => this.updateDisplay(), CONFIG.DISPLAY_UPDATE_INTERVAL);
         
-        // Guardar automáticamente cada 30 segundos mientras está activo
+        // Guardar automáticamente cada 30 segundos
         setInterval(() => {
-            if (this.isTracking) {
+            if (this.isActive) {
                 this.saveCurrentTime(false);
             }
         }, CONFIG.SAVE_INTERVAL);
@@ -71,15 +118,39 @@ class TimeTracker {
 
     /**
      * Maneja cambio de visibilidad de la pestaña
-     * @param {boolean} isVisible - true si la pestaña es visible, false si está oculta
+     * @param {boolean} isVisible - true si la pestaña es visible
      */
     handleTabChange(isVisible) {
         if (isVisible) {
-            console.log('👁️ Pestaña visible - REANUDANDO tracking (ACTIVO)');
-            this.resumeTracking();
+            // VOLVIÓ A LA PESTAÑA
+            console.log('👁️ Pestaña visible - REANUDANDO');
+            
+            // Actualizar el tiempo total con lo que se acumuló en la sesión anterior
+            if (this.sessionStartTime) {
+                const tiempoSesion = Date.now() - this.sessionStartTime;
+                // NO sumamos aquí porque ya se sumó al salir
+            }
+            
+            // Iniciar nueva sesión
+            this.sessionStartTime = Date.now();
+            this.isActive = true;
+            
+            console.log(`⏱️ Tiempo total actual: ${this.totalActiveTime}s`);
+            
         } else {
-            console.log('👁️ Pestaña oculta - DETENIENDO tracking (INACTIVO)');
-            this.stopTracking(true); // true = es inactivo por cambio de pestaña
+            // SALE DE LA PESTAÑA
+            console.log('👁️ Pestaña oculta - GUARDANDO como INACTIVO');
+            
+            // Calcular tiempo de esta sesión
+            if (this.sessionStartTime) {
+                const tiempoSesion = Date.now() - this.sessionStartTime;
+                this.totalActiveTime += tiempoSesion;
+                console.log(`⏱️ Sesión actual: ${Math.floor(tiempoSesion / 1000)}s - Total acumulado: ${Math.floor(this.totalActiveTime / 1000)}s`);
+            }
+            
+            // Guardar como INACTIVO
+            this.saveCurrentTime(true); // true = es inactivo
+            this.isActive = false;
         }
     }
 
@@ -87,86 +158,81 @@ class TimeTracker {
      * Maneja el cierre de la página
      */
     handlePageClose() {
-        console.log('🚪 Cerrando página - Guardando como INACTIVO');
-        this.saveCurrentTime(true); // true = es final (inactivo)
-    }
-
-    /**
-     * Reanuda el tracking (ACTIVO)
-     */
-    resumeTracking() {
-        if (this.isTracking) return;
+        console.log('🚪 Cerrando página - Guardando final');
         
-        this.isTracking = true;
-        this.startTime = Date.now();
-        console.log('▶️ Tracking ACTIVO reanudado');
-    }
-
-    /**
-     * Detiene el tracking y guarda como INACTIVO
-     * @param {boolean} esInactivo - true si es por inactividad (cambio/cierre de pestaña)
-     */
-    stopTracking(esInactivo = false) {
-        if (!this.isTracking) return;
-        
-        this.isTracking = false;
-        this.saveCurrentTime(esInactivo);
-        console.log(`⏸️ Tracking detenido - ${esInactivo ? 'INACTIVO' : 'pausa temporal'}`);
-    }
-
-    /**
-     * Guarda el tiempo actual
-     * @param {boolean} esInactivo - true si es un registro de inactividad
-     */
-    saveCurrentTime(esInactivo = false) {
-        const now = Date.now();
-        const tiempoTranscurrido = now - this.startTime;
-        
-        // Solo acumulamos tiempo si estábamos en estado activo
-        if (this.isTracking) {
-            this.totalActiveTime += tiempoTranscurrido;
+        // Calcular tiempo de la última sesión
+        if (this.sessionStartTime && this.isActive) {
+            const tiempoSesion = Date.now() - this.sessionStartTime;
+            this.totalActiveTime += tiempoSesion;
         }
         
-        this.startTime = now;
-        this.updateDisplay();
+        // Guardar como INACTIVO final
+        this.saveCurrentTime(true);
+        
+        // Limpiar localStorage
+        try {
+            const user = getCurrentUserSafe();
+            if (user) {
+                const key = `tiempo_total_${user._id}_${this.claseId}`;
+                localStorage.removeItem(key);
+            }
+        } catch (error) {}
+    }
+
+    /**
+     * Guarda el tiempo actual en el servidor
+     * @param {boolean} esInactivo - true si es por inactividad
+     */
+    async saveCurrentTime(esInactivo = false) {
+        const seconds = Math.floor(this.totalActiveTime / 1000);
+        
+        console.log(`⏱️ Guardando: ${seconds}s - ${esInactivo ? 'INACTIVO' : 'ACTIVO'}`);
         
         // Guardar en servidor
-        this.saveToServer(esInactivo);
+        await this.saveToServer(seconds, esInactivo);
+        
+        // Respaldo en localStorage
+        this.guardarTiempoLocal();
     }
 
     updateDisplay() {
         if (!this.displayElement) return;
         
-        const currentTotal = this.totalActiveTime + 
-            (this.isTracking ? (Date.now() - this.startTime) : 0);
-        const seconds = Math.floor(currentTotal / 1000);
+        let currentTotal = this.totalActiveTime;
         
+        // Si está activo, sumar el tiempo de la sesión actual
+        if (this.isActive && this.sessionStartTime) {
+            currentTotal += (Date.now() - this.sessionStartTime);
+        }
+        
+        const seconds = Math.floor(currentTotal / 1000);
         this.displayElement.textContent = seconds;
     }
 
     getCurrentTime() {
-        const total = this.totalActiveTime + 
-            (this.isTracking ? (Date.now() - this.startTime) : 0);
-        return Math.floor(total / 1000);
+        let currentTotal = this.totalActiveTime;
+        
+        if (this.isActive && this.sessionStartTime) {
+            currentTotal += (Date.now() - this.sessionStartTime);
+        }
+        
+        return Math.floor(currentTotal / 1000);
     }
 
     /**
      * Guarda el tiempo en el servidor
+     * @param {number} seconds - Tiempo total en segundos
      * @param {boolean} esInactivo - true si es un registro de inactividad
      */
-    async saveToServer(esInactivo = false) {
-        // Verificar si el usuario está logueado
+    async saveToServer(seconds, esInactivo = false) {
         if (!isLoggedInSafe()) return;
         
         const user = getCurrentUserSafe();
-        const seconds = this.getCurrentTime();
         
-        // Determinar el tipo de registro:
-        // - activo = true: el usuario está viendo la clase activamente
-        // - activo = false: el usuario cambió de pestaña o cerró el navegador
-        const activo = !esInactivo;
+        // activo = true SOLO cuando está en la pestaña Y no es inactivo
+        const activo = this.isActive && !esInactivo;
         
-        console.log(`⏱️ Guardando: ${seconds}s - ${activo ? 'ACTIVO' : 'INACTIVO'}`);
+        console.log(`📤 Enviando a MongoDB: ${seconds}s - ${activo ? 'ACTIVO' : 'INACTIVO'}`);
         
         try {
             const result = await makeRequestSafe('/tiempo-clase/guardar', {
@@ -174,39 +240,19 @@ class TimeTracker {
                 claseNombre: this.claseNombre,
                 tiempoSegundos: seconds,
                 esFinal: esInactivo,
-                activo: activo // ¡NUEVO! Enviamos explícitamente el estado
+                activo: activo
             });
             
             if (result.success) {
-                console.log(`✅ Tiempo guardado en MongoDB (${activo ? 'ACTIVO' : 'INACTIVO'})`);
+                console.log(`✅ Guardado OK (${activo ? 'ACTIVO' : 'INACTIVO'})`);
                 
-                // Si es inactivo, mostramos un mensaje
                 if (esInactivo) {
-                    this.showMessage('⏸️ Sesión pausada - Has cambiado de pestaña', 'info');
+                    this.showMessage('⏸️ Sesión pausada', 'info');
                 }
             }
         } catch (error) {
-            console.error('❌ Error guardando tiempo:', error);
-            this.saveToLocalStorage(seconds, activo);
+            console.error('❌ Error guardando:', error);
         }
-    }
-
-    saveToLocalStorage(seconds, activo) {
-        const user = getCurrentUserSafe();
-        if (!user) return;
-        
-        const key = `tiempo_backup_${user._id}_${this.claseId}`;
-        const backup = {
-            usuarioId: user._id,
-            claseId: this.claseId,
-            claseNombre: this.claseNombre,
-            tiempo: seconds,
-            activo: activo,
-            timestamp: new Date().toISOString()
-        };
-        
-        localStorage.setItem(key, JSON.stringify(backup));
-        console.log('💾 Backup guardado en localStorage');
     }
 
     showMessage(text, type = 'success') {
@@ -227,8 +273,9 @@ class TimeTracker {
 
     resetCounter() {
         this.totalActiveTime = 0;
-        this.startTime = Date.now();
+        this.sessionStartTime = Date.now();
         this.updateDisplay();
+        this.guardarTiempoLocal();
         console.log('🔄 Contador reiniciado');
     }
 }
@@ -409,7 +456,7 @@ function setupURLParams() {
 // ============================================
 
 async function inicializarPagina() {
-    console.log('🚀 Inicializando página con nueva lógica de inactividad...');
+    console.log('🚀 Inicializando página con TimeTracker CORREGIDO...');
     
     showLoading('Verificando acceso...');
     
@@ -457,6 +504,7 @@ async function inicializarPagina() {
         }
         
         console.log('✅ Página de clase inicializada correctamente');
+        console.log(`⏱️ Tiempo inicial: ${window.timeTracker.getCurrentTime()}s`);
         
     } catch (error) {
         console.error('❌ Error inicializando:', error);
@@ -479,17 +527,25 @@ async function inicializarPagina() {
 // Iniciar
 document.addEventListener('DOMContentLoaded', inicializarPagina);
 
-// Funciones de debug
+// Funciones de debug MEJORADAS
 window.debug = {
-    tiempo: () => window.timeTracker?.getCurrentTime(),
+    tiempo: () => {
+        const t = window.timeTracker;
+        if (!t) return 'No inicializado';
+        return {
+            total: t.totalActiveTime,
+            sesion: t.sessionStartTime ? Date.now() - t.sessionStartTime : 0,
+            actual: t.getCurrentTime(),
+            activo: t.isActive
+        };
+    },
     reset: () => window.timeTracker?.resetCounter(),
-    estado: () => window.timeTracker?.isTracking ? 'ACTIVO' : 'INACTIVO',
+    estado: () => window.timeTracker?.isActive ? 'ACTIVO' : 'INACTIVO',
     chat: () => window.chatReal,
     user: () => getCurrentUserSafe()
 };
 
 console.log('🎯 Funciones de debug disponibles:');
-console.log('   debug.tiempo() - Muestra tiempo actual');
+console.log('   debug.tiempo() - Muestra detalles del tiempo');
 console.log('   debug.reset() - Reinicia contador');
 console.log('   debug.estado() - Muestra ACTIVO/INACTIVO');
-console.log('   debug.user() - Muestra info del usuario');
