@@ -64,7 +64,9 @@ app.get('/api/debug/routes', (req, res) => {
             '/api/material/solicitudes',
             '/api/admin/usuarios',
             '/api/debug/mongo',
-            '/api/env-check'
+            '/api/env-check',
+            '/api/clases-historicas',
+            '/api/material-historico/solicitudes'
         ],
         timestamp: new Date().toISOString()
     });
@@ -433,9 +435,23 @@ app.get('/api/inscripciones/estadisticas', async (req, res) => {
         const ultimas = inscripciones.slice(0, 10).map(insc => {
             let fechaFormateada = 'Fecha no disponible';
             if (insc.fecha instanceof Date) {
-                fechaFormateada = insc.fecha.toLocaleString({hour12: false}, 'es-AR');
+                fechaFormateada = insc.fecha.toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
             } else if (typeof insc.fecha === 'string') {
-                fechaFormateada = new Date(insc.fecha).toLocaleString({hour12: false}, 'es-AR');
+                fechaFormateada = new Date(insc.fecha).toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
             }
             
             return {
@@ -468,19 +484,18 @@ app.get('/api/inscripciones/estadisticas', async (req, res) => {
 
 // ==================== RUTAS DE CLASES HISTÓRICAS (GESTIÓN VISUAL) ====================
 
-// Obtener todas las clases históricas (ACTIVAS E INACTIVAS)
+// Obtener todas las clases históricas
 app.get('/api/clases-historicas', async (req, res) => {
     try {
         console.log('📥 GET /api/clases-historicas');
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        // Eliminar el filtro { activa: { $ne: false } } para mostrar TODAS las clases
         const clases = await db.collection('clases')
-            .find({}) // ← Sin filtro, muestra todas (activas e inactivas)
+            .find({})
             .sort({ fechaClase: -1 })
             .toArray();
         
-        console.log(`✅ ${clases.length} clases históricas obtenidas`);
+        console.log(`✅ ${clases.length} clases obtenidas`);
         
         res.json({ 
             success: true, 
@@ -488,7 +503,7 @@ app.get('/api/clases-historicas', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('❌ Error obteniendo clases históricas:', error);
+        console.error('❌ Error obteniendo clases:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Error interno del servidor',
@@ -537,7 +552,7 @@ app.get('/api/clases-historicas/:id', async (req, res) => {
     }
 });
 
-// Crear nueva clase histórica - CORREGIDO: Manejo correcto de fechas locales
+// Crear nueva clase histórica - CORREGIDO: Sumar 3 horas para ART -> UTC
 app.post('/api/clases-historicas', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
@@ -566,7 +581,7 @@ app.post('/api/clases-historicas', async (req, res) => {
         
         const { nombre, descripcion, fechaClase, enlaces, instructores, tags, estado } = req.body;
         
-        // Validaciones básicas - solo nombre y fecha son obligatorios
+        // Validaciones básicas
         if (!nombre || !fechaClase) {
             return res.status(400).json({ 
                 success: false, 
@@ -574,52 +589,60 @@ app.post('/api/clases-historicas', async (req, res) => {
             });
         }
         
-        // CORRECCIÓN: Crear fecha SIN convertir a UTC
-        // En lugar de new Date(fechaClase) que interpreta como UTC,
-        // creamos la fecha manteniendo la hora local
+        console.log('📅 Fecha recibida (ART - string):', fechaClase);
+        
+        // CORRECCIÓN: Parsear la fecha y sumar 3 horas para convertir ART a UTC
         let fecha;
         
-        // Si fechaClase viene como string ISO (YYYY-MM-DDTHH:mm:ss)
         if (fechaClase.includes('T')) {
+            // Formato esperado: YYYY-MM-DDTHH:mm:ss
             const [fechaPart, horaPart] = fechaClase.split('T');
             const [year, month, day] = fechaPart.split('-').map(Number);
             const [hour, minute] = horaPart.split(':').map(Number);
             
-            // Crear fecha en hora local (sin UTC)
-            fecha = new Date(year, month - 1, day, hour, minute, 0);
+            // Verificar que los valores sean números válidos
+            if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+                throw new Error('Formato de fecha inválido');
+            }
+            
+            // Sumar 3 horas para convertir de ART a UTC
+            // Argentina es GMT-3, por lo que ART = UTC-3
+            // Para convertir ART a UTC: UTC = ART + 3
+            const horaUTC = hour + 3;
+            
+            // Crear fecha en UTC
+            // Nota: Los meses en JavaScript van de 0-11, por eso restamos 1 al mes
+            fecha = new Date(Date.UTC(year, month - 1, day, horaUTC, minute, 0));
+            
+            console.log(`⏰ Hora ART: ${hour}:${minute} -> Hora UTC: ${horaUTC}:${minute}`);
         } else {
-            // Si viene solo fecha, usar con hora 00:00 local
+            // Si solo viene fecha, asumir 00:00 ART
             const [year, month, day] = fechaClase.split('-').map(Number);
-            fecha = new Date(year, month - 1, day, 0, 0, 0);
+            fecha = new Date(Date.UTC(year, month - 1, day, 3, 0, 0)); // 00:00 ART = 03:00 UTC
         }
         
-        console.log('📅 Fecha recibida:', fechaClase);
-        console.log('📅 Fecha guardada (local):', fecha.toString());
-        console.log('📅 Fecha guardada (ISO):', fecha.toISOString());
+        console.log('📅 Fecha guardada (UTC):', fecha.toISOString());
         
-        // Determinar el estado (si no viene, por defecto 'activa')
+        // Determinar el estado
         let estadoFinal = estado || 'activa';
-        
-        // Por compatibilidad, también guardamos activa como booleano
         const activaBool = estadoFinal === 'activa' || estadoFinal === 'publicada';
         
         const nuevaClase = {
             nombre,
             descripcion: descripcion || '',
-            fechaClase: fecha, // Guardamos la fecha local
+            fechaClase: fecha,
             enlaces: enlaces || { youtube: '', powerpoint: '' },
-            activa: activaBool, // Para compatibilidad con código anterior
-            estado: estadoFinal, // Nuevo campo con 3 estados
+            activa: activaBool,
+            estado: estadoFinal,
             instructores: instructores || [],
             tags: tags || [],
-            fechaCreacion: new Date(), // Esta sí puede ser UTC para el timestamp
+            fechaCreacion: new Date(),
             creadoPor: new ObjectId(userHeader)
         };
         
         const result = await db.collection('clases').insertOne(nuevaClase);
         
         console.log('✅ Clase creada:', result.insertedId);
-        console.log('📅 Fecha guardada (local):', fecha.toString());
         console.log('📊 Estado guardado:', estadoFinal);
         
         res.json({ 
@@ -638,7 +661,7 @@ app.post('/api/clases-historicas', async (req, res) => {
     }
 });
 
-// Actualizar clase histórica - CORREGIDO: Manejo correcto de fechas locales
+// Actualizar clase histórica - CORREGIDO: Sumar 3 horas para ART -> UTC
 app.put('/api/clases-historicas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -676,23 +699,36 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        // CORRECCIÓN: Crear fecha SIN convertir a UTC
+        console.log('📅 Fecha actualización recibida (ART - string):', fechaClase);
+        
+        // CORRECCIÓN: Parsear la fecha y sumar 3 horas para convertir ART a UTC
         let fecha;
         
         if (fechaClase.includes('T')) {
+            // Formato esperado: YYYY-MM-DDTHH:mm:ss
             const [fechaPart, horaPart] = fechaClase.split('T');
             const [year, month, day] = fechaPart.split('-').map(Number);
             const [hour, minute] = horaPart.split(':').map(Number);
             
-            // Crear fecha en hora local
-            fecha = new Date(year, month - 1, day, hour, minute, 0);
+            // Verificar que los valores sean números válidos
+            if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+                throw new Error('Formato de fecha inválido');
+            }
+            
+            // Sumar 3 horas para convertir de ART a UTC
+            const horaUTC = hour + 3;
+            
+            // Crear fecha en UTC
+            fecha = new Date(Date.UTC(year, month - 1, day, horaUTC, minute, 0));
+            
+            console.log(`⏰ Hora ART: ${hour}:${minute} -> Hora UTC: ${horaUTC}:${minute}`);
         } else {
+            // Si solo viene fecha, asumir 00:00 ART
             const [year, month, day] = fechaClase.split('-').map(Number);
-            fecha = new Date(year, month - 1, day, 0, 0, 0);
+            fecha = new Date(Date.UTC(year, month - 1, day, 3, 0, 0));
         }
         
-        console.log('📅 Fecha actualización recibida:', fechaClase);
-        console.log('📅 Fecha actualización guardada (local):', fecha.toString());
+        console.log('📅 Fecha guardada (UTC):', fecha.toISOString());
         
         // Determinar el estado
         let estadoFinal = estado || 'activa';
@@ -708,7 +744,7 @@ app.put('/api/clases-historicas/:id', async (req, res) => {
                 estado: estadoFinal,
                 instructores: instructores || [],
                 tags: tags || [],
-                fechaActualizacion: new Date() // Timestamp en UTC
+                fechaActualizacion: new Date()
             }
         };
         
@@ -770,7 +806,6 @@ app.delete('/api/clases-historicas/:id', async (req, res) => {
             });
         }
         
-        // ✅ CORREGIDO: Especificar la colección 'clases'
         const result = await db.collection('clases').deleteOne({
             _id: new ObjectId(id)
         });

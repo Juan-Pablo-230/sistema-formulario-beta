@@ -60,7 +60,8 @@
                     
                     <div class="form-group">
                         <label>Hora</label>
-                        <input type="time" id="claseHora" value="10:00" class="form-control">
+                        <input type="time" id="claseHora" value="10:00" class="form-control" step="60">
+                        <small class="field-info">Formato 24 horas (ej: 14:30 para 2:30 PM)</small>
                     </div>
                 </div>
                 
@@ -69,7 +70,7 @@
                     <textarea id="claseDescripcion" rows="2" class="form-control" placeholder="Breve descripción de la clase..."></textarea>
                 </div>
                 
-                <!-- Selector de Estado de la Clase - CON ID CORRECTO -->
+                <!-- Selector de Estado de la Clase -->
                 <div class="form-group">
                     <label>Estado de la Clase <span class="required">*</span></label>
                     <select id="claseEstado" class="form-control" required>
