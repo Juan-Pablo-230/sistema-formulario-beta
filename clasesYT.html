@@ -4,21 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clase en Vivo - Sistema de Inscripciones</title>
-    
-    <!-- CSS del sistema principal -->
     <link rel="stylesheet" href="/css/styles.css">
-    <!-- CSS específico de la página de clases -->
-    <link rel="stylesheet" href="/css/clasesYT.css">
-    
+    <link rel="stylesheet" href="/css/clasesYT.css">   
     <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
 </head>
 <body>
     <div class="clase-container">
         <!-- Header con información y contador -->
         <header class="clase-header">
-            <h1 class="clase-titulo">
+            <h1 class="clase-titulo" id="tituloPrincipal">
                 <span class="clase-icon">🎥</span>
-                Clase en Vivo: Stroke / IAM
+                Clase en Vivo: Cargando...
             </h1>
             
             <div class="header-info">
@@ -43,12 +39,11 @@
             <!-- Columna del video -->
             <section class="video-column">
                 <div class="video-wrapper" id="videoWrapper">
-                    <!-- Tu iframe de YouTube sin controles -->
+                    <!-- El iframe se cargará dinámicamente con JavaScript -->
                     <iframe 
+                        id="videoIframe"
                         width="560" 
                         height="315" 
-                        src="https://www.youtube-nocookie.com/embed/cb12KmMMDJA?si=LwKpMSJkgnySkyoQ&amp;controls=0&autoplay=1" 
-                        title="YouTube video player" 
                         frameborder="0" 
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
                         referrerpolicy="strict-origin-when-cross-origin" 
@@ -83,10 +78,6 @@
                     </div>
                 </div>
                 
-                <!-- 
-                    CHAT REAL DE YOUTUBE
-                    El parámetro embed_domain se actualiza automáticamente con JavaScript
-                -->
                 <div class="chat-container" id="chatContainer">
                     <iframe 
                         id="chatIframe"
@@ -100,13 +91,10 @@
         </div>
     </div>
 
-    <!-- Mensaje flotante para notificaciones -->
     <div id="statusMessage" class="status-message"></div>
 
-    <!-- Scripts del sistema -->
     <script src="/js/auth.js"></script>
     <script src="/js/formularios.js"></script>
-    <!-- Script específico -->
     <script src="/js/clasesYT.js"></script>
 </body>
 </html>
