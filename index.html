@@ -3,143 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba - Carga de Clases</title>
+    <title>Sistema de Asistencia - Beta</title>
     <style>
-        body { font-family: Arial; padding: 20px; background: #f0f0f0; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .class-card { 
-            background: white; 
-            padding: 20px; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        /* Estilos mínimos para que se vea */
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .beta-banner {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .beta-banner button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
             cursor: pointer;
         }
-        .class-card:hover { background: #f9f9f9; }
-        .error { color: red; padding: 20px; background: #ffeeee; border-radius: 8px; }
-        .success { color: green; padding: 20px; background: #eeffee; border-radius: 8px; }
-        .info { color: blue; padding: 10px; background: #eef; border-radius: 4px; margin: 5px 0; }
+        .classes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .class-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border: 2px solid transparent;
+            text-align: center;
+        }
+        .class-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        .class-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .class-card p {
+            color: #666;
+            margin: 5px 0;
+        }
+        .class-date {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: #667eea20;
+            color: #667eea;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .loading-classes {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            grid-column: 1 / -1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Modo Diagnóstico - Carga de Clases</h1>
-        <p>Abre la consola del navegador (F12) para ver toda la información</p>
-        
-        <div id="output"></div>
-        <div id="clases-container"></div>
+        <!-- Banner -->
+        <div class="beta-banner">
+            ⚠️ Versión BETA
+            <button onclick="this.parentElement.remove()">✕</button>
+        </div>
+
+        <!-- Header -->
+        <header style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+            <h1>Sistema de inscripciones - Beta</h1>
+            <p>Seleccione la clase para registrar la inscripción</p>
+        </header>
+
+        <!-- Grid de clases -->
+        <div class="classes-grid" id="dynamic-classes-grid">
+            <div class="loading-classes">Cargando clases...</div>
+        </div>
     </div>
 
     <script>
-        console.log('='.repeat(50));
-        console.log('🔍 INICIANDO DIAGNÓSTICO DE CLASES');
-        console.log('='.repeat(50));
-        
-        const output = document.getElementById('output');
-        const container = document.getElementById('clases-container');
-        
-        async function probarCarga() {
-            console.log('📋 Versión del navegador:', navigator.userAgent);
-            console.log('📍 URL actual:', window.location.href);
+        async function cargarClases() {
+            const grid = document.getElementById('dynamic-classes-grid');
             
             try {
-                // Paso 1: Probar health check
-                console.log('\n📡 PASO 1: Probando health check...');
-                const healthCheck = await fetch('/api/health');
-                const healthData = await healthCheck.json();
-                console.log('✅ Health check response:', healthData);
-                
-                // Paso 2: Probar endpoint de clases
-                console.log('\n📡 PASO 2: Solicitando clases publicadas...');
-                console.log('URL completa:', window.location.origin + '/api/clases-publicas/publicadas');
-                
                 const response = await fetch('/api/clases-publicas/publicadas');
-                console.log('📊 Status de respuesta:', response.status, response.statusText);
-                console.log('Headers:', {
-                    'content-type': response.headers.get('content-type'),
-                    'content-length': response.headers.get('content-length')
-                });
+                const result = await response.json();
                 
-                const textResponse = await response.text();
-                console.log('📦 Respuesta RAW (primeros 500 chars):', textResponse.substring(0, 500));
-                
-                // Intentar parsear JSON
-                let result;
-                try {
-                    result = JSON.parse(textResponse);
-                    console.log('✅ JSON parseado correctamente');
-                } catch (e) {
-                    console.error('❌ Error parseando JSON:', e.message);
-                    console.log('Contenido que no es JSON:', textResponse);
-                    throw new Error('La respuesta no es JSON válido');
-                }
-                
-                console.log('\n📊 PASO 3: Analizando datos:');
-                console.log('result.success:', result.success);
-                console.log('result.data type:', typeof result.data);
-                console.log('result.data length:', result.data ? result.data.length : 'N/A');
-                
-                if (result.data && Array.isArray(result.data)) {
-                    console.log(`\n📚 ${result.data.length} clases encontradas:`);
-                    
-                    if (result.data.length === 0) {
-                        console.log('⚠️ No hay clases en la base de datos');
-                        output.innerHTML = '<div class="info">No hay clases en la base de datos</div>';
-                    } else {
-                        result.data.forEach((clase, index) => {
-                            console.log(`\n--- CLASE ${index + 1} ---`);
-                            console.log('ID:', clase._id);
-                            console.log('Nombre:', clase.nombre);
-                            console.log('Descripción:', clase.descripcion);
-                            console.log('Fecha:', clase.fechaClase);
-                            console.log('Instructores:', clase.instructores);
-                            console.log('Lugar:', clase.lugar);
-                            console.log('Enlace formulario:', clase.enlaceFormulario);
-                            console.log('Publicada:', clase.publicada);
-                            console.log('Fecha creación:', clase.fechaCreacion);
-                            console.log('Todas las propiedades:', Object.keys(clase));
-                        });
+                if (result.success && result.data.length > 0) {
+                    let html = '';
+                    result.data.forEach(clase => {
+                        const fecha = new Date(clase.fechaClase).toLocaleDateString('es-AR');
+                        const instructores = clase.instructores ? clase.instructores.join('<br>') : 'Instructor no especificado';
+                        const onclick = clase.enlaceFormulario ? `onclick="window.location.href='${clase.enlaceFormulario}'"` : '';
                         
-                        // Mostrar en la interfaz
-                        container.innerHTML = '<h3>📚 Clases encontradas:</h3>';
-                        result.data.forEach(clase => {
-                            const fecha = clase.fechaClase ? new Date(clase.fechaClase).toLocaleString() : 'Sin fecha';
-                            container.innerHTML += `
-                                <div class="class-card">
-                                    <h3>${clase.nombre || 'Sin nombre'}</h3>
-                                    <p><strong>Instructores:</strong> ${clase.instructores?.join(', ') || 'No especificado'}</p>
-                                    <p><strong>Fecha:</strong> ${fecha}</p>
-                                    <p><strong>Lugar:</strong> ${clase.lugar || 'No especificado'}</p>
-                                    <p><strong>Publicada:</strong> ${clase.publicada ? '✅ Sí' : '❌ No'}</p>
-                                    <p><strong>ID:</strong> ${clase._id}</p>
-                                </div>
-                            `;
-                        });
-                    }
+                        html += `
+                            <div class="class-card" ${onclick}>
+                                <h3>${clase.nombre}</h3>
+                                <p>${instructores}</p>
+                                ${clase.lugar ? `<p><small>📍 ${clase.lugar}</small></p>` : ''}
+                                <span class="class-date">Clase día ${fecha}</span>
+                            </div>
+                        `;
+                    });
+                    grid.innerHTML = html;
                 } else {
-                    console.log('❌ result.data no es un array:', result.data);
-                    output.innerHTML = '<div class="error">Error: Los datos no tienen el formato esperado</div>';
+                    grid.innerHTML = '<div class="loading-classes">No hay clases disponibles</div>';
                 }
-                
-                console.log('\n✅ DIAGNÓSTICO COMPLETADO');
-                
             } catch (error) {
-                console.error('\n❌ ERROR EN DIAGNÓSTICO:');
-                console.error('Error name:', error.name);
-                console.error('Error message:', error.message);
-                console.error('Error stack:', error.stack);
-                
-                output.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                grid.innerHTML = '<div class="loading-classes">Error al cargar las clases</div>';
+                console.error(error);
             }
         }
         
-        // Ejecutar prueba
-        probarCarga();
-        
-        // También mostrar errores de red
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('❌ Promesa rechazada no manejada:', event.reason);
-        });
+        cargarClases();
     </script>
 </body>
 </html>
