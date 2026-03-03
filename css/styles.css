@@ -97,6 +97,51 @@ body {
     padding: 20px;
 }
 
+.beta-banner {
+    background: linear-gradient(135deg, #ff6b6b, #feca57);
+    color: white;
+    text-align: center;
+    padding: 12px 40px 12px 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+    animation: slideDown 0.5s ease;
+    position: relative;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.beta-banner .close-banner {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+    padding: 0 5px;
+}
+
+.beta-banner .close-banner:hover {
+    opacity: 1;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
 .main-header {
     background: var(--gradient-secondary);
     color: white;
