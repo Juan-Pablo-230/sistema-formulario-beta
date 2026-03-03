@@ -274,88 +274,133 @@
     <script src="/js/calendar.js"></script>
     
     <!-- Script para carga dinámica de clases -->
-    <script>
-        // Función para cargar las clases publicadas desde la API
-        async function cargarClasesPublicas() {
-            const gridContainer = document.getElementById('dynamic-classes-grid');
-            if (!gridContainer) return;
 
-            // Mostrar mensaje de carga
-            gridContainer.innerHTML = '<div class="loading-classes">Cargando clases disponibles...</div>';
+    <!-- Script para carga dinámica de clases - VERSIÓN CORREGIDA -->
+<script>
+    // Variable para evitar múltiples cargas
+    let clasesCargadas = false;
+    let timeoutCarga = null;
 
-            try {
-                // 1. Hacer la petición al endpoint de clases publicadas
-                const response = await fetch('/api/clases-publicas/publicadas');
-                const result = await response.json();
+    // Función para cargar las clases publicadas desde la API
+    async function cargarClasesPublicas(forzar = false) {
+        const gridContainer = document.getElementById('dynamic-classes-grid');
+        if (!gridContainer) return;
 
-                if (!result.success || !result.data) {
-                    throw new Error(result.message || 'Error al cargar las clases');
-                }
-
-                const clases = result.data;
-
-                // 2. Si no hay clases, mostrar un mensaje
-                if (clases.length === 0) {
-                    gridContainer.innerHTML = '<div class="no-classes-message">No hay clases publicadas en este momento.</div>';
-                    return;
-                }
-
-                // 3. Generar el HTML para cada clase
-                let htmlString = '';
-                clases.forEach(clase => {
-                    // Formatear la fecha
-                    let fechaFormateada = 'Fecha no disponible';
-                    if (clase.fechaClase) {
-                        const fecha = new Date(clase.fechaClase);
-                        fechaFormateada = fecha.toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        });
-                    }
-
-                    // Formatear el texto de los instructores
-                    let instructoresTexto = 'Instructor no especificado';
-                    if (clase.instructores && clase.instructores.length > 0) {
-                        instructoresTexto = clase.instructores.join('<br>');
-                    }
-
-                    // Determinar la URL del formulario (si existe)
-                    const urlFormulario = clase.enlaceFormulario || '#';
-                    
-                    // Si no hay enlace, la tarjeta no será clickeable
-                    const onclickAttr = clase.enlaceFormulario ? 
-                        `onclick="window.location.href='${clase.enlaceFormulario}'"` : 
-                        '';
-
-                    htmlString += `
-                        <div class="class-card" ${onclickAttr}>
-                            <h3>${clase.nombre}</h3>
-                            <p>${instructoresTexto}</p>
-                            ${clase.lugar ? `<p><small class="class-lugar">${clase.lugar}</small></p>` : ''}
-                            <span class="class-date">Clase día ${fechaFormateada}</span>
-                        </div>
-                    `;
-                });
-
-                gridContainer.innerHTML = htmlString;
-
-            } catch (error) {
-                console.error('❌ Error cargando clases:', error);
-                gridContainer.innerHTML = '<div class="error-message">Error al cargar las clases. Por favor, recargue la página.</div>';
-            }
+        // Si ya cargamos y no forzamos, no hacer nada
+        if (clasesCargadas && !forzar) {
+            console.log('ℹ️ Clases ya cargadas previamente, omitiendo...');
+            return;
         }
 
-        // Cargar clases cuando el DOM esté listo
-        document.addEventListener('DOMContentLoaded', function() {
-            cargarClasesPublicas();
-        });
+        // Cancelar timeout pendiente
+        if (timeoutCarga) {
+            clearTimeout(timeoutCarga);
+        }
 
-        // También recargar cuando el usuario inicia sesión (por si cambian las clases)
-        document.addEventListener('userLoggedIn', function() {
+        console.log('🔄 Iniciando carga de clases...');
+        gridContainer.innerHTML = '<div class="loading-classes">Cargando clases disponibles...</div>';
+
+        try {
+            console.log('📡 Haciendo fetch a /api/clases-publicas/publicadas');
+            const response = await fetch('/api/clases-publicas/publicadas');
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('📦 Datos recibidos:', result);
+
+            if (!result.success || !result.data) {
+                throw new Error(result.message || 'Error al cargar las clases');
+            }
+
+            const clases = result.data;
+            console.log(`📊 Clases encontradas: ${clases.length}`);
+
+            if (clases.length === 0) {
+                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases publicadas en este momento.</div>';
+                clasesCargadas = true;
+                return;
+            }
+
+            // Generar HTML
+            let htmlString = '';
+            clases.forEach(clase => {
+                let fechaFormateada = 'Fecha no disponible';
+                if (clase.fechaClase) {
+                    const fecha = new Date(clase.fechaClase);
+                    fechaFormateada = fecha.toLocaleDateString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                }
+
+                let instructoresTexto = 'Instructor no especificado';
+                if (clase.instructores && clase.instructores.length > 0) {
+                    instructoresTexto = clase.instructores.join('<br>');
+                }
+
+                const urlFormulario = clase.enlaceFormulario || '#';
+                const onclickAttr = clase.enlaceFormulario ? 
+                    `onclick="window.location.href='${clase.enlaceFormulario}'"` : 
+                    '';
+
+                htmlString += `
+                    <div class="class-card" ${onclickAttr}>
+                        <h3>${clase.nombre}</h3>
+                        <p>${instructoresTexto}</p>
+                        ${clase.lugar ? `<p><small class="class-lugar">${clase.lugar}</small></p>` : ''}
+                        <span class="class-date">Clase día ${fechaFormateada}</span>
+                    </div>
+                `;
+            });
+
+            console.log('✅ Actualizando grid con', clases.length, 'tarjetas');
+            gridContainer.innerHTML = htmlString;
+            clasesCargadas = true;
+
+        } catch (error) {
+            console.error('❌ Error cargando clases:', error);
+            gridContainer.innerHTML = '<div class="error-message">Error al cargar las clases. Por favor, recargue la página.</div>';
+        }
+    }
+
+    // Cargar clases cuando el DOM esté listo (una sola vez)
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM cargado, cargando clases...');
+        // Pequeño retraso para asegurar que todo esté listo
+        timeoutCarga = setTimeout(() => {
             cargarClasesPublicas();
+        }, 100);
+    });
+
+    // Escuchar evento de login pero con bandera para no recargar innecesariamente
+    document.addEventListener('userLoggedIn', function() {
+        console.log('👤 Evento userLoggedIn detectado');
+        // Solo recargar si han pasado más de 5 segundos desde la última carga
+        // o si forzamos explícitamente
+        setTimeout(() => {
+            cargarClasesPublicas(true);
+        }, 500);
+    });
+
+    // También escuchar cuando se cierra el modal de login
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                const loginOverlay = document.querySelector('.login-overlay');
+                if (!loginOverlay && clasesCargadas) {
+                    console.log('🔍 Modal de login cerrado, verificando clases...');
+                    // No recargar automáticamente, solo si es necesario
+                }
+            }
         });
-    </script>
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
 
     <script>
         alert("Esta es una versión BETA del sistema de inscripciones. Puede contener errores o funcionalidades incompletas. Por favor, utilícelo con precaución y reporte cualquier problema al desarrollador.");
