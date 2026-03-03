@@ -272,14 +272,52 @@
     <script src="/js/auth.js"></script>
     <script src="/js/profile-updater.js"></script>
     <script src="/js/calendar.js"></script>
-    
-    <!-- Script para carga dinámica de clases -->
 
-    <!-- Script para carga dinámica de clases - VERSIÓN CORREGIDA -->
+    <!-- Script para carga dinámica de clases - CON ORDENAMIENTO Y AUTO-OCULTAMIENTO -->
 <script>
     // Variable para evitar múltiples cargas
     let clasesCargadas = false;
     let timeoutCarga = null;
+    let intervaloVerificacion = null;
+
+    // Función para verificar si una clase debe mostrarse
+    function claseDebeMostrarse(fechaClase) {
+        const ahora = new Date();
+        const fechaClaseDate = new Date(fechaClase);
+        
+        // Comparar solo la fecha (sin hora)
+        const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        const diaClase = new Date(fechaClaseDate.getFullYear(), fechaClaseDate.getMonth(), fechaClaseDate.getDate());
+        
+        // Si la fecha de la clase es anterior a hoy, no mostrar
+        if (diaClase < hoy) {
+            return false;
+        }
+        
+        // Si es el mismo día, verificar si ya pasaron las 20:00 hrs
+        if (diaClase.getTime() === hoy.getTime()) {
+            const horaActual = ahora.getHours();
+            const minutosActual = ahora.getMinutes();
+            const horaActualEnMinutos = horaActual * 60 + minutosActual;
+            const horaLimiteEnMinutos = 20 * 60; // 20:00 = 1200 minutos
+            
+            // Si ya pasaron las 20:00, no mostrar
+            if (horaActualEnMinutos >= horaLimiteEnMinutos) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    // Función para ordenar clases por fecha (más próximas primero)
+    function ordenarClasesPorFecha(clases) {
+        return clases.sort((a, b) => {
+            const fechaA = new Date(a.fechaClase);
+            const fechaB = new Date(b.fechaClase);
+            return fechaA - fechaB; // Orden ascendente (más próxima primero)
+        });
+    }
 
     // Función para cargar las clases publicadas desde la API
     async function cargarClasesPublicas(forzar = false) {
@@ -315,26 +353,41 @@
                 throw new Error(result.message || 'Error al cargar las clases');
             }
 
-            const clases = result.data;
-            console.log(`📊 Clases encontradas: ${clases.length}`);
+            let clases = result.data;
+            console.log(`📊 Clases encontradas (sin filtrar): ${clases.length}`);
 
-            if (clases.length === 0) {
-                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases publicadas en este momento.</div>';
+            // Filtrar clases que deben mostrarse
+            const clasesVisibles = clases.filter(clase => claseDebeMostrarse(clase.fechaClase));
+            console.log(`📊 Clases visibles después de filtrar: ${clasesVisibles.length}`);
+
+            if (clasesVisibles.length === 0) {
+                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases disponibles en este momento.</div>';
                 clasesCargadas = true;
                 return;
             }
 
+            // Ordenar clases por fecha (más próximas primero)
+            const clasesOrdenadas = ordenarClasesPorFecha(clasesVisibles);
+
             // Generar HTML
             let htmlString = '';
-            clases.forEach(clase => {
+            clasesOrdenadas.forEach(clase => {
                 let fechaFormateada = 'Fecha no disponible';
+                let fechaCompleta = null;
+                
                 if (clase.fechaClase) {
                     const fecha = new Date(clase.fechaClase);
+                    fechaCompleta = fecha;
                     fechaFormateada = fecha.toLocaleDateString('es-AR', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                     });
+                    
+                    // Agregar hora si está disponible
+                    if (fecha.getHours() !== 0 || fecha.getMinutes() !== 0) {
+                        fechaFormateada += ` ${fecha.getHours().toString().padStart(2, '0')}:${fecha.getMinutes().toString().padStart(2, '0')}hs`;
+                    }
                 }
 
                 let instructoresTexto = 'Instructor no especificado';
@@ -348,16 +401,16 @@
                     '';
 
                 htmlString += `
-                    <div class="class-card" ${onclickAttr}>
+                    <div class="class-card" ${onclickAttr} data-fecha="${clase.fechaClase}">
                         <h3>${clase.nombre}</h3>
                         <p>${instructoresTexto}</p>
-                        ${clase.lugar ? `<p><small class="class-lugar">${clase.lugar}</small></p>` : ''}
+                        ${clase.lugar ? `<p><small class="class-lugar">📍 ${clase.lugar}</small></p>` : ''}
                         <span class="class-date">Clase día ${fechaFormateada}</span>
                     </div>
                 `;
             });
 
-            console.log('✅ Actualizando grid con', clases.length, 'tarjetas');
+            console.log('✅ Actualizando grid con', clasesOrdenadas.length, 'tarjetas');
             gridContainer.innerHTML = htmlString;
             clasesCargadas = true;
 
@@ -367,20 +420,48 @@
         }
     }
 
-    // Cargar clases cuando el DOM esté listo (una sola vez)
+    // Función para verificar y ocultar clases expiradas
+    function verificarClasesExpiradas() {
+        const gridContainer = document.getElementById('dynamic-classes-grid');
+        if (!gridContainer) return;
+        
+        const clases = document.querySelectorAll('.class-card');
+        let algunaOculta = false;
+        
+        clases.forEach(clase => {
+            const fechaAttr = clase.getAttribute('data-fecha');
+            if (fechaAttr) {
+                if (!claseDebeMostrarse(fechaAttr)) {
+                    clase.style.display = 'none';
+                    algunaOculta = true;
+                }
+            }
+        });
+        
+        // Si se ocultaron todas las clases, mostrar mensaje
+        if (algunaOculta) {
+            const clasesVisibles = document.querySelectorAll('.class-card[style="display: none;"]').length;
+            if (clasesVisibles === 0) {
+                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases disponibles en este momento.</div>';
+            }
+        }
+    }
+
+    // Cargar clases cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', function() {
         console.log('📄 DOM cargado, cargando clases...');
         // Pequeño retraso para asegurar que todo esté listo
         timeoutCarga = setTimeout(() => {
             cargarClasesPublicas();
+            
+            // Configurar verificación periódica cada minuto
+            intervaloVerificacion = setInterval(verificarClasesExpiradas, 60000); // 60000ms = 1 minuto
         }, 100);
     });
 
     // Escuchar evento de login pero con bandera para no recargar innecesariamente
     document.addEventListener('userLoggedIn', function() {
         console.log('👤 Evento userLoggedIn detectado');
-        // Solo recargar si han pasado más de 5 segundos desde la última carga
-        // o si forzamos explícitamente
         setTimeout(() => {
             cargarClasesPublicas(true);
         }, 500);
@@ -393,7 +474,6 @@
                 const loginOverlay = document.querySelector('.login-overlay');
                 if (!loginOverlay && clasesCargadas) {
                     console.log('🔍 Modal de login cerrado, verificando clases...');
-                    // No recargar automáticamente, solo si es necesario
                 }
             }
         });
