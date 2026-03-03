@@ -432,6 +432,92 @@ class UsuariosManager {
         }
     }
 
+    // usuarios.js - Agregar este método dentro de la clase UsuariosManager
+
+// Método para exportar usuarios a CSV
+exportarUsuariosCSV() {
+    try {
+        if (this.data.length === 0) {
+            alert('No hay usuarios para exportar');
+            return;
+        }
+
+        console.log(`📥 Exportando ${this.data.length} usuarios a CSV...`);
+
+        // Definir headers del CSV
+        const headers = [
+            'Apellido y Nombre',
+            'Legajo',
+            'Email',
+            'Turno',
+            'Rol',
+            'Fecha Registro'
+        ];
+
+        // Crear filas de datos
+        const rows = this.data.map(usuario => {
+            // Formatear fecha
+            let fechaRegistro = 'N/A';
+            if (usuario.fechaRegistro) {
+                const fecha = new Date(usuario.fechaRegistro);
+                fechaRegistro = fecha.toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
+
+            // Formatear rol
+            const rolTexto = this.getRoleText(usuario.role);
+
+            return [
+                `"${usuario.apellidoNombre || ''}"`,
+                `"${usuario.legajo || ''}"`,
+                `"${usuario.email || ''}"`,
+                `"${usuario.turno || ''}"`,
+                `"${rolTexto}"`,
+                `"${fechaRegistro}"`
+            ].join(',');
+        });
+
+        // Crear contenido CSV
+        const csvContent = [
+            headers.join(','),
+            ...rows
+        ].join('\n');
+
+        // Crear blob y descargar
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        // Generar nombre de archivo con fecha
+        const fecha = new Date().toISOString().split('T')[0];
+        const nombreArchivo = `usuarios_${fecha}.csv`;
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', nombreArchivo);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpiar URL
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+
+        // Mostrar mensaje de éxito
+        alert(`✅ ${this.data.length} usuarios exportados correctamente a ${nombreArchivo}`);
+
+    } catch (error) {
+        console.error('❌ Error exportando usuarios:', error);
+        alert('❌ Error al exportar usuarios: ' + error.message);
+    }
+}
+
     async eliminarUsuario(usuarioId) {
         if (!authSystem.isAdmin()) {
             alert('Solo administradores pueden eliminar usuarios');
@@ -505,6 +591,25 @@ class UsuariosManager {
             if (e.target === modal) this.cerrarModal();
         });
     }
+
+    // usuarios.js - Dentro del método setupEventListeners()
+
+setupEventListeners() {
+    document.getElementById('createUserBtn')?.addEventListener('click', () => {
+        this.abrirModal();
+    });
+
+    // NUEVO: Event listener para el botón de exportar
+    document.getElementById('exportUsersBtn')?.addEventListener('click', () => {
+        this.exportarUsuariosCSV();
+    });
+
+    document.getElementById('searchUser')?.addEventListener('input', (e) => {
+        this.mostrarTabla(e.target.value);
+    });
+
+    // ... resto del código existente
+}
 
     editarUsuario(usuarioId) {
         const usuario = this.data.find(u => u._id === usuarioId);
