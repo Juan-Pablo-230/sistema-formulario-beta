@@ -1697,13 +1697,11 @@ app.put('/api/clases-publicas/:id/visibilidad', async (req, res) => {
     }
 });
 
-// Obtener una clase pública por ID
 app.get('/api/clases-publicas/:id', async (req, res) => {
     try {
         const { id } = req.params;
         console.log(`📥 GET /api/clases-publicas/${id}`);
         
-        // Validar que el ID sea válido para MongoDB
         if (!ObjectId.isValid(id)) {
             return res.status(400).json({ 
                 success: false, 
@@ -1724,7 +1722,6 @@ app.get('/api/clases-publicas/:id', async (req, res) => {
             });
         }
         
-        // No enviar campos internos si existen
         res.json({ success: true, data: clase });
         
     } catch (error) {
