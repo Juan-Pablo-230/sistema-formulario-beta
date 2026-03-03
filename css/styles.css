@@ -112,41 +112,6 @@ body {
     line-height: 1.5;
 }
 
-/* Alerta para la versión beta con opción de cierre */
-/* Eliminar al enviar a version oficial */
-
-.beta-banner .close-banner {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
-    padding: 0 5px;
-}
-
-.beta-banner .close-banner:hover {
-    opacity: 1;
-}
-
-@keyframes slideDown {
-    from {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* Fin alerta de version beta */
-
 .main-header {
     background: var(--gradient-secondary);
     color: white;
@@ -546,11 +511,13 @@ body {
 /* Animación para las tarjetas cargadas dinámicamente */
 .class-card {
     animation: cardAppear 0.5s ease-out forwards;
-    opacity: 0;
-    transform: translateY(20px);
 }
 
 @keyframes cardAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1912,57 +1879,9 @@ footer {
     }
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.class-card {
-    animation: fadeIn 0.6s ease-out;
-}
-
-.class-card:nth-child(1) { animation-delay: 0.1s; }
-.class-card:nth-child(2) { animation-delay: 0.2s; }
-.class-card:nth-child(3) { animation-delay: 0.3s; }
-.class-card:nth-child(4) { animation-delay: 0.4s; }
-
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-hover);
-}
-
 /* Animación suave para transiciones */
 .user-info, .guest-info {
     animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 /* Responsive para video */
