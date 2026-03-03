@@ -6,7 +6,7 @@ let authSystemReady = false;
 // Función para esperar a que authSystem esté disponible
 function waitForAuthSystem() {
     return new Promise((resolve, reject) => {
-        const maxAttempts = 50; // 5 segundos máximo
+        const maxAttempts = 50;
         let attempts = 0;
         
         const checkAuth = () => {
@@ -16,87 +16,248 @@ function waitForAuthSystem() {
                 authSystemReady = true;
                 resolve(authSystem);
             } else if (attempts >= maxAttempts) {
-                reject(new Error('authSystem no se cargó después de ' + maxAttempts + ' intentos'));
+                reject(new Error('authSystem no se cargó'));
             } else {
-                setTimeout(checkAuth, 100); // Reintentar cada 100ms
+                setTimeout(checkAuth, 100);
             }
         };
-        
         checkAuth();
     });
 }
 
-// Función segura para obtener el usuario actual
+// Funciones seguras
 function getCurrentUserSafe() {
-    if (authSystemReady && authSystem && typeof authSystem.getCurrentUser === 'function') {
-        return authSystem.getCurrentUser();
-    }
-    return null;
+    return authSystemReady && authSystem?.getCurrentUser?.() || null;
 }
 
-// Función segura para verificar si está logueado
 function isLoggedInSafe() {
-    if (authSystemReady && authSystem && typeof authSystem.isLoggedIn === 'function') {
-        return authSystem.isLoggedIn();
-    }
-    return false;
+    return authSystemReady && authSystem?.isLoggedIn?.() || false;
 }
 
-// Función segura para verificar si es admin
 function isAdminSafe() {
-    if (authSystemReady && authSystem && typeof authSystem.isAdmin === 'function') {
-        return authSystem.isAdmin();
-    }
-    return false;
+    return authSystemReady && authSystem?.isAdmin?.() || false;
 }
 
-// Función segura para hacer requests
 async function makeRequestSafe(endpoint, data = null, method = 'POST') {
-    if (authSystemReady && authSystem && typeof authSystem.makeRequest === 'function') {
-        return await authSystem.makeRequest(endpoint, data, method);
+    if (!authSystemReady || !authSystem?.makeRequest) {
+        throw new Error('authSystem no disponible');
     }
-    throw new Error('authSystem no disponible');
+    return await authSystem.makeRequest(endpoint, data, method);
 }
 
-// Función para obtener la clase actual del formulario
+// ============================================
+// FUNCIONES DE CARGA DE DATOS DE LA CLASE
+// ============================================
+
+let FECHA_APERTURA = null;
+let FECHA_CIERRE = null;
+let intervaloVerificacion = null;
+
+// Función para formatear fecha
+function formatearFecha(fecha) {
+    const opciones = { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    };
+    return fecha.toLocaleDateString('es-AR', opciones).replace(',', ' a las') + 'hs';
+}
+
+// Función para cargar datos de la clase desde el ID
+async function cargarDatosClase() {
+    const claseId = window.CLASE_ID;
+    
+    if (!claseId) {
+        console.error('❌ No hay CLASE_ID definido');
+        document.getElementById('claseTitulo').textContent = 'Error: Clase no especificada';
+        return;
+    }
+    
+    try {
+        console.log('📥 Cargando datos de la clase ID:', claseId);
+        
+        document.getElementById('claseTitulo').textContent = 'Cargando información de la clase...';
+        
+        const url = `/api/clases-publicas/${claseId}`;
+        console.log('📡 Fetching URL:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('📦 Datos recibidos:', result);
+        
+        if (!result.success || !result.data) {
+            throw new Error(result.message || 'Error al cargar la clase');
+        }
+        
+        const clase = result.data;
+        console.log('✅ Clase cargada:', clase);
+        
+        // Actualizar título
+        document.getElementById('claseTitulo').textContent = `Clase "${clase.nombre}"`;
+        
+        // Actualizar indicador visible
+        document.getElementById('claseIndicador').style.display = 'block';
+        document.getElementById('claseNombre').textContent = clase.nombre;
+        
+        // Agregar detalles al indicador
+        const detallesDiv = document.getElementById('claseDetalles');
+        let detallesHTML = '';
+        
+        if (clase.instructores?.length > 0) {
+            detallesHTML += `<span><i>👥</i> ${clase.instructores.join(', ')}</span>`;
+        }
+        
+        if (clase.lugar) {
+            detallesHTML += `<span><i>📍</i> ${clase.lugar}</span>`;
+        }
+        
+        if (clase.fechaClase) {
+            const fecha = new Date(clase.fechaClase);
+            const fechaFormateada = fecha.toLocaleDateString('es-AR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            detallesHTML += `<span><i>📅</i> ${fechaFormateada}hs</span>`;
+        }
+        
+        detallesDiv.innerHTML = detallesHTML;
+        
+        // Actualizar campos ocultos
+        document.getElementById('claseId').value = claseId;
+        
+        // Actualizar selector de clase
+        const claseOption = document.getElementById('claseOption');
+        claseOption.value = clase.nombre;
+        claseOption.textContent = clase.nombre;
+        
+        // Guardar enlace de redirección
+        if (clase.enlaceFormulario) {
+            document.getElementById('enlaceRedireccion').value = clase.enlaceFormulario;
+            console.log('🔗 Enlace de redirección:', clase.enlaceFormulario);
+        } else {
+            document.getElementById('enlaceRedireccion').value = '/asistenciapres.html';
+            console.log('🔗 Usando enlace por defecto');
+        }
+        
+        // Autocompletar datos del usuario
+        autocompletarDatosUsuario();
+        
+        // Configurar fechas
+        configurarFechasClase(clase);
+        
+    } catch (error) {
+        console.error('❌ Error cargando clase:', error);
+        document.getElementById('claseTitulo').textContent = 'Error al cargar la clase';
+        
+        const indicador = document.getElementById('claseIndicador');
+        if (indicador) {
+            indicador.style.display = 'block';
+            indicador.innerHTML = `
+                <strong style="color: #dc3545;">❌ Error</strong>
+                <div style="margin-top: 10px; color: var(--text-secondary);">
+                    ${error.message}<br>
+                    <small>URL intentada: /api/clases-publicas/${window.CLASE_ID}</small>
+                </div>
+            `;
+        }
+    }
+}
+
+// Configurar fechas de apertura y cierre
+function configurarFechasClase(clase) {
+    if (clase.fechaApertura && clase.fechaCierre) {
+        FECHA_APERTURA = new Date(clase.fechaApertura);
+        FECHA_CIERRE = new Date(clase.fechaCierre);
+    } else {
+        const fechaClase = new Date(clase.fechaClase);
+        FECHA_APERTURA = new Date(fechaClase);
+        FECHA_APERTURA.setHours(9, 50, 0, 0);
+        FECHA_CIERRE = new Date(fechaClase);
+        FECHA_CIERRE.setHours(11, 0, 0, 0);
+    }
+    
+    actualizarTextoFecha();
+}
+
+// Actualizar texto de fecha
+function actualizarTextoFecha() {
+    const elementoFecha = document.getElementById('deadline');
+    if (elementoFecha && FECHA_CIERRE) {
+        elementoFecha.textContent = `Fecha de cierre: ${formatearFecha(FECHA_CIERRE)} (Hora Argentina)`;
+    }
+}
+
+// Función para autocompletar datos del usuario
+function autocompletarDatosUsuario() {
+    if (isLoggedInSafe()) {
+        const user = getCurrentUserSafe();
+        console.log('👤 Autocompletando con usuario:', user);
+        
+        if (user.apellidoNombre) {
+            document.getElementById('apellidoNombre').value = user.apellidoNombre;
+        }
+        if (user.legajo) {
+            document.getElementById('legajo').value = user.legajo;
+        }
+        if (user.turno) {
+            document.getElementById('turno').value = user.turno;
+        }
+        if (user.email) {
+            document.getElementById('email').value = user.email;
+        }
+    }
+}
+
+// Hacer campos readonly
+function hacerCamposReadonly() {
+    const campos = ['apellidoNombre', 'legajo', 'email'];
+    campos.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) campo.setAttribute('readonly', true);
+    });
+    
+    const selects = ['clase', 'turno'];
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) select.setAttribute('readonly', true);
+    });
+}
+
+// ============================================
+// FUNCIONES DE VALIDACIÓN DE INSCRIPCIÓN
+// ============================================
+
 function obtenerClaseActual() {
-    const selectClase = document.getElementById('clase');
-    if (selectClase && selectClase.value) {
-        return selectClase.value;
-    }
-    return null;
+    return document.getElementById('clase')?.value || null;
 }
 
-// Función mejorada para verificar si el usuario ya completó el formulario
+function obtenerEnlaceRedireccion() {
+    return document.getElementById('enlaceRedireccion')?.value || '/asistenciapres.html';
+}
+
+// Verificar si el usuario ya completó el formulario
 async function usuarioYaCompletoFormulario() {
     try {
         const usuarioActual = getCurrentUserSafe();
         const claseActual = obtenerClaseActual();
         
-        console.log('🔍 Verificando inscripción MongoDB:', {
-            usuario: usuarioActual,
-            clase: claseActual
-        });
-        
-        if (!usuarioActual) {
-            console.log('❌ No hay usuario logueado');
+        if (!usuarioActual || !claseActual) {
             return false;
         }
         
-        if (!claseActual) {
-            console.log('❌ No se pudo determinar la clase actual');
-            return false;
-        }
-        
-        // Verificar si el usuario es admin (los admins pueden ver el formulario siempre)
         if (isAdminSafe()) {
-            console.log('👑 Usuario admin, omitiendo verificación');
-            return false;
-        }
-        
-        // Verificar si tenemos _id del usuario
-        if (!usuarioActual._id) {
-            console.log('❌ Usuario no tiene _id, no se puede verificar');
             return false;
         }
         
@@ -106,96 +267,41 @@ async function usuarioYaCompletoFormulario() {
             'GET'
         );
         
-        console.log('📊 Resultado verificación MongoDB:', result);
-        
-        // Verificar diferentes formatos de respuesta
-        if (result.data && result.data.exists !== undefined) {
-            return result.data.exists;
-        } else if (result.exists !== undefined) {
-            return result.exists;
-        } else {
-            console.log('⚠️ Formato de respuesta inesperado:', result);
-            return false;
-        }
+        return result.data?.exists || false;
         
     } catch (error) {
-        console.error('❌ Error verificando formulario MongoDB:', error);
-        
-        // En caso de error, asumimos que no está completado para no bloquear al usuario
+        console.error('❌ Error verificando:', error);
         return false;
     }
 }
 
-// Función para obtener el enlace de Teams desde el formulario
-function obtenerEnlaceTeams() {
-    const form = document.getElementById('inscripcionForm');
-    if (!form) return null;
-    
-    // Buscar el campo hidden con name="_next"
-    const nextField = form.querySelector('input[name="_next"]');
-    if (nextField && nextField.value) {
-        console.log('🔗 Enlace Teams encontrado:', nextField.value);
-        return nextField.value;
-    }
-    
-    // Alternativa: buscar en el action del formulario
-    if (form.action && form.action.includes('teams.microsoft.com')) {
-        console.log('🔗 Enlace Teams encontrado en action:', form.action);
-        return form.action;
-    }
-    
-    console.warn('⚠️ No se encontró enlace de Teams en el formulario');
-    return null;
-}
-
-// Función mejorada para mostrar mensaje de formulario ya completado
+// Mostrar mensaje de formulario ya completado
 function mostrarFormularioYaCompletado() {
-    console.log('🔄 Mostrando mensaje de formulario ya completado...');
-    
     const container = document.querySelector('.container');
     const form = document.getElementById('inscripcionForm');
     const claseActual = obtenerClaseActual();
-    const enlaceTeams = obtenerEnlaceTeams(); // Obtener enlace dinámico
+    const enlaceRedireccion = obtenerEnlaceRedireccion();
     
-    if (!container) {
-        console.error('❌ No se encontró el contenedor principal');
-        return;
-    }
+    if (!container) return;
     
-    // Ocultar el formulario
-    if (form) {
-        form.style.display = 'none';
-        console.log('✅ Formulario ocultado');
-    }
+    if (form) form.style.display = 'none';
     
-    // Remover mensaje anterior si existe
     const mensajeAnterior = document.querySelector('.mensaje-ya-completado');
-    if (mensajeAnterior) {
-        mensajeAnterior.remove();
-        console.log('✅ Mensaje anterior removido');
-    }
+    if (mensajeAnterior) mensajeAnterior.remove();
     
-    // Crear el contenido del mensaje según si hay enlace disponible
     let contenidoEnlace = '';
-    if (enlaceTeams) {
+    if (enlaceRedireccion && enlaceRedireccion !== '/asistenciapres.html') {
         contenidoEnlace = `
             <p style="color: #667eea; font-size: 1em; margin-bottom: 25px; padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border-left: 4px solid #667eea;">
                 <strong>¿Te saliste de la reunión accidentalmente?</strong><br>
-                <a href="${enlaceTeams}" 
+                <a href="${enlaceRedireccion}" 
                    style="color: #667eea; text-decoration: underline; font-weight: bold;">
                     Haz click aquí para ingresar nuevamente
                 </a>
             </p>
         `;
-    } else {
-        contenidoEnlace = `
-            <p style="color: #888888; font-size: 0.9em; margin-bottom: 25px; padding: 15px; background: rgba(136, 136, 136, 0.1); border-radius: 8px; border-left: 4px solid #888888;">
-                <em>Enlace de la reunión no disponible</em>
-            </p>
-        `;
     }
     
-    // Crear nuevo mensaje
     const mensaje = document.createElement('div');
     mensaje.className = 'mensaje-ya-completado';
     mensaje.innerHTML = `
@@ -214,7 +320,7 @@ function mostrarFormularioYaCompletado() {
                 <button onclick="window.location.href='../index.html'" class="back-btn" style="margin: 5px;">
                     ← Volver al Menú Principal
                 </button>
-                <button onclick="logoutSafe();" class="back-btn logout-btn" style="margin: 5px;">
+                <button onclick="logoutSafe()" class="back-btn logout-btn" style="margin: 5px;">
                     Cerrar Sesión
                 </button>
             </div>
@@ -222,69 +328,6 @@ function mostrarFormularioYaCompletado() {
     `;
     
     container.appendChild(mensaje);
-    console.log('✅ Mensaje de formulario ya completado mostrado');
-}
-
-// Función segura para logout
-function logoutSafe() {
-    if (authSystemReady && authSystem && typeof authSystem.logout === 'function') {
-        authSystem.logout();
-    }
-    window.location.reload();
-}
-
-// Función para mostrar mensaje de error en la verificación
-function mostrarErrorVerificacion(mensaje) {
-    const container = document.querySelector('.container');
-    const form = document.getElementById('inscripcionForm');
-    
-    if (form) {
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'mensaje-cierre';
-        errorDiv.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div style="font-size: 3em; margin-bottom: 15px;">⚠️</div>
-                <h3 style="color: #dc3545; margin-bottom: 10px;">Error de Verificación</h3>
-                <p style="color: #b0b0b0;">${mensaje}</p>
-                <button onclick="window.location.reload()" class="back-btn" style="margin-top: 15px;">
-                    Reintentar
-                </button>
-            </div>
-        `;
-        
-        form.parentNode.insertBefore(errorDiv, form);
-    }
-}
-
-// Función para autocompletar desde usuario logueado
-function autocompletarDesdeUsuario() {
-    if (isLoggedInSafe()) {
-        const user = getCurrentUserSafe();
-        console.log('🔄 Autocompletando formulario con datos del usuario:', user);
-        
-        const inputApellidoNombre = document.getElementById('apellidoNombre');
-        const inputLegajo = document.getElementById('legajo');
-        const selectTurno = document.getElementById('turno');
-        const inputEmail = document.getElementById('email');
-        
-        // Verificar que los elementos existen antes de asignar valores
-        if (inputApellidoNombre && user.apellidoNombre) {
-            inputApellidoNombre.value = user.apellidoNombre;
-            console.log('✅ Apellido y nombre autocompletado:', user.apellidoNombre);
-        }
-        if (inputLegajo && user.legajo) {
-            inputLegajo.value = user.legajo;
-            console.log('✅ Legajo autocompletado:', user.legajo);
-        }
-        if (selectTurno && user.turno) {
-            selectTurno.value = user.turno;
-            console.log('✅ Turno autocompletado:', user.turno);
-        }
-        if (inputEmail && user.email) {
-            inputEmail.value = user.email;
-            console.log('✅ Email autocompletado:', user.email);
-        }
-    }
 }
 
 // Guardar inscripción en MongoDB
@@ -292,109 +335,94 @@ async function guardarInscripcionEnMongoDB(formData) {
     try {
         const usuarioActual = getCurrentUserSafe();
         const claseActual = obtenerClaseActual();
+        const turno = formData.get('turno');
         
-        console.log('💾 Guardando inscripción en MongoDB...', {
-            usuario: usuarioActual,
-            clase: claseActual
+        console.log('💾 Guardando inscripción:', {
+            usuarioId: usuarioActual?._id,
+            clase: claseActual,
+            turno: turno
         });
+        
+        if (!usuarioActual?._id) throw new Error('Usuario no tiene _id');
+        if (!claseActual) throw new Error('No se pudo determinar la clase');
         
         const inscripcionData = {
             usuarioId: usuarioActual._id,
             clase: claseActual,
-            turno: formData.get('turno'),
+            turno: turno,
             fecha: new Date().toISOString()
         };
         
         const result = await makeRequestSafe('/inscripciones', inscripcionData);
-        console.log('✅ Inscripción guardada en MongoDB:', result);
+        console.log('✅ Inscripción guardada:', result);
         return true;
         
     } catch (error) {
-        console.error('❌ Error guardando inscripción MongoDB:', error);
+        console.error('❌ Error guardando:', error);
         throw error;
     }
 }
 
-// Función mejorada para validar el formulario antes de enviar
+// Función principal de validación y envío
 async function validarFormulario(event) {
     event.preventDefault();
     
-    console.log('🔍 Iniciando validación del formulario MongoDB...');
+    console.log('🔍 Iniciando validación...');
     
     const submitBtn = event.target.querySelector('.submit-btn');
-    const originalText = submitBtn ? submitBtn.textContent : 'Enviar Inscripción';
+    const originalText = submitBtn?.textContent || 'Enviar Inscripción';
     
     try {
-        // Deshabilitar botón para evitar múltiples envíos
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Validando...';
         }
         
-        // Verificar si el usuario ya completó el formulario (doble verificación)
-        console.log('🔍 Verificación adicional antes del envío...');
+        if (!isLoggedInSafe()) {
+            alert('Debe iniciar sesión para continuar');
+            window.location.href = '/index.html';
+            return false;
+        }
+        
+        console.log('🔍 Verificando inscripción existente...');
         const yaCompleto = await usuarioYaCompletoFormulario();
         
         if (yaCompleto) {
             const claseActual = obtenerClaseActual();
-            const enlaceTeams = obtenerEnlaceTeams();
+            const enlaceRedireccion = obtenerEnlaceRedireccion();
             
-            let mensajeAlerta = `❌ Ya has completado el formulario de inscripción para: ${claseActual}\n\nNo es necesario enviarlo nuevamente para esta clase.`;
-            
-            if (enlaceTeams) {
-                mensajeAlerta += `\n\n¿Te saliste de la reunión accidentalmente?\nHaz click aquí para ingresar nuevamente: ${enlaceTeams}`;
-            }
-            
-            alert(mensajeAlerta);
+            alert(`❌ Ya has completado el formulario para: ${claseActual}`);
             
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
             
-            // Mostrar mensaje en la interfaz
             mostrarFormularioYaCompletado();
             return false;
         }
         
-        console.log('✅ Usuario no ha completado esta clase, procediendo con el envío...');
+        console.log('✅ Usuario puede inscribirse');
         
         const form = document.getElementById('inscripcionForm');
-        if (!form) {
-            console.error('❌ Formulario no encontrado');
-            return false;
-        }
-        
         const formData = new FormData(form);
         
-        console.log('💾 Guardando en MongoDB...');
-        if (submitBtn) {
-            submitBtn.textContent = '💾 Guardando...';
-        }
+        if (submitBtn) submitBtn.textContent = '💾 Guardando...';
         
         const guardadoExitoso = await guardarInscripcionEnMongoDB(formData);
         
         if (guardadoExitoso) {
-            console.log('✅ Guardado en MongoDB exitoso, enviando a FormSubmit...');
-            if (submitBtn) {
-                submitBtn.textContent = '📤 Enviando...';
-            }
+            console.log('✅ Inscripción exitosa');
+            const enlaceRedireccion = obtenerEnlaceRedireccion();
             
-            // Enviar formulario a FormSubmit
-            form.submit();
+            if (submitBtn) submitBtn.textContent = '✅ Redirigiendo...';
             
-        } else {
-            console.log('⚠️ Falló guardado en MongoDB, pero enviando formulario de todos modos...');
-            if (submitBtn) {
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
-            form.submit();
+            window.location.href = enlaceRedireccion;
         }
         
     } catch (error) {
-        console.error('❌ Error en el proceso de envío MongoDB:', error);
-        alert('❌ Error al procesar el formulario: ' + error.message);
+        console.error('❌ Error:', error);
+        alert('❌ Error: ' + error.message);
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
@@ -402,106 +430,69 @@ async function validarFormulario(event) {
     }
 }
 
-// Crear botones de opciones para administradores
-function crearOpcionesAdmin() {
-    const backBtnContainer = document.querySelector('.back-btn-container');
-    
-    if (backBtnContainer && isLoggedInSafe() && isAdminSafe()) {
-        backBtnContainer.innerHTML = '';
-        
-        const adminBtn = document.createElement('button');
-        adminBtn.textContent = '📊 Ir al Panel de Administración';
-        adminBtn.className = 'back-btn admin-panel-btn';
-        adminBtn.onclick = function() {
-            window.location.href = '/admin/dashboard.html';
-        };
-        backBtnContainer.appendChild(adminBtn);
-        
-        const formBtn = document.createElement('button');
-        formBtn.textContent = '📝 Ver Formulario de Inscripción';
-        formBtn.className = 'back-btn form-btn active';
-        formBtn.onclick = function() {
-            document.querySelectorAll('.back-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            this.classList.add('active');
-        };
-        backBtnContainer.appendChild(formBtn);
-        
-        const adminInfo = document.createElement('div');
-        adminInfo.className = 'admin-info';
-        adminInfo.innerHTML = `
-            <span style="color: #667eea; font-weight: bold;">👤 Modo Administrador - MongoDB</span>
-        `;
-        backBtnContainer.appendChild(adminInfo);
+// Función segura para logout
+function logoutSafe() {
+    if (authSystemReady && authSystem?.logout) {
+        authSystem.logout();
     }
+    window.location.reload();
 }
 
-// Función mejorada para inicializar la aplicación
+// ============================================
+// INICIALIZACIÓN
+// ============================================
+
 async function inicializarAplicacion() {
-    console.log('🚀 Inicializando aplicación MongoDB...');
+    console.log('🚀 Inicializando aplicación...');
     
     try {
-        // Esperar a que authSystem esté disponible
         await waitForAuthSystem();
-        console.log('✅ authSystem listo para usar');
+        console.log('✅ authSystem listo');
         
     } catch (error) {
-        console.error('❌ Error esperando por authSystem:', error);
-        mostrarErrorVerificacion('Error al cargar el sistema de autenticación. Por favor, recargue la página.');
+        console.error('❌ Error con authSystem:', error);
         return;
     }
     
     // Verificar autenticación
     if (!isLoggedInSafe()) {
         try {
-            console.log('🔐 Usuario no logueado, mostrando modal de login...');
             await authSystem.showLoginModal();
-            console.log('✅ Usuario autenticado MongoDB:', getCurrentUserSafe());
         } catch (error) {
-            console.log('❌ Usuario canceló el login');
-            window.location.href = '../index.html';
+            window.location.href = '/index.html';
             return;
         }
     }
     
-    console.log('🔍 Verificando si usuario ya completó el formulario...');
+    // Si hay CLASE_ID, estamos en el formulario genérico
+    if (window.CLASE_ID) {
+        console.log('📌 Modo formulario genérico con CLASE_ID:', window.CLASE_ID);
+        hacerCamposReadonly();
+        await cargarDatosClase();
+    }
     
-    try {
-        // Verificar si el usuario ya completó el formulario PARA ESTA CLASE ESPECÍFICA
-        const yaCompleto = await usuarioYaCompletoFormulario();
-        console.log('📊 Resultado de verificación MongoDB:', yaCompleto);
-        
-        if (yaCompleto) {
-            console.log('✅ Usuario ya completó el formulario para esta clase, mostrando mensaje...');
-            mostrarFormularioYaCompletado();
-            return; // Detener la ejecución aquí
-        }
-        
-        console.log('✅ Usuario puede completar el formulario, continuando...');
-        
-    } catch (error) {
-        console.error('❌ Error en la verificación inicial:', error);
-        mostrarErrorVerificacion('Error al verificar el estado del formulario. Por favor, recargue la página.');
+    // Verificar si ya completó el formulario
+    const yaCompleto = await usuarioYaCompletoFormulario();
+    if (yaCompleto) {
+        mostrarFormularioYaCompletado();
         return;
     }
     
-    // Si es admin, mostrar opciones especiales
+    // Si es admin, mostrar opciones
     if (isAdminSafe()) {
-        console.log('👑 Usuario administrador detectado, mostrando opciones...');
         crearOpcionesAdmin();
     }
     
-    // Autocompletar datos del usuario
-    autocompletarDesdeUsuario();
+    // Autocompletar (por si acaso)
+    autocompletarDatosUsuario();
     
-    // Configurar evento de envío del formulario
+    // Configurar evento de envío (SOLO UNA VEZ)
     const form = document.getElementById('inscripcionForm');
     if (form) {
+        // Remover cualquier listener anterior y agregar el nuevo
+        form.removeEventListener('submit', validarFormulario);
         form.addEventListener('submit', validarFormulario);
-        console.log('✅ Event listener del formulario configurado MongoDB');
-    } else {
-        console.error('❌ Formulario no encontrado');
+        console.log('✅ Event listener configurado');
     }
     
     // Agregar botón de logout
@@ -510,33 +501,22 @@ async function inicializarAplicacion() {
         const logoutBtn = document.createElement('button');
         logoutBtn.textContent = 'Cerrar Sesión';
         logoutBtn.className = 'back-btn logout-btn';
-        logoutBtn.onclick = function() {
-            logoutSafe();
-        };
+        logoutBtn.onclick = logoutSafe;
         backBtnContainer.appendChild(logoutBtn);
     }
-    
-    console.log('✅ Aplicación inicializada correctamente con MongoDB');
 }
 
 // Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM cargado, iniciando aplicación MongoDB...');
-    inicializarAplicacion();
-});
+document.addEventListener('DOMContentLoaded', inicializarAplicacion);
 
-// Función de depuración para verificar el estado
-function debugEstadoFormulario() {
-    console.log('=== DEBUG ESTADO FORMULARIO ===');
-    console.log('authSystem disponible:', typeof authSystem !== 'undefined');
-    console.log('authSystemReady:', authSystemReady);
-    console.log('Usuario logueado:', isLoggedInSafe());
-    console.log('Usuario actual:', getCurrentUserSafe());
+// Exponer funciones útiles
+window.obtenerClaseActual = obtenerClaseActual;
+window.obtenerEnlaceRedireccion = obtenerEnlaceRedireccion;
+window.logoutSafe = logoutSafe;
+window.debugEstadoFormulario = function() {
+    console.log('=== DEBUG ===');
+    console.log('CLASE_ID:', window.CLASE_ID);
+    console.log('Usuario:', getCurrentUserSafe());
     console.log('Clase actual:', obtenerClaseActual());
     console.log('Formulario existe:', !!document.getElementById('inscripcionForm'));
-    console.log('Mensaje ya completado existe:', !!document.querySelector('.mensaje-ya-completado'));
-    console.log('==============================');
-}
-
-// Exponer función de debug para testing
-window.debugEstadoFormulario = debugEstadoFormulario;
+};
