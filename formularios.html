@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Inscripción</title>
+    <link rel="stylesheet" href="/css/formularios.css">
+    <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>Formulario de inscripción</h1>
+        <h2 id="claseTitulo">Cargando información de la clase...</h2>
+        
+        <!-- Indicador de clase seleccionada -->
+        <div class="clase-indicador" id="claseIndicador" style="display: none;">
+            <strong>📋 Clase seleccionada:</strong>
+            <span id="claseNombre"></span>
+            <div class="clase-detalles" id="claseDetalles"></div>
+        </div>
+
+        <p class="deadline" id="deadline"></p>
+
+        <div class="back-btn-container">
+            <a href="../index.html" class="back-btn">← Volver al Menú Principal</a>
+        </div>
+        
+        <form id="inscripcionForm">
+            <!-- Campos ocultos con información de la clase -->
+            <input type="hidden" name="claseId" id="claseId" value="">
+            <input type="hidden" name="clase" id="claseHidden" value="">
+            <input type="hidden" name="enlaceRedireccion" id="enlaceRedireccion" value="">
+            
+            <!-- Campos del formulario (ocultos visualmente pero funcionales) -->
+            <div class="form-group">
+                <label for="apellidoNombre">Apellido y Nombre *</label>
+                <input type="text" id="apellidoNombre" name="apellidoNombre" required readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="legajo">Número de Legajo</label>
+                <input type="number" id="legajo" name="legajo" required readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="clase">Clase:</label>
+                <select id="clase" name="clase" readonly required>
+                    <option id="claseOption" value="">Seleccione una clase</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="turno">Turno</label>
+                <select id="turno" name="turno" required readonly>
+                    <option value="">Seleccione turno</option>
+                    <option value="Turno mañana">Turno mañana</option>
+                    <option value="Turno tarde">Turno tarde</option>
+                    <option value="Turno noche A">Turno noche A</option>
+                    <option value="Turno noche B">Turno noche B</option>
+                    <option value="Turno intermedio">Turno intermedio</option>
+                    <option value="Turno SADOFE">Turno Sábado, Domingo y feriado</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <input type="email" id="email" name="email" required readonly>
+            </div>
+
+            <!-- Solo el botón es visible -->
+            <button type="submit" class="submit-btn" id="submitBtn">Ingresar a la clase</button>
+        </form>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/formularios.js"></script>
+    <script>
+        // Obtener claseId de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const claseId = urlParams.get('id');
+        
+        if (!claseId) {
+            alert('Error: No se especificó la clase');
+            window.location.href = '/index.html';
+        }
+        
+        // Guardar claseId globalmente
+        window.CLASE_ID = claseId;
+        
+        // Función para cargar datos de la clase
+        async function cargarDatosClase() {
+            try {
+                console.log('📥 Cargando datos de la clase:', claseId);
+                
+                document.getElementById('claseTitulo').textContent = 'Cargando información de la clase...';
+                
+                const response = await fetch(`/api/clases-publicas/${claseId}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const clase = result.data;
+                    console.log('✅ Clase cargada:', clase);
+                    
+                    // Actualizar título
+                    document.getElementById('claseTitulo').textContent = `Clase "${clase.nombre}"`;
+                    
+                    // Actualizar indicador visible
+                    document.getElementById('claseIndicador').style.display = 'block';
+                    document.getElementById('claseNombre').textContent = clase.nombre;
+                    
+                    // Agregar detalles al indicador
+                    const detallesDiv = document.getElementById('claseDetalles');
+                    let detallesHTML = '';
+                    
+                    if (clase.instructores && clase.instructores.length > 0) {
+                        detallesHTML += `<span><i>👥</i> ${clase.instructores.join(', ')}</span>`;
+                    }
+                    
+                    if (clase.lugar) {
+                        detallesHTML += `<span><i>📍</i> ${clase.lugar}</span>`;
+                    }
+                    
+                    if (clase.fechaClase) {
+                        const fecha = new Date(clase.fechaClase);
+                        const fechaFormateada = fecha.toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                        detallesHTML += `<span><i>📅</i> ${fechaFormateada}hs</span>`;
+                    }
+                    
+                    detallesDiv.innerHTML = detallesHTML;
+                    
+                    // Actualizar campos ocultos
+                    document.getElementById('claseId').value = claseId;
+                    document.getElementById('claseHidden').value = clase.nombre;
+
+                    // Al cargar la clase, guardar el enlace de redirección
+                    if (clase.enlaceFormulario) {
+                        document.getElementById('enlaceRedireccion').value = clase.enlaceFormulario;
+                    } else {
+                        // Si no hay enlace específico, usar uno por defecto
+                        document.getElementById('enlaceRedireccion').value = '/asistenciapres.html';
+                    }
+                    
+                    // Actualizar selector de clase
+                    const claseOption = document.getElementById('claseOption');
+                    claseOption.value = clase.nombre;
+                    claseOption.textContent = clase.nombre;
+                    
+                    // Configurar fechas
+                    configurarFechasClase(clase);
+                    
+                } else {
+                    throw new Error('No se pudo cargar la información de la clase');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error cargando clase:', error);
+                document.getElementById('claseTitulo').textContent = 'Error al cargar la clase';
+                alert('Error al cargar la información de la clase. Por favor, vuelva al inicio.');
+            }
+        }
+        
+        // Función para configurar fechas de apertura y cierre
+        function configurarFechasClase(clase) {
+            if (clase.fechaApertura && clase.fechaCierre) {
+                window.FECHA_APERTURA = new Date(clase.fechaApertura);
+                window.FECHA_CIERRE = new Date(clase.fechaCierre);
+            } else {
+                const fechaClase = new Date(clase.fechaClase);
+                
+                window.FECHA_APERTURA = new Date(fechaClase);
+                window.FECHA_APERTURA.setHours(9, 50, 0, 0);
+                
+                window.FECHA_CIERRE = new Date(fechaClase);
+                window.FECHA_CIERRE.setHours(11, 0, 0, 0);
+            }
+            
+            console.log('⏰ Fechas configuradas:', {
+                apertura: window.FECHA_APERTURA,
+                cierre: window.FECHA_CIERRE
+            });
+            
+            actualizarTextoFecha();
+        }
+        
+        // Función para formatear fecha
+        function formatearFecha(fecha) {
+            const opciones = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            };
+            return fecha.toLocaleDateString('es-AR', opciones).replace(',', ' a las') + 'hs';
+        }
+        
+        // Función para actualizar texto de fecha
+        function actualizarTextoFecha() {
+            const elementoFecha = document.getElementById('deadline');
+            if (elementoFecha && window.FECHA_CIERRE) {
+                elementoFecha.textContent = `Fecha de cierre: ${formatearFecha(window.FECHA_CIERRE)} (Hora Argentina)`;
+            }
+        }
+        
+        // Sobrescribir función obtenerClaseActual
+        function obtenerClaseActual() {
+            return document.getElementById('claseHidden')?.value || 
+                   document.getElementById('clase')?.value || 
+                   null;
+        }
+        
+        // Sobrescribir función obtenerEnlaceRedireccion
+        function obtenerEnlaceRedireccion() {
+            return document.getElementById('enlaceRedireccion')?.value || '/asistenciapres.html';
+        }
+        
+        // Modificar el envío del formulario
+        async function manejarEnvioFormulario(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const textoOriginal = submitBtn.textContent;
+            
+            try {
+                // Verificar si el usuario está logueado
+                if (!authSystem.isLoggedIn()) {
+                    alert('Debe iniciar sesión para continuar');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                
+                const usuario = authSystem.getCurrentUser();
+                const claseActual = obtenerClaseActual();
+                const turno = document.getElementById('turno').value;
+                
+                if (!claseActual || !turno) {
+                    alert('Error: Faltan datos de la clase');
+                    return;
+                }
+                
+                // Deshabilitar botón
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Procesando...';
+                
+                // Guardar inscripción en MongoDB
+                const inscripcionData = {
+                    usuarioId: usuario._id,
+                    clase: claseActual,
+                    turno: turno,
+                    fecha: new Date().toISOString()
+                };
+                
+                const result = await authSystem.makeRequest('/inscripciones', inscripcionData);
+                
+                if (result.success) {
+                    console.log('✅ Inscripción guardada');
+                    
+                    // Obtener enlace de redirección
+                    const enlaceRedireccion = obtenerEnlaceRedireccion();
+                    
+                    // Redirigir
+                    window.location.href = enlaceRedireccion;
+                } else {
+                    throw new Error(result.message || 'Error al guardar la inscripción');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en el envío:', error);
+                alert('Error al procesar la inscripción: ' + error.message);
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = textoOriginal;
+            }
+        }
+        
+        // Hacer campos readonly
+        function hacerCamposReadonly() {
+            const campos = ['apellidoNombre', 'legajo', 'email'];
+            campos.forEach(id => {
+                const campo = document.getElementById(id);
+                if (campo) {
+                    campo.setAttribute('readonly', true);
+                }
+            });
+            
+            const selects = ['clase', 'turno'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.setAttribute('readonly', true);
+                }
+            });
+        }
+        
+        // Inicializar
+        hacerCamposReadonly();
+        cargarDatosClase();
+        
+        // Exponer funciones globales
+        window.obtenerClaseActual = obtenerClaseActual;
+        window.obtenerEnlaceRedireccion = obtenerEnlaceRedireccion;
+        
+        // Configurar evento de envío
+        document.getElementById('inscripcionForm').addEventListener('submit', manejarEnvioFormulario);
+        
+    </script>
+</body>
+</html>
