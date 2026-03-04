@@ -151,30 +151,70 @@ async function usuarioYaCompletoFormulario() {
             return false;
         }
         
-        // Verificar usando claseId si está disponible
+        // PRIMERO: Intentar verificar por claseId (más preciso)
         if (claseId) {
             try {
-                const result = await makeRequestSafe(`/inscripciones/verificar-por-clase/${usuarioActual._id}/${claseId}`, null, 'GET');
-                if (result && result.data && result.data.exists) {
-                    console.log('✅ Inscripción encontrada por claseId');
-                    return true;
+                // Usar el endpoint específico para verificar por claseId
+                const result = await makeRequestSafe(`/inscripciones/verificar/${usuarioActual._id}/${claseId}`, null, 'GET');
+                console.log('📊 Resultado verificación por claseId:', result);
+                
+                if (result && result.data) {
+                    // Verificar diferentes formatos de respuesta
+                    if (result.data.exists === true) {
+                        console.log('✅ Inscripción encontrada por claseId');
+                        return true;
+                    }
                 }
             } catch (error) {
-                console.log('⚠️ No se pudo verificar por claseId:', error);
+                console.log('⚠️ Error verificando por claseId:', error.message);
+                // Continuar con el siguiente método
             }
         }
         
-        // Si no se encontró por claseId, buscar por nombre de clase
+        // SEGUNDO: Intentar verificar por nombre de clase
         if (claseNombre) {
             try {
                 const result = await makeRequestSafe(`/inscripciones/verificar/${usuarioActual._id}/${encodeURIComponent(claseNombre)}`, null, 'GET');
-                if (result && result.data && result.data.exists) {
-                    console.log('✅ Inscripción encontrada por nombre de clase');
-                    return true;
+                console.log('📊 Resultado verificación por nombre:', result);
+                
+                if (result && result.data) {
+                    if (result.data.exists === true) {
+                        console.log('✅ Inscripción encontrada por nombre de clase');
+                        return true;
+                    }
                 }
             } catch (error) {
-                console.log('⚠️ No se pudo verificar por nombre:', error);
+                console.log('⚠️ Error verificando por nombre:', error.message);
             }
+        }
+        
+        // TERCERO: Si todo falla, podemos hacer una verificación adicional
+        // intentando obtener todas las inscripciones del usuario
+        try {
+            console.log('🔍 Verificación adicional: obteniendo todas las inscripciones del usuario');
+            const inscripciones = await makeRequestSafe(`/inscripciones/usuario/${usuarioActual._id}`, null, 'GET');
+            
+            if (inscripciones && inscripciones.data && Array.isArray(inscripciones.data)) {
+                // Verificar si alguna coincide con esta clase
+                const existe = inscripciones.data.some(insc => {
+                    // Por claseId
+                    if (claseId && insc.claseId === claseId) {
+                        return true;
+                    }
+                    // Por nombre de clase
+                    if (claseNombre && insc.clase === claseNombre) {
+                        return true;
+                    }
+                    return false;
+                });
+                
+                if (existe) {
+                    console.log('✅ Inscripción encontrada en lista completa');
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Error en verificación adicional:', error.message);
         }
         
         console.log('✅ No hay inscripción previa');
@@ -183,6 +223,122 @@ async function usuarioYaCompletoFormulario() {
     } catch (error) {
         console.error('❌ Error verificando formulario:', error);
         return false;
+    }
+}
+
+// Guardar inscripción
+async function guardarInscripcion(formData) {
+    try {
+        const usuarioActual = getCurrentUserSafe();
+        const claseNombre = obtenerClaseActual();
+        const claseId = obtenerClaseId();
+        
+        if (!usuarioActual || !usuarioActual._id) {
+            throw new Error('Usuario no autenticado');
+        }
+        
+        // DOBLE VERIFICACIÓN antes de guardar
+        const yaInscrito = await usuarioYaCompletoFormulario();
+        if (yaInscrito) {
+            console.log('⚠️ El usuario ya está inscrito, mostrando mensaje');
+            mostrarFormularioYaCompletado();
+            throw new Error('Ya estás inscrito en esta clase');
+        }
+        
+        const inscripcionData = {
+            usuarioId: usuarioActual._id,
+            clase: claseNombre,
+            turno: formData.get('turno'),
+            fecha: new Date().toISOString()
+        };
+        
+        // Agregar claseId si está disponible
+        if (claseId) {
+            inscripcionData.claseId = claseId;
+        }
+        
+        console.log('💾 Intentando guardar inscripción:', inscripcionData);
+        const result = await makeRequestSafe('/inscripciones', inscripcionData);
+        console.log('✅ Inscripción guardada:', result);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error guardando inscripción:', error);
+        
+        // Si el error es porque ya está inscrito, mostrar el mensaje
+        if (error.message && error.message.includes('Ya estás inscrito')) {
+            mostrarFormularioYaCompletado();
+        }
+        
+        throw error;
+    }
+}
+
+// Validar y enviar formulario
+async function validarFormulario(event) {
+    event.preventDefault();
+    
+    const submitBtn = event.target.querySelector('.submit-btn');
+    const originalText = submitBtn ? submitBtn.textContent : 'Ingresar a la clase';
+    
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Validando...';
+        }
+        
+        // VERIFICACIÓN 1: ¿La clase está abierta?
+        if (!claseEstaAbierta()) {
+            mostrarClaseCerrada();
+            return false;
+        }
+        
+        // VERIFICACIÓN 2: ¿Ya está inscrito? (VERIFICACIÓN EXHAUSTIVA)
+        console.log('🔍 Verificando inscripción antes de guardar...');
+        const yaCompleto = await usuarioYaCompletoFormulario();
+        console.log('📊 Resultado verificación:', yaCompleto);
+        
+        if (yaCompleto) {
+            console.log('✅ Usuario ya está inscrito, mostrando mensaje');
+            mostrarFormularioYaCompletado();
+            
+            // Opcional: preguntar si quiere ir a la clase
+            const enlaceRedireccion = obtenerEnlaceRedireccion();
+            if (enlaceRedireccion) {
+                if (confirm('Ya estás inscrito en esta clase. ¿Quieres ir a la clase ahora?')) {
+                    window.open(enlaceRedireccion, '_blank');
+                }
+            }
+            
+            return false;
+        }
+        
+        // Guardar inscripción
+        if (submitBtn) submitBtn.textContent = '💾 Guardando...';
+        const formData = new FormData(event.target);
+        await guardarInscripcion(formData);
+        
+        // Redireccionar
+        const enlaceRedireccion = obtenerEnlaceRedireccion();
+        if (enlaceRedireccion) {
+            window.location.href = enlaceRedireccion;
+        } else {
+            alert('✅ Inscripción completada con éxito');
+            window.location.href = '../index.html';
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en validación:', error);
+        
+        // No mostrar alerta si el error es por ya estar inscrito (ya mostramos el mensaje)
+        if (!error.message || !error.message.includes('Ya estás inscrito')) {
+            alert('❌ Error al procesar la inscripción: ' + error.message);
+        }
+        
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
     }
 }
 
