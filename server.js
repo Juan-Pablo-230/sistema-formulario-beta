@@ -1512,16 +1512,24 @@ app.get('/api/inscripciones/verificar/:usuarioId/:claseId', async (req, res) => 
         
         console.log('🔍 Verificando inscripción por IDs:', { usuarioId, claseId });
         
-        if (!ObjectId.isValid(usuarioId) || !ObjectId.isValid(claseId)) {
+        // Validar IDs
+        if (!ObjectId.isValid(usuarioId)) {
             return res.json({ success: true, data: { exists: false } });
         }
         
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        const inscripcion = await db.collection('inscripciones').findOne({
-            usuarioId: new ObjectId(usuarioId),
-            claseId: new ObjectId(claseId)
-        });
+        let query = { usuarioId: new ObjectId(usuarioId) };
+        
+        // Si claseId es un ObjectId válido, buscar por ObjectId
+        if (ObjectId.isValid(claseId)) {
+            query.claseId = new ObjectId(claseId);
+        } else {
+            // Si no, buscar por el string directamente
+            query.clase = decodeURIComponent(claseId);
+        }
+        
+        const inscripcion = await db.collection('inscripciones').findOne(query);
         
         res.json({ 
             success: true, 
@@ -1532,7 +1540,8 @@ app.get('/api/inscripciones/verificar/:usuarioId/:claseId', async (req, res) => 
         console.error('❌ Error verificando inscripción:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Error interno del servidor'
+            message: 'Error interno del servidor',
+            error: error.message 
         });
     }
 });
@@ -1567,6 +1576,42 @@ app.get('/api/clases-publicas/:id', async (req, res) => {
         
     } catch (error) {
         console.error('❌ Error obteniendo clase por ID:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor',
+            error: error.message 
+        });
+    }
+});
+
+// Obtener todas las inscripciones de un usuario específico
+app.get('/api/inscripciones/usuario/:usuarioId', async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        
+        console.log('📥 GET /api/inscripciones/usuario/', usuarioId);
+        
+        if (!ObjectId.isValid(usuarioId)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID de usuario inválido' 
+            });
+        }
+        
+        const db = await mongoDB.getDatabaseSafe('formulario');
+        
+        const inscripciones = await db.collection('inscripciones')
+            .find({ usuarioId: new ObjectId(usuarioId) })
+            .sort({ fecha: -1 })
+            .toArray();
+        
+        res.json({ 
+            success: true, 
+            data: inscripciones 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo inscripciones del usuario:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Error interno del servidor',
