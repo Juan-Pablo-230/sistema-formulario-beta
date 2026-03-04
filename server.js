@@ -1505,6 +1505,44 @@ app.get('/api/clases-publicas/publicadas', async (req, res) => {
     }
 });
 
+// Obtener una clase pública por ID (NECESARIO PARA formularios.js)
+app.get('/api/clases-publicas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(`📥 GET /api/clases-publicas/${id}`);
+        
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'ID de clase inválido' 
+            });
+        }
+        
+        const db = await mongoDB.getDatabaseSafe('formulario');
+        
+        const clase = await db.collection('clases-publicas').findOne({ 
+            _id: new ObjectId(id) 
+        });
+        
+        if (!clase) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Clase no encontrada' 
+            });
+        }
+        
+        res.json({ success: true, data: clase });
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo clase por ID:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor',
+            error: error.message 
+        });
+    }
+});
+
 // Crear nueva clase pública
 app.post('/api/clases-publicas', async (req, res) => {
     try {
