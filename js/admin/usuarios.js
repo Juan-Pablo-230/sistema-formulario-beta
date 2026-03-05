@@ -1,18 +1,18 @@
-// usuarios.js
-console.log('👥 Módulo de Usuarios cargado');
+// usuarios.js - VERSIÓN CORREGIDA
+console.log('👥 Módulo de Usuarios cargado - Versión corregida');
 
 class UsuariosManager {
     constructor() {
         this.data = [];
-        this.inscripcionesData = []; // Para almacenar todas las inscripciones
-        this.solicitudesData = []; // Para almacenar todas las solicitudes de material
+        this.inscripcionesData = [];
+        this.solicitudesData = [];
         this.init();
     }
 
     async init() {
         await this.cargarDatos();
-        await this.cargarInscripciones(); // Cargar inscripciones para el historial
-        await this.cargarSolicitudes(); // Cargar solicitudes de material para el historial
+        await this.cargarInscripciones();
+        await this.cargarSolicitudes();
         this.setupEventListeners();
     }
 
@@ -28,7 +28,6 @@ class UsuariosManager {
         }
     }
 
-    // Método para cargar todas las inscripciones
     async cargarInscripciones() {
         try {
             console.log('📥 Cargando inscripciones para historial...');
@@ -36,9 +35,8 @@ class UsuariosManager {
             
             if (result.success && result.data) {
                 this.inscripcionesData = result.data;
-                console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas para historial`);
+                console.log(`✅ ${this.inscripcionesData.length} inscripciones cargadas`);
             } else {
-                console.warn('⚠️ No se pudieron cargar las inscripciones');
                 this.inscripcionesData = [];
             }
         } catch (error) {
@@ -47,7 +45,6 @@ class UsuariosManager {
         }
     }
 
-    // Método para cargar todas las solicitudes de material
     async cargarSolicitudes() {
         try {
             console.log('📥 Cargando solicitudes de material para historial...');
@@ -55,22 +52,19 @@ class UsuariosManager {
             
             if (result.success && result.data) {
                 this.solicitudesData = result.data;
-                console.log(`✅ ${this.solicitudesData.length} solicitudes de material cargadas para historial`);
+                console.log(`✅ ${this.solicitudesData.length} solicitudes cargadas`);
             } else {
-                console.warn('⚠️ No se pudieron cargar las solicitudes de material');
                 this.solicitudesData = [];
             }
         } catch (error) {
-            console.error('❌ Error cargando solicitudes de material:', error);
+            console.error('❌ Error cargando solicitudes:', error);
             this.solicitudesData = [];
         }
     }
 
-    // Método para contar el total de actividades de un usuario (inscripciones + solicitudes)
     contarActividadesUsuario(usuarioId) {
         let total = 0;
         
-        // Contar inscripciones
         if (this.inscripcionesData && this.inscripcionesData.length > 0) {
             const inscripciones = this.inscripcionesData.filter(ins => 
                 (ins.usuario && ins.usuario._id === usuarioId) || 
@@ -79,7 +73,6 @@ class UsuariosManager {
             total += inscripciones.length;
         }
         
-        // Contar solicitudes de material
         if (this.solicitudesData && this.solicitudesData.length > 0) {
             const solicitudes = this.solicitudesData.filter(sol => 
                 sol.usuarioId === usuarioId || 
@@ -161,149 +154,6 @@ class UsuariosManager {
         `}).join('');
     }
 
-    // Método para ver el historial completo (inscripciones + solicitudes)
-    async verHistorial(usuarioId) {
-        const usuario = this.data.find(u => u._id === usuarioId);
-        if (!usuario) return;
-
-        // Obtener inscripciones del usuario
-        const inscripciones = this.inscripcionesData.filter(ins => 
-            (ins.usuario && ins.usuario._id === usuarioId) || 
-            (ins.usuarioId === usuarioId)
-        );
-
-        // Obtener solicitudes de material del usuario
-        const solicitudes = this.solicitudesData.filter(sol => 
-            sol.usuarioId === usuarioId || 
-            (sol.usuario && sol.usuario._id === usuarioId)
-        );
-
-        const totalInscripciones = inscripciones.length;
-        const totalSolicitudes = solicitudes.length;
-        const totalActividades = totalInscripciones + totalSolicitudes;
-
-        // Ordenar por fecha más reciente (combinando ambos arrays)
-        const todasActividades = [
-            ...inscripciones.map(ins => ({
-                tipo: 'inscripcion',
-                clase: ins.clase || 'N/A',
-                turno: ins.turno || 'N/A',
-                fecha: ins.fecha,
-                detalles: ins,
-                material: null
-            })),
-            ...solicitudes.map(sol => ({
-                tipo: 'solicitud',
-                clase: sol.claseNombre || sol.clase || 'N/A',
-                turno: sol.turno || (sol.usuario?.turno) || 'N/A',
-                fecha: sol.fechaSolicitud,
-                detalles: sol,
-                youtube: sol.youtube,
-                powerpoint: sol.powerpoint
-            }))
-        ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-        // Generar HTML para las actividades
-        let actividadesHTML = '';
-        if (todasActividades.length === 0) {
-            actividadesHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene actividades registradas.</p>';
-        } else {
-            actividadesHTML = `
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                        <thead>
-                            <tr style="background: var(--accent-color); color: white;">
-                                <th style="padding: 12px; text-align: left;">#</th>
-                                <th style="padding: 12px; text-align: left;">Tipo</th>
-                                <th style="padding: 12px; text-align: left;">Clase</th>
-                                <th style="padding: 12px; text-align: left;">Turno</th>
-                                <th style="padding: 12px; text-align: left;">Fecha</th>
-                                <th style="padding: 12px; text-align: left;">Detalles</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${todasActividades.map((act, index) => `
-                                <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <td style="padding: 12px;">${index + 1}</td>
-                                    <td style="padding: 12px;">
-                                        ${act.tipo === 'inscripcion' 
-                                            ? '<span style="background: rgba(66, 133, 244, 0.1); color: var(--accent-color); padding: 4px 8px; border-radius: 12px;">📋 Inscripción</span>' 
-                                            : '<span style="background: rgba(52, 168, 83, 0.1); color: var(--success-500); padding: 4px 8px; border-radius: 12px;">📚 Solicitud Material</span>'}
-                                    </td>
-                                    <td style="padding: 12px; font-weight: 500;">${act.clase}</td>
-                                    <td style="padding: 12px;">${act.turno}</td>
-                                    <td style="padding: 12px;">${act.fecha ? new Date(act.fecha).toLocaleString('es-AR', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: false
-                                    }) : 'N/A'}</td>
-                                    <td style="padding: 12px;">
-                                        ${act.tipo === 'solicitud' && (act.youtube || act.powerpoint) ? `
-                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                                ${act.youtube ? `<a href="${act.youtube}" target="_blank" class="material-link youtube" style="font-size: 0.8em; padding: 2px 6px;">▶️ YouTube</a>` : ''}
-                                                ${act.powerpoint ? `<a href="${act.powerpoint}" target="_blank" class="material-link powerpoint" style="font-size: 0.8em; padding: 2px 6px;">📊 PPT</a>` : ''}
-                                            </div>
-                                        ` : act.tipo === 'inscripcion' ? 'Inscripción a clase' : 'Sin detalles'}
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        }
-
-        // Generar resumen de estadísticas
-        const content = `
-            <div style="padding: 20px;">
-                <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-container) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; color: var(--text-primary);">${usuario.apellidoNombre}</h3>
-                        <span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; color: var(--text-secondary);">
-                        <div><strong>📋 Legajo:</strong> ${usuario.legajo}</div>
-                        <div><strong>📧 Email:</strong> ${usuario.email}</div>
-                        <div><strong>⏰ Turno:</strong> ${usuario.turno || 'No especificado'}</div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
-                    <div style="background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
-                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Total Actividades</div>
-                        <strong style="font-size: 2em;">${totalActividades}</strong>
-                    </div>
-                    <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
-                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Inscripciones</div>
-                        <strong style="font-size: 2em;">${totalInscripciones}</strong>
-                    </div>
-                    <div style="background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
-                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Solicitudes Material</div>
-                        <strong style="font-size: 2em;">${totalSolicitudes}</strong>
-                    </div>
-                </div>
-                
-                <h4 style="margin-bottom: 15px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
-                    <span>📅</span> Historial completo de actividades
-                </h4>
-                ${actividadesHTML}
-            </div>
-        `;
-
-        const modal = document.getElementById('historialModal');
-        const contentDiv = document.getElementById('historialModalContent');
-        const title = document.getElementById('historialModalTitle');
-        
-        if (modal && contentDiv && title) {
-            title.textContent = `📋 Historial de Actividades - ${usuario.apellidoNombre}`;
-            contentDiv.innerHTML = content;
-            modal.style.display = 'flex';
-        }
-    }
-
     getRoleText(role) {
         const roles = {
             'admin': '👑 Administrador',
@@ -353,202 +203,184 @@ class UsuariosManager {
         }
     }
 
+    // ===== MÉTODOS DEL MODAL CORREGIDOS =====
+    
     abrirModal(usuario = null) {
         const modal = document.getElementById('userModal');
         const title = document.getElementById('modalTitle');
         const form = document.getElementById('userForm');
         const passwordGroup = document.getElementById('passwordGroup');
+        const userIdInput = document.getElementById('userId');
+        
+        if (!modal) {
+            console.error('❌ Modal no encontrado');
+            return;
+        }
+        
+        // Resetear el formulario completamente
+        form.reset();
         
         if (usuario) {
+            // MODO EDICIÓN
             title.textContent = '✏️ Editar Usuario';
-            document.getElementById('userId').value = usuario._id;
+            userIdInput.value = usuario._id;
             document.getElementById('userNombre').value = usuario.apellidoNombre || '';
             document.getElementById('userLegajo').value = usuario.legajo || '';
             document.getElementById('userEmail').value = usuario.email || '';
             document.getElementById('userTurno').value = usuario.turno || '';
             document.getElementById('userRole').value = usuario.role || 'user';
+            
+            // En edición, la contraseña es opcional
             document.getElementById('userPassword').required = false;
             document.getElementById('userPassword').placeholder = 'Dejar en blanco para mantener';
-            passwordGroup.style.display = 'block';
+            if (passwordGroup) passwordGroup.style.display = 'block';
+            
+            console.log('✏️ Editando usuario:', usuario.apellidoNombre);
         } else {
+            // MODO CREACIÓN
             title.textContent = '➕ Crear Usuario';
-            form.reset();
-            document.getElementById('userId').value = '';
+            userIdInput.value = '';
+            
+            // En creación, la contraseña es obligatoria
             document.getElementById('userPassword').required = true;
             document.getElementById('userPassword').placeholder = 'Mínimo 6 caracteres';
-            passwordGroup.style.display = 'block';
+            if (passwordGroup) passwordGroup.style.display = 'block';
         }
         
+        // Mostrar el modal
         modal.style.display = 'flex';
+        
+        // Prevenir que el click en el modal lo cierre (esto es importante)
+        const modalContainer = modal.querySelector('.modal-container');
+        if (modalContainer) {
+            modalContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
     }
 
     cerrarModal() {
-        document.getElementById('userModal').style.display = 'none';
+        const modal = document.getElementById('userModal');
+        if (modal) {
+            modal.style.display = 'none';
+            
+            // Resetear el formulario al cerrar
+            const form = document.getElementById('userForm');
+            if (form) form.reset();
+        }
     }
 
     async guardarUsuario(event) {
-        event.preventDefault();
+        event.preventDefault(); // ¡IMPORTANTE! Evita que la página se recargue
         
-        const formData = {
-            apellidoNombre: document.getElementById('userNombre').value,
-            legajo: document.getElementById('userLegajo').value,
-            email: document.getElementById('userEmail').value,
-            turno: document.getElementById('userTurno').value,
-            role: document.getElementById('userRole').value
-        };
-
-        const password = document.getElementById('userPassword').value;
-        if (password) {
-            if (password.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
-                return;
-            }
-            formData.password = password;
-        }
-
+        console.log('💾 Guardando usuario...');
+        
+        // Obtener datos del formulario
         const userId = document.getElementById('userId').value;
-
-        try {
-            if (userId) {
-                await authSystem.makeRequest(`/admin/usuarios/${userId}`, formData, 'PUT');
-                if (password) {
-                    await authSystem.makeRequest(`/admin/usuarios/${userId}/password`, { newPassword: password }, 'PUT');
-                }
-            } else {
-                if (!password) {
-                    alert('La contraseña es obligatoria para nuevos usuarios');
-                    return;
-                }
-                await authSystem.makeRequest('/admin/usuarios', formData);
-            }
-            
-            this.cerrarModal();
-            await this.cargarDatos();
-            await this.cargarInscripciones();
-            await this.cargarSolicitudes();
-            alert(userId ? '✅ Usuario actualizado' : '✅ Usuario creado');
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    }
-
-// usuarios.js - Método exportarUsuariosCSV MEJORADO con ID
-
-exportarUsuariosCSV() {
-    try {
-        if (this.data.length === 0) {
-            alert('No hay usuarios para exportar');
+        const apellidoNombre = document.getElementById('userNombre').value.trim();
+        const legajo = document.getElementById('userLegajo').value.trim();
+        const email = document.getElementById('userEmail').value.trim();
+        const turno = document.getElementById('userTurno').value;
+        const role = document.getElementById('userRole').value;
+        const password = document.getElementById('userPassword').value;
+        
+        // Validaciones básicas
+        if (!apellidoNombre || !legajo || !email || !turno || !role) {
+            this.mostrarMensajeModal('❌ Todos los campos obligatorios deben estar completos', 'error');
             return;
         }
-
-        console.log(`📥 Exportando ${this.data.length} usuarios a CSV con IDs...`);
-
-        // Definir headers del CSV (AHORA INCLUYE ID)
-        const headers = [
-            'ID (MongoDB)',
-            'Apellido y Nombre',
-            'Legajo',
-            'Email',
-            'Turno',
-            'Rol',
-            'Fecha Registro'
-        ];
-
-        // Crear filas de datos
-        const rows = this.data.map(usuario => {
-            // Formatear fecha
-            let fechaRegistro = 'N/A';
-            if (usuario.fechaRegistro) {
-                const fecha = new Date(usuario.fechaRegistro);
-                fechaRegistro = fecha.toLocaleString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
+        
+        // Validar contraseña según el modo
+        if (!userId && !password) {
+            this.mostrarMensajeModal('❌ La contraseña es obligatoria para nuevos usuarios', 'error');
+            return;
+        }
+        
+        if (password && password.length < 6) {
+            this.mostrarMensajeModal('❌ La contraseña debe tener al menos 6 caracteres', 'error');
+            return;
+        }
+        
+        // Preparar datos para enviar
+        const userData = {
+            apellidoNombre: apellidoNombre,
+            legajo: legajo,
+            email: email,
+            turno: turno,
+            role: role
+        };
+        
+        try {
+            let response;
+            
+            if (userId) {
+                // MODO EDICIÓN - Actualizar datos básicos
+                console.log('📤 Actualizando usuario:', userId, userData);
+                response = await authSystem.makeRequest(`/admin/usuarios/${userId}`, userData, 'PUT');
+                
+                // Si hay nueva contraseña, actualizarla también
+                if (password) {
+                    console.log('🔐 Actualizando contraseña');
+                    await authSystem.makeRequest(`/admin/usuarios/${userId}/password`, { newPassword: password }, 'PUT');
+                }
+                
+                this.mostrarMensajeModal('✅ Usuario actualizado correctamente', 'success');
+            } else {
+                // MODO CREACIÓN - Crear nuevo usuario
+                console.log('📤 Creando nuevo usuario:', userData);
+                userData.password = password; // Agregar contraseña solo en creación
+                response = await authSystem.makeRequest('/admin/usuarios', userData);
+                this.mostrarMensajeModal('✅ Usuario creado correctamente', 'success');
             }
-
-            // Formatear rol
-            const roles = {
-                'admin': 'Administrador',
-                'advanced': 'Usuario Avanzado',
-                'user': 'Usuario Estándar'
-            };
-            const rolTexto = roles[usuario.role] || 'Usuario Estándar';
-
-            // Escapar comillas en los campos de texto
-            const escapar = (texto) => {
-                if (!texto) return '""';
-                return `"${texto.replace(/"/g, '""')}"`;
-            };
-
-            return [
-                escapar(usuario._id || ''),
-                escapar(usuario.apellidoNombre || ''),
-                escapar(usuario.legajo || ''),
-                escapar(usuario.email || ''),
-                escapar(usuario.turno || ''),
-                escapar(rolTexto),
-                escapar(fechaRegistro)
-            ].join(',');
-        });
-
-        // Crear contenido CSV con BOM para UTF-8
-        const csvContent = [
-            headers.join(','),
-            ...rows
-        ].join('\n');
-
-        // Agregar BOM para caracteres especiales
-        const blob = new Blob(['\uFEFF' + csvContent], { 
-            type: 'text/csv;charset=utf-8;' 
-        });
-        
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        // Generar nombre de archivo con fecha y cantidad
-        const fecha = new Date().toISOString().split('T')[0];
-        const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
-        const nombreArchivo = `usuarios_${this.data.length}_registros_${fecha}_${hora}.csv`;
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', nombreArchivo);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Limpiar URL
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-
-        // Mostrar mensaje de éxito con detalles
-        const totalUsuarios = this.data.length;
-        const admins = this.data.filter(u => u.role === 'admin').length;
-        const avanzados = this.data.filter(u => u.role === 'advanced').length;
-        const estandar = this.data.filter(u => u.role === 'user' || !u.role).length;
-        
-        alert(
-            `✅ EXPORTACIÓN EXITOSA\n\n` +
-            `📁 Archivo: ${nombreArchivo}\n` +
-            `📊 Total usuarios: ${totalUsuarios}\n` +
-            `👑 Administradores: ${admins}\n` +
-            `⭐ Usuarios Avanzados: ${avanzados}\n` +
-            `👤 Usuarios Estándar: ${estandar}\n\n` +
-            `📋 El archivo incluye ID de MongoDB para cada usuario`
-        );
-
-        console.log(`✅ CSV generado: ${nombreArchivo}`);
-        console.log(`📊 Estadísticas: ${totalUsuarios} usuarios (${admins} admins, ${avanzados} avanzados, ${estandar} estándar)`);
-
-    } catch (error) {
-        console.error('❌ Error exportando usuarios:', error);
-        alert('❌ Error al exportar usuarios: ' + error.message);
+            
+            // Cerrar modal después de guardar exitosamente
+            setTimeout(() => {
+                this.cerrarModal();
+                this.cargarDatos(); // Recargar la lista de usuarios
+                this.cargarInscripciones();
+                this.cargarSolicitudes();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('❌ Error guardando usuario:', error);
+            this.mostrarMensajeModal('❌ Error: ' + error.message, 'error');
+        }
     }
-}
+
+    mostrarMensajeModal(mensaje, tipo) {
+        // Buscar o crear contenedor de mensaje en el modal
+        const modal = document.getElementById('userModal');
+        const form = document.getElementById('userForm');
+        
+        let messageDiv = modal.querySelector('.modal-message');
+        if (!messageDiv) {
+            messageDiv = document.createElement('div');
+            messageDiv.className = 'modal-message';
+            form.insertBefore(messageDiv, form.firstChild);
+        }
+        
+        messageDiv.textContent = mensaje;
+        messageDiv.style.cssText = `
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            animation: slideDown 0.3s ease;
+            ${tipo === 'error' ? 
+                'background: #ffebee; color: #c62828; border: 1px solid #ffcdd2;' : 
+                'background: #e8f5e8; color: #2e7d32; border: 1px solid #c8e6c9;'
+            }
+        `;
+        
+        if (tipo === 'success') {
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 3000);
+        }
+    }
 
     async eliminarUsuario(usuarioId) {
         if (!authSystem.isAdmin()) {
@@ -575,15 +407,257 @@ exportarUsuariosCSV() {
         }
     }
 
+    editarUsuario(usuarioId) {
+        const usuario = this.data.find(u => u._id === usuarioId);
+        if (usuario) {
+            this.abrirModal(usuario);
+        }
+    }
+
+    async verHistorial(usuarioId) {
+        // [Mantener el código existente de verHistorial]
+        const usuario = this.data.find(u => u._id === usuarioId);
+        if (!usuario) return;
+
+        const inscripciones = this.inscripcionesData.filter(ins => 
+            (ins.usuario && ins.usuario._id === usuarioId) || 
+            (ins.usuarioId === usuarioId)
+        );
+
+        const solicitudes = this.solicitudesData.filter(sol => 
+            sol.usuarioId === usuarioId || 
+            (sol.usuario && sol.usuario._id === usuarioId)
+        );
+
+        const totalInscripciones = inscripciones.length;
+        const totalSolicitudes = solicitudes.length;
+        const totalActividades = totalInscripciones + totalSolicitudes;
+
+        const todasActividades = [
+            ...inscripciones.map(ins => ({
+                tipo: 'inscripcion',
+                clase: ins.clase || 'N/A',
+                turno: ins.turno || 'N/A',
+                fecha: ins.fecha,
+                detalles: ins,
+                material: null
+            })),
+            ...solicitudes.map(sol => ({
+                tipo: 'solicitud',
+                clase: sol.claseNombre || sol.clase || 'N/A',
+                turno: sol.turno || (sol.usuario?.turno) || 'N/A',
+                fecha: sol.fechaSolicitud,
+                detalles: sol,
+                youtube: sol.youtube,
+                powerpoint: sol.powerpoint
+            }))
+        ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        let actividadesHTML = '';
+        if (todasActividades.length === 0) {
+            actividadesHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene actividades registradas.</p>';
+        } else {
+            actividadesHTML = `
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                        <thead>
+                            <tr style="background: var(--accent-color); color: white;">
+                                <th style="padding: 12px; text-align: left;">#</th>
+                                <th style="padding: 12px; text-align: left;">Tipo</th>
+                                <th style="padding: 12px; text-align: left;">Clase</th>
+                                <th style="padding: 12px; text-align: left;">Turno</th>
+                                <th style="padding: 12px; text-align: left;">Fecha</th>
+                                <th style="padding: 12px; text-align: left;">Detalles</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${todasActividades.map((act, index) => `
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 12px;">${index + 1}</td>
+                                    <td style="padding: 12px;">
+                                        ${act.tipo === 'inscripcion' 
+                                            ? '<span style="background: rgba(66, 133, 244, 0.1); color: var(--accent-color); padding: 4px 8px; border-radius: 12px;">📋 Inscripción</span>' 
+                                            : '<span style="background: rgba(52, 168, 83, 0.1); color: var(--success-500); padding: 4px 8px; border-radius: 12px;">📚 Solicitud Material</span>'}
+                                    </td>
+                                    <td style="padding: 12px; font-weight: 500;">${act.clase}</td>
+                                    <td style="padding: 12px;">${act.turno}</td>
+                                    <td style="padding: 12px;">${act.fecha ? new Date(act.fecha).toLocaleString('es-AR') : 'N/A'}</td>
+                                    <td style="padding: 12px;">
+                                        ${act.tipo === 'solicitud' && (act.youtube || act.powerpoint) ? `
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                ${act.youtube ? `<a href="${act.youtube}" target="_blank" class="material-link youtube" style="font-size: 0.8em;">▶️ YouTube</a>` : ''}
+                                                ${act.powerpoint ? `<a href="${act.powerpoint}" target="_blank" class="material-link powerpoint" style="font-size: 0.8em;">📊 PPT</a>` : ''}
+                                            </div>
+                                        ` : act.tipo === 'inscripcion' ? 'Inscripción a clase' : 'Sin detalles'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        const content = `
+            <div style="padding: 20px;">
+                <div style="background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-container) 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--accent-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: var(--text-primary);">${usuario.apellidoNombre}</h3>
+                        <span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; color: var(--text-secondary);">
+                        <div><strong>📋 Legajo:</strong> ${usuario.legajo}</div>
+                        <div><strong>📧 Email:</strong> ${usuario.email}</div>
+                        <div><strong>⏰ Turno:</strong> ${usuario.turno || 'No especificado'}</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div style="background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Total Actividades</div>
+                        <strong style="font-size: 2em;">${totalActividades}</strong>
+                    </div>
+                    <div style="background: linear-gradient(135deg, var(--success-500) 0%, #0f9d58 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Inscripciones</div>
+                        <strong style="font-size: 2em;">${totalInscripciones}</strong>
+                    </div>
+                    <div style="background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%); color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 0.9em; opacity: 0.9; margin-bottom: 5px;">Solicitudes Material</div>
+                        <strong style="font-size: 2em;">${totalSolicitudes}</strong>
+                    </div>
+                </div>
+                
+                <h4 style="margin-bottom: 15px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <span>📅</span> Historial completo de actividades
+                </h4>
+                ${actividadesHTML}
+            </div>
+        `;
+
+        const modal = document.getElementById('historialModal');
+        const contentDiv = document.getElementById('historialModalContent');
+        const title = document.getElementById('historialModalTitle');
+        
+        if (modal && contentDiv && title) {
+            title.textContent = `📋 Historial de Actividades - ${usuario.apellidoNombre}`;
+            contentDiv.innerHTML = content;
+            modal.style.display = 'flex';
+        }
+    }
+
+    exportarUsuariosCSV() {
+        try {
+            if (this.data.length === 0) {
+                alert('No hay usuarios para exportar');
+                return;
+            }
+
+            console.log(`📥 Exportando ${this.data.length} usuarios a CSV con IDs...`);
+
+            const headers = [
+                'ID (MongoDB)',
+                'Apellido y Nombre',
+                'Legajo',
+                'Email',
+                'Turno',
+                'Rol',
+                'Fecha Registro'
+            ];
+
+            const rows = this.data.map(usuario => {
+                let fechaRegistro = 'N/A';
+                if (usuario.fechaRegistro) {
+                    const fecha = new Date(usuario.fechaRegistro);
+                    fechaRegistro = fecha.toLocaleString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+
+                const roles = {
+                    'admin': 'Administrador',
+                    'advanced': 'Usuario Avanzado',
+                    'user': 'Usuario Estándar'
+                };
+                const rolTexto = roles[usuario.role] || 'Usuario Estándar';
+
+                const escapar = (texto) => {
+                    if (!texto) return '""';
+                    return `"${texto.replace(/"/g, '""')}"`;
+                };
+
+                return [
+                    escapar(usuario._id || ''),
+                    escapar(usuario.apellidoNombre || ''),
+                    escapar(usuario.legajo || ''),
+                    escapar(usuario.email || ''),
+                    escapar(usuario.turno || ''),
+                    escapar(rolTexto),
+                    escapar(fechaRegistro)
+                ].join(',');
+            });
+
+            const csvContent = [
+                headers.join(','),
+                ...rows
+            ].join('\n');
+
+            const blob = new Blob(['\uFEFF' + csvContent], { 
+                type: 'text/csv;charset=utf-8;' 
+            });
+            
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const fecha = new Date().toISOString().split('T')[0];
+            const hora = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+            const nombreArchivo = `usuarios_${this.data.length}_registros_${fecha}_${hora}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', nombreArchivo);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+
+            alert(
+                `✅ EXPORTACIÓN EXITOSA\n\n` +
+                `📁 Archivo: ${nombreArchivo}\n` +
+                `📊 Total usuarios: ${this.data.length}`
+            );
+
+            console.log(`✅ CSV generado: ${nombreArchivo}`);
+
+        } catch (error) {
+            console.error('❌ Error exportando usuarios:', error);
+            alert('❌ Error al exportar usuarios: ' + error.message);
+        }
+    }
+
     setupEventListeners() {
+        // Botón crear usuario
         document.getElementById('createUserBtn')?.addEventListener('click', () => {
             this.abrirModal();
         });
 
+        // Botón exportar
+        document.getElementById('exportUsersBtn')?.addEventListener('click', () => {
+            this.exportarUsuariosCSV();
+        });
+
+        // Búsqueda de usuarios
         document.getElementById('searchUser')?.addEventListener('input', (e) => {
             this.mostrarTabla(e.target.value);
         });
 
+        // Botón actualizar
         document.getElementById('refreshUsersBtn')?.addEventListener('click', async () => {
             const btn = document.getElementById('refreshUsersBtn');
             const originalText = btn.textContent;
@@ -598,10 +672,16 @@ exportarUsuariosCSV() {
             btn.disabled = false;
         });
 
-        document.querySelectorAll('.close-modal, .cancel-modal').forEach(btn => {
-            btn.addEventListener('click', () => this.cerrarModal());
+        // Cerrar modal con botones X y Cancelar
+        document.querySelectorAll('.close-modal, .cancel-modal, .cancel-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.cerrarModal();
+            });
         });
 
+        // Cerrar modal de historial
         const closeHistorial = document.getElementById('closeHistorialModal');
         if (closeHistorial) {
             closeHistorial.addEventListener('click', () => {
@@ -609,6 +689,7 @@ exportarUsuariosCSV() {
             });
         }
 
+        // Cerrar modal haciendo click fuera del contenedor (SOLO para el modal de historial)
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('historialModal');
             if (e.target === modal) {
@@ -616,37 +697,33 @@ exportarUsuariosCSV() {
             }
         });
 
-        document.getElementById('userForm')?.addEventListener('submit', (e) => this.guardarUsuario(e));
+        // Evento submit del formulario - ¡CORREGIDO!
+        const form = document.getElementById('userForm');
+        if (form) {
+            // Remover event listeners anteriores para evitar duplicados
+            form.removeEventListener('submit', this.handleSubmit);
+            
+            // Crear nuevo handler
+            this.handleSubmit = (e) => {
+                e.preventDefault();
+                this.guardarUsuario(e);
+            };
+            
+            // Agregar nuevo event listener
+            form.addEventListener('submit', this.handleSubmit);
+        }
 
-        window.addEventListener('click', (e) => {
-            const modal = document.getElementById('userModal');
-            if (e.target === modal) this.cerrarModal();
-        });
-    }
-
-    // usuarios.js - Dentro del método setupEventListeners()
-
-setupEventListeners() {
-    document.getElementById('createUserBtn')?.addEventListener('click', () => {
-        this.abrirModal();
-    });
-
-    // NUEVO: Event listener para el botón de exportar
-    document.getElementById('exportUsersBtn')?.addEventListener('click', () => {
-        this.exportarUsuariosCSV();
-    });
-
-    document.getElementById('searchUser')?.addEventListener('input', (e) => {
-        this.mostrarTabla(e.target.value);
-    });
-
-    // ... resto del código existente
-}
-
-    editarUsuario(usuarioId) {
-        const usuario = this.data.find(u => u._id === usuarioId);
-        if (usuario) {
-            this.abrirModal(usuario);
+        // Prevenir cierre del modal al hacer click en el overlay (esto evita que se cierre accidentalmente)
+        const userModal = document.getElementById('userModal');
+        if (userModal) {
+            userModal.addEventListener('click', (e) => {
+                // Solo cerrar si se hace click directamente en el overlay (fondo oscuro)
+                if (e.target === userModal) {
+                    if (confirm('¿Estás seguro? Los cambios no guardados se perderán.')) {
+                        this.cerrarModal();
+                    }
+                }
+            });
         }
     }
 }
