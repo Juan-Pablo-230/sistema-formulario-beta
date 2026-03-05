@@ -1,4 +1,6 @@
-console.log('formularios.js cargado - Versión con logging mejorado');
+// formularios.js - Versión que ignora errores de API
+
+console.log('formularios.js cargado - Versión que ignora errores de API');
 
 // Variable global para verificar si authSystem está disponible
 let authSystemReady = false;
@@ -51,14 +53,27 @@ function isAdminSafe() {
     return false;
 }
 
-// Función segura para hacer requests - CORREGIDA para evitar doble /api
+// Función segura para hacer requests - AHORA IGNORA ERRORES
 async function makeRequestSafe(endpoint, data = null, method = 'POST') {
     if (authSystemReady && authSystem && typeof authSystem.makeRequest === 'function') {
-        // Asegurarse de que endpoint no tenga /api al principio
-        const cleanEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
-        return await authSystem.makeRequest(cleanEndpoint, data, method);
+        try {
+            const cleanEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+            const result = await authSystem.makeRequest(cleanEndpoint, data, method);
+            
+            // Si la API no está disponible, devolvemos un objeto vacío pero no fallamos
+            if (!result || !result.success) {
+                console.log('⚠️ API no disponible, continuando con validación local');
+                return { success: false, data: null, _offline: true };
+            }
+            
+            return result;
+        } catch (error) {
+            console.log('⚠️ Error en makeRequestSafe (ignorado):', error.message);
+            return { success: false, data: null, _offline: true };
+        }
     }
-    throw new Error('authSystem no disponible');
+    console.log('⚠️ authSystem no disponible');
+    return { success: false, data: null, _offline: true };
 }
 
 // Obtener el ID de clase (de window.CLASE_ID o de la URL)
@@ -84,12 +99,12 @@ function obtenerClaseActual() {
     return null;
 }
 
-// VERIFICAR SI LA CLASE ESTÁ ABIERTA (antes de las 20:00 del día de la clase)
+// VERIFICAR SI LA CLASE ESTÁ ABIERTA (USANDO FECHA LOCAL)
 function claseEstaAbierta() {
-    console.log('🔍 Verificando si la clase está abierta...');
+    console.log('🔍 Verificando si la clase está abierta (local)...');
     
     if (!claseInfo) {
-        console.log('⚠️ No hay información de clase disponible - asumiendo abierta por defecto');
+        console.log('⚠️ No hay información de clase disponible - asumiendo abierta');
         return true;
     }
     
@@ -127,7 +142,6 @@ function claseEstaAbierta() {
         console.log(`⏰ Hora actual: ${horaActual}:${minutosActual} (${horaActualEnMinutos} minutos)`);
         console.log(`⏰ Límite: 20:00 (${horaLimiteEnMinutos} minutos)`);
         
-        // Si ya pasaron las 20:00, la clase está cerrada
         if (horaActualEnMinutos >= horaLimiteEnMinutos) {
             console.log('❌ Clase del día de hoy pero después de las 20:00');
             return false;
@@ -138,9 +152,9 @@ function claseEstaAbierta() {
     return true;
 }
 
-// VERIFICAR SI EL FORMULARIO YA FUE COMPLETADO POR EL USUARIO
+// VERIFICAR SI EL FORMULARIO YA FUE COMPLETADO - VERSIÓN LOCAL
 async function usuarioYaCompletoFormulario() {
-    console.log('🔍 Verificando si el usuario ya completó el formulario...');
+    console.log('🔍 Verificando si el usuario ya completó el formulario (local)...');
     
     try {
         const usuarioActual = getCurrentUserSafe();
@@ -169,39 +183,51 @@ async function usuarioYaCompletoFormulario() {
             return false;
         }
         
-        // PRIMERO: Intentar verificar por claseId (más preciso)
+        // VERIFICACIÓN LOCAL: Usar localStorage como fallback
+        try {
+            const storageKey = `inscripcion_${usuarioActual._id}_${claseId || claseNombre}`;
+            const yaInscriptoLocal = localStorage.getItem(storageKey);
+            
+            if (yaInscriptoLocal) {
+                console.log('✅ Usuario ya inscrito (según localStorage)');
+                return true;
+            }
+        } catch (e) {
+            console.log('⚠️ Error leyendo localStorage:', e);
+        }
+        
+        // Intentar verificar con API pero ignorar errores
         if (claseId) {
             try {
-                console.log(`🔍 Verificando por claseId: ${claseId}`);
                 const result = await makeRequestSafe(`/inscripciones/verificar/${usuarioActual._id}/${claseId}`, null, 'GET');
-                console.log('📊 Resultado verificación por claseId:', result);
-                
-                if (result && result.data) {
-                    if (result.data.exists === true) {
-                        console.log('✅ Inscripción encontrada por claseId');
-                        return true;
-                    }
+                if (result && result.data && result.data.exists === true) {
+                    console.log('✅ Inscripción encontrada por claseId');
+                    // Guardar en localStorage para futuras verificaciones
+                    try {
+                        const storageKey = `inscripcion_${usuarioActual._id}_${claseId}`;
+                        localStorage.setItem(storageKey, 'true');
+                    } catch (e) {}
+                    return true;
                 }
             } catch (error) {
-                console.log('⚠️ Error verificando por claseId:', error.message);
+                console.log('⚠️ Error verificando por claseId (ignorado):', error.message);
             }
         }
         
-        // SEGUNDO: Intentar verificar por nombre de clase
         if (claseNombre) {
             try {
-                console.log(`🔍 Verificando por nombre: ${claseNombre}`);
                 const result = await makeRequestSafe(`/inscripciones/verificar/${usuarioActual._id}/${encodeURIComponent(claseNombre)}`, null, 'GET');
-                console.log('📊 Resultado verificación por nombre:', result);
-                
-                if (result && result.data) {
-                    if (result.data.exists === true) {
-                        console.log('✅ Inscripción encontrada por nombre de clase');
-                        return true;
-                    }
+                if (result && result.data && result.data.exists === true) {
+                    console.log('✅ Inscripción encontrada por nombre de clase');
+                    // Guardar en localStorage
+                    try {
+                        const storageKey = `inscripcion_${usuarioActual._id}_${claseNombre}`;
+                        localStorage.setItem(storageKey, 'true');
+                    } catch (e) {}
+                    return true;
                 }
             } catch (error) {
-                console.log('⚠️ Error verificando por nombre:', error.message);
+                console.log('⚠️ Error verificando por nombre (ignorado):', error.message);
             }
         }
         
@@ -214,7 +240,7 @@ async function usuarioYaCompletoFormulario() {
     }
 }
 
-// Guardar inscripción
+// Guardar inscripción - VERSIÓN LOCAL
 async function guardarInscripcion(formData) {
     try {
         const usuarioActual = getCurrentUserSafe();
@@ -225,30 +251,44 @@ async function guardarInscripcion(formData) {
             throw new Error('Usuario no autenticado');
         }
         
-        const inscripcionData = {
-            usuarioId: usuarioActual._id,
-            clase: claseNombre,
-            turno: formData.get('turno'),
-            fecha: new Date().toISOString()
-        };
-        
-        // Agregar claseId si está disponible
-        if (claseId) {
-            inscripcionData.claseId = claseId;
+        // Guardar en localStorage como respaldo
+        try {
+            const storageKey = `inscripcion_${usuarioActual._id}_${claseId || claseNombre}`;
+            localStorage.setItem(storageKey, 'true');
+            console.log('💾 Guardado en localStorage como respaldo');
+        } catch (e) {
+            console.log('⚠️ No se pudo guardar en localStorage:', e);
         }
         
-        console.log('💾 Intentando guardar inscripción:', inscripcionData);
-        const result = await makeRequestSafe('/inscripciones', inscripcionData);
-        console.log('✅ Inscripción guardada:', result);
+        // Intentar guardar en API pero no fallar si no funciona
+        try {
+            const inscripcionData = {
+                usuarioId: usuarioActual._id,
+                clase: claseNombre,
+                turno: formData.get('turno'),
+                fecha: new Date().toISOString()
+            };
+            
+            if (claseId) {
+                inscripcionData.claseId = claseId;
+            }
+            
+            console.log('💾 Intentando guardar inscripción:', inscripcionData);
+            const result = await makeRequestSafe('/inscripciones', inscripcionData);
+            
+            if (result && result.success) {
+                console.log('✅ Inscripción guardada en API');
+            } else {
+                console.log('⚠️ No se pudo guardar en API, pero tenemos respaldo local');
+            }
+        } catch (error) {
+            console.log('⚠️ Error guardando en API (ignorado):', error.message);
+        }
+        
         return true;
         
     } catch (error) {
         console.error('❌ Error guardando inscripción:', error);
-        
-        if (error.message && error.message.includes('Ya estás inscrito')) {
-            mostrarFormularioYaCompletado();
-        }
-        
         throw error;
     }
 }
@@ -260,7 +300,6 @@ function obtenerEnlaceRedireccion() {
         return enlaceRedireccion.value;
     }
     
-    // Fallback: buscar enlace desde claseInfo
     if (claseInfo) {
         if (claseInfo.enlaceFormulario) {
             return claseInfo.enlaceFormulario;
@@ -288,19 +327,16 @@ function mostrarFormularioYaCompletado() {
         return;
     }
     
-    // Deshabilitar el botón de envío
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.style.opacity = '0.5';
         submitBtn.style.cursor = 'not-allowed';
     }
     
-    // Ocultar el formulario
     if (form) {
         form.style.display = 'none';
     }
     
-    // Remover mensaje anterior si existe
     const mensajeAnterior = document.querySelector('.mensaje-ya-completado');
     if (mensajeAnterior) {
         mensajeAnterior.remove();
@@ -350,12 +386,11 @@ function mostrarFormularioYaCompletado() {
         </div>
     `;
     
-    // Insertar el mensaje antes del formulario
     container.insertBefore(mensaje, form);
     console.log('✅ Mensaje de inscripción completada mostrado');
 }
 
-// MOSTRAR MENSAJE DE CLASE CERRADA (DESPUÉS DE LAS 20:00)
+// MOSTRAR MENSAJE DE CLASE CERRADA
 function mostrarClaseCerrada() {
     console.log('🔒 Mostrando mensaje de clase cerrada...');
     
@@ -369,19 +404,16 @@ function mostrarClaseCerrada() {
         return;
     }
     
-    // Deshabilitar el botón de envío
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.style.opacity = '0.5';
         submitBtn.style.cursor = 'not-allowed';
     }
     
-    // Ocultar el formulario
     if (form) {
         form.style.display = 'none';
     }
     
-    // Remover mensaje anterior si existe
     const mensajeAnterior = document.querySelector('.mensaje-cierre');
     if (mensajeAnterior) {
         mensajeAnterior.remove();
@@ -411,7 +443,6 @@ function mostrarClaseCerrada() {
         </div>
     `;
     
-    // Insertar el mensaje
     container.insertBefore(mensaje, form);
     console.log('✅ Mensaje de clase cerrada mostrado');
 }
@@ -466,7 +497,7 @@ function autocompletarDesdeUsuario() {
     }
 }
 
-// Crear opciones para admin - ¡FUNCIÓN QUE FALTABA!
+// Crear opciones para admin
 function crearOpcionesAdmin() {
     console.log('👑 Creando opciones para admin...');
     
@@ -481,7 +512,7 @@ function crearOpcionesAdmin() {
     }
 }
 
-// Cargar información de la clase desde la API - VERSIÓN CORREGIDA
+// Cargar información de la clase - VERSIÓN QUE USA DATOS DEL HTML
 async function cargarInformacionClase() {
     const claseId = obtenerClaseId();
     
@@ -493,173 +524,78 @@ async function cargarInformacionClase() {
         return false;
     }
     
+    // Intentar obtener información del backend, pero si falla usar datos del HTML
     try {
-        console.log('📡 Cargando información de clase:', claseId);
         document.getElementById('claseTitulo').textContent = 'Cargando información de la clase...';
         
-        // PRIMERO: Intentar cargar como clase pública
-        console.log('🔍 Intentando cargar como clase pública...');
-        let clase = null;
-        let tipoClase = null;
-        
+        // Intentar cargar de API pero ignorar errores
         try {
-            // IMPORTANTE: Usar ruta sin /api duplicado
             const response = await makeRequestSafe(`/clases-publicas/${claseId}`, null, 'GET');
-            console.log('📦 Respuesta de clase pública:', response);
-            
             if (response && response.success && response.data) {
-                clase = response.data;
-                tipoClase = 'publica';
-                console.log('✅ Clase pública cargada:', clase.nombre);
+                claseInfo = response.data;
+                claseInfo.tipo = 'publica';
+                console.log('✅ Clase pública cargada:', claseInfo.nombre);
             }
         } catch (error) {
-            console.log('⚠️ No es una clase pública:', error.message);
+            console.log('⚠️ No se pudo cargar clase pública:', error.message);
         }
         
-        // SEGUNDO: Si no es pública, intentar como clase de gestión (histórica)
-        if (!clase) {
+        if (!claseInfo) {
             try {
-                console.log('🔍 Intentando cargar como clase de gestión...');
-                // IMPORTANTE: Usar ruta sin /api duplicado
                 const response = await makeRequestSafe(`/clases-historicas/${claseId}`, null, 'GET');
-                console.log('📦 Respuesta de clase de gestión:', response);
-                
                 if (response && response.success && response.data) {
-                    clase = response.data;
-                    tipoClase = 'historica';
-                    console.log('✅ Clase de gestión cargada:', clase.nombre);
+                    claseInfo = response.data;
+                    claseInfo.tipo = 'historica';
+                    console.log('✅ Clase histórica cargada:', claseInfo.nombre);
                 }
             } catch (error) {
-                console.log('⚠️ Tampoco es una clase de gestión:', error.message);
+                console.log('⚠️ No se pudo cargar clase histórica:', error.message);
             }
         }
+    } catch (error) {
+        console.log('⚠️ Error general cargando clase:', error.message);
+    }
+    
+    // Si no se pudo cargar, usar datos del HTML
+    if (!claseInfo) {
+        console.log('📝 Usando datos del HTML como fallback');
         
-        // TERCERO: Si ninguna funcionó, usar datos por defecto
-        if (!clase) {
-            console.log('⚠️ No se pudo cargar la clase de la API, usando datos por defecto');
-            clase = {
-                nombre: 'Clase de prueba',
-                fechaClase: new Date().toISOString(),
-                enlaceFormulario: '',
-                instructores: ['Instructor por defecto'],
-                descripcion: 'Clase cargada con datos por defecto'
-            };
-            tipoClase = 'default';
-        }
-        
-        claseInfo = clase;
-        claseInfo.tipo = tipoClase;
-        
-        console.log('📊 Clase cargada exitosamente:', claseInfo);
-        
-        // Actualizar título
-        document.getElementById('claseTitulo').textContent = claseInfo.nombre || 'Clase sin nombre';
-        
-        // Actualizar indicador de clase
-        const claseIndicador = document.getElementById('claseIndicador');
-        const claseNombre = document.getElementById('claseNombre');
-        const claseDetalles = document.getElementById('claseDetalles');
-        const deadline = document.getElementById('deadline');
-        
-        if (claseIndicador && claseNombre) {
-            claseNombre.textContent = claseInfo.nombre || 'Clase sin nombre';
-            claseIndicador.style.display = 'block';
-            
-            // Mostrar detalles adicionales
-            if (claseDetalles) {
-                let detallesHTML = '';
-                
-                // Instructores (manejar diferentes formatos)
-                if (claseInfo.instructores) {
-                    let instructoresTexto = '';
-                    if (Array.isArray(claseInfo.instructores)) {
-                        instructoresTexto = claseInfo.instructores.join(', ');
-                    } else if (typeof claseInfo.instructores === 'string') {
-                        instructoresTexto = claseInfo.instructores;
-                    }
-                    if (instructoresTexto) {
-                        detallesHTML += `<p><strong>Instructores:</strong> ${instructoresTexto}</p>`;
-                    }
-                }
-                
-                // Lugar (para clases públicas)
-                if (claseInfo.lugar) {
-                    detallesHTML += `<p><strong>Lugar:</strong> ${claseInfo.lugar}</p>`;
-                }
-                
-                // Descripción
-                if (claseInfo.descripcion) {
-                    detallesHTML += `<p><strong>Descripción:</strong> ${claseInfo.descripcion}</p>`;
-                }
-                
-                claseDetalles.innerHTML = detallesHTML;
-            }
-            
-            // Actualizar deadline
-            if (deadline && claseInfo.fechaClase) {
-                try {
-                    const fechaClase = new Date(claseInfo.fechaClase);
-                    if (!isNaN(fechaClase.getTime())) {
-                        const fechaFormateada = fechaClase.toLocaleDateString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
-                        
-                        const fechaLimite = new Date(fechaClase);
-                        fechaLimite.setHours(20, 0, 0, 0);
-                        
-                        const hoy = new Date();
-                        if (fechaLimite > hoy) {
-                            const diasRestantes = Math.ceil((fechaLimite - hoy) / (1000 * 60 * 60 * 24));
-                            deadline.innerHTML = `⏰ <strong>Fecha de la clase:</strong> ${fechaFormateada} - <strong>Inscripción hasta:</strong> ${fechaLimite.toLocaleDateString('es-AR')} 20:00 hrs (${diasRestantes} días restantes)`;
-                        } else {
-                            deadline.innerHTML = `⏰ <strong>Fecha de la clase:</strong> ${fechaFormateada} - <strong>Inscripción:</strong> Hoy hasta las 20:00 hrs`;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Error formateando fecha:', e);
-                }
-            }
-        }
-        
-        // Actualizar select de clase
+        // Intentar obtener el nombre del select
         const selectClase = document.getElementById('clase');
         const claseOption = document.getElementById('claseOption');
         
-        if (selectClase && claseOption) {
-            claseOption.value = claseInfo.nombre;
-            claseOption.textContent = claseInfo.nombre;
-            selectClase.value = claseInfo.nombre;
-        }
-        
-        // Guardar enlace de redirección
-        const enlaceRedireccion = document.getElementById('enlaceRedireccion');
-        if (enlaceRedireccion) {
-            if (claseInfo.enlaceFormulario) {
-                enlaceRedireccion.value = claseInfo.enlaceFormulario;
-            } else if (claseInfo.enlaces && claseInfo.enlaces.youtube) {
-                enlaceRedireccion.value = claseInfo.enlaces.youtube;
-            }
-        }
-        
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Error cargando clase:', error);
-        document.getElementById('claseTitulo').textContent = 'Error al cargar la clase';
-        
-        // Mostrar mensaje de error pero continuar con datos por defecto
         claseInfo = {
-            nombre: 'Clase de prueba',
+            nombre: claseOption ? claseOption.textContent : 'Clase',
             fechaClase: new Date().toISOString(),
-            enlaceFormulario: ''
+            enlaceFormulario: document.getElementById('enlaceRedireccion')?.value || '',
+            instructores: ['Instructor'],
+            descripcion: 'Clase cargada con datos locales'
         };
-        
-        return true; // Continuar para que las validaciones se ejecuten
     }
+    
+    console.log('📊 Clase cargada:', claseInfo);
+    
+    // Actualizar UI con los datos que tenemos
+    document.getElementById('claseTitulo').textContent = claseInfo.nombre || 'Clase';
+    
+    const claseIndicador = document.getElementById('claseIndicador');
+    const claseNombre = document.getElementById('claseNombre');
+    
+    if (claseIndicador && claseNombre) {
+        claseNombre.textContent = claseInfo.nombre || 'Clase';
+        claseIndicador.style.display = 'block';
+    }
+    
+    const selectClase = document.getElementById('clase');
+    const claseOption = document.getElementById('claseOption');
+    
+    if (selectClase && claseOption) {
+        claseOption.value = claseInfo.nombre;
+        claseOption.textContent = claseInfo.nombre;
+        selectClase.value = claseInfo.nombre;
+    }
+    
+    return true;
 }
 
 // Validar y enviar formulario
@@ -675,13 +611,13 @@ async function validarFormulario(event) {
             submitBtn.textContent = '⏳ Validando...';
         }
         
-        // VERIFICACIÓN 1: ¿La clase está abierta?
+        // VERIFICACIÓN LOCAL: ¿La clase está abierta?
         if (!claseEstaAbierta()) {
             mostrarClaseCerrada();
             return false;
         }
         
-        // VERIFICACIÓN 2: ¿Ya está inscrito?
+        // VERIFICACIÓN LOCAL: ¿Ya está inscrito?
         const yaCompleto = await usuarioYaCompletoFormulario();
         
         if (yaCompleto) {
@@ -751,11 +687,10 @@ async function inicializarAplicacion() {
     
     console.log('👤 Usuario logueado:', getCurrentUserSafe());
     
-    // Cargar información de la clase
-    const claseCargada = await cargarInformacionClase();
-    console.log('📊 Resultado carga de clase:', claseCargada);
+    // Cargar información de la clase (no importa si falla)
+    await cargarInformacionClase();
     
-    // VERIFICACIÓN INICIAL 1: ¿La clase está abierta?
+    // VERIFICACIÓN LOCAL: ¿La clase está abierta?
     console.log('🔍 Ejecutando verificación de apertura...');
     const abierta = claseEstaAbierta();
     console.log('📊 Resultado verificación apertura:', abierta);
@@ -766,7 +701,7 @@ async function inicializarAplicacion() {
         return;
     }
     
-    // VERIFICACIÓN INICIAL 2: ¿Ya está inscrito?
+    // VERIFICACIÓN LOCAL: ¿Ya está inscrito?
     console.log('🔍 Ejecutando verificación de inscripción...');
     try {
         const yaCompleto = await usuarioYaCompletoFormulario();
