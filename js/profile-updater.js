@@ -1,7 +1,6 @@
 class ProfileUpdater {
     constructor() {
         this.availableLegajos = new Set();
-        this.materialButtonContainer = document.getElementById('materialButtonContainer');
         this.init();
     }
 
@@ -81,11 +80,6 @@ class ProfileUpdater {
             userName.textContent = `👤 ${user.apellidoNombre} - Legajo: ${user.legajo}${roleBadge}`;
             userInfo.style.display = 'block';
 
-            // Mostrar botón de material
-            if (this.materialButtonContainer) {
-                this.materialButtonContainer.style.display = 'block';
-            }
-
             // Mostrar botón de panel de administración si es admin o avanzado
             this.showAdminPanelButton(user);
         }
@@ -94,11 +88,6 @@ class ProfileUpdater {
     hideUserInfo() {
         const userInfo = document.getElementById('userInfo');
         if (userInfo) userInfo.style.display = 'none';
-
-        // Ocultar botón de material
-        if (this.materialButtonContainer) {
-            this.materialButtonContainer.style.display = 'none';
-        }
     }
 
     showAdminPanelButton(user) {
@@ -213,10 +202,8 @@ class ProfileUpdater {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    if (confirm('¿Estás seguro? Los cambios no guardados se perderán.')) {
                     this.hideUpdateModal();
-                    }
-                }   
+                }
             });
         }
 
@@ -304,7 +291,6 @@ class ProfileUpdater {
             this.hideLegajoWarning();
             this.clearMessages();
             this.switchTab('update');
-            document.body.style.overflow = 'hidden';
             modal.style.display = 'flex';
         }
     }
@@ -313,7 +299,6 @@ class ProfileUpdater {
         const modal = document.getElementById('updateProfileModal');
         if (modal) {
             modal.style.display = 'none';
-            document.body.style.overflow = '';
             this.clearMessages();
             this.hideLegajoWarning();
         }
