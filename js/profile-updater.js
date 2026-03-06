@@ -183,26 +183,37 @@ class ProfileUpdater {
 
     setupModalEvents() {
         const modal = document.getElementById('updateProfileModal');
-        const closeBtn = document.querySelector('.close-modal');
-        const cancelBtns = document.querySelectorAll('.cancel-btn');
+        if (!modal) return;
+
+        // Usar modal.querySelector para asegurar que los botones son los del modal de perfil
+        const closeBtn = modal.querySelector('.close-modal');
+        const cancelBtns = modal.querySelectorAll('.cancel-btn');
         const updateForm = document.getElementById('updateProfileForm');
         const deleteForm = document.getElementById('deleteAccountForm');
         const modalTabs = document.querySelectorAll('.modal-tab');
 
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.hideUpdateModal());
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.hideUpdateModal();
+            });
         }
 
         if (cancelBtns) {
             cancelBtns.forEach(btn => {
-                btn.addEventListener('click', () => this.hideUpdateModal());
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideUpdateModal();
+                });
             });
         }
 
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    this.hideUpdateModal();
+                    if (confirm('¿Estás seguro? Los cambios no guardados se perderán.')) {
+                        this.hideUpdateModal();
+                    }
                 }
             });
         }
@@ -291,6 +302,10 @@ class ProfileUpdater {
             this.hideLegajoWarning();
             this.clearMessages();
             this.switchTab('update');
+            
+            // Bloquear scroll del fondo
+            document.body.style.overflow = 'hidden';
+            
             modal.style.display = 'flex';
         }
     }
@@ -299,6 +314,8 @@ class ProfileUpdater {
         const modal = document.getElementById('updateProfileModal');
         if (modal) {
             modal.style.display = 'none';
+            // Restaurar scroll
+            document.body.style.overflow = '';
             this.clearMessages();
             this.hideLegajoWarning();
         }
@@ -356,36 +373,35 @@ class ProfileUpdater {
     }
 
     async verifyCurrentPassword(password) {
-    try {
-        const user = authSystem.getCurrentUser();
-        
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                identifier: user.email,
-                password: password
-            })
-        });
+        try {
+            const user = authSystem.getCurrentUser();
+            
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    identifier: user.email,
+                    password: password
+                })
+            });
 
-        // Verificar si la respuesta es JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+                return false;
+            }
+
+            const result = await response.json();
+            return result.success;
+
+        } catch (error) {
+            console.error('Error verificando contraseña:', error);
             return false;
         }
-
-        const result = await response.json();
-        return result.success;
-
-    } catch (error) {
-        console.error('Error verificando contraseña:', error);
-        return false;
     }
-}
 
     async handleProfileUpdate() {
         const formData = new FormData(document.getElementById('updateProfileForm'));
@@ -532,85 +548,46 @@ class ProfileUpdater {
     }
 
     async updateUserInMongoDB(oldUser, newData, currentPassword) {
-    try {
-        const response = await fetch('/api/usuarios/perfil', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'user-id': oldUser._id
-            },
-            body: JSON.stringify({
-                ...newData,
-                currentPassword: currentPassword
-            })
-        });
+        try {
+            const response = await fetch('/api/usuarios/perfil', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': oldUser._id
+                },
+                body: JSON.stringify({
+                    ...newData,
+                    currentPassword: currentPassword
+                })
+            });
 
-        // Verificar si la respuesta es JSON
-        const contentType = response.headers.get('content-type');
-        let result;
-        
-        if (contentType && contentType.includes('application/json')) {
-            result = await response.json();
-        } else {
-            const text = await response.text();
-            console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
-            throw new Error(`El servidor devolvió HTML (${response.status}). Ruta no encontrada.`);
-        }
-        
-        if (result.success) {
-            const updatedUser = { ...oldUser, ...newData };
-            authSystem.currentUser = updatedUser;
-            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            const contentType = response.headers.get('content-type');
+            let result;
             
-            console.log('✅ Perfil actualizado en MongoDB');
-            return true;
-        } else {
-            throw new Error(result.message || 'Error desconocido al actualizar perfil');
-        }
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+                throw new Error(`El servidor devolvió HTML (${response.status}). Ruta no encontrada.`);
+            }
+            
+            if (result.success) {
+                const updatedUser = { ...oldUser, ...newData };
+                authSystem.currentUser = updatedUser;
+                localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                
+                console.log('✅ Perfil actualizado en MongoDB');
+                return true;
+            } else {
+                throw new Error(result.message || 'Error desconocido al actualizar perfil');
+            }
 
-    } catch (error) {
-        console.error('❌ Error actualizando perfil en MongoDB:', error);
-        throw error;
+        } catch (error) {
+            console.error('❌ Error actualizando perfil en MongoDB:', error);
+            throw error;
+        }
     }
-}
-
-async deleteUserFromMongoDB(user, currentPassword) {
-    try {
-        const response = await fetch('/api/usuarios/cuenta', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'user-id': user._id
-            },
-            body: JSON.stringify({
-                currentPassword: currentPassword
-            })
-        });
-
-        // Verificar si la respuesta es JSON
-        const contentType = response.headers.get('content-type');
-        let result;
-        
-        if (contentType && contentType.includes('application/json')) {
-            result = await response.json();
-        } else {
-            const text = await response.text();
-            console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
-            throw new Error(`El servidor devolvió HTML (${response.status}). Ruta no encontrada.`);
-        }
-
-        if (result.success) {
-            console.log('✅ Usuario eliminado de MongoDB');
-            return true;
-        } else {
-            throw new Error(result.message || 'Error desconocido al eliminar usuario');
-        }
-
-    } catch (error) {
-        console.error('❌ Error eliminando usuario de MongoDB:', error);
-        throw error;
-    }
-}
 
     async deleteUserFromMongoDB(user, currentPassword) {
         try {
@@ -625,13 +602,22 @@ async deleteUserFromMongoDB(user, currentPassword) {
                 })
             });
 
-            const result = await response.json();
+            const contentType = response.headers.get('content-type');
+            let result;
             
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('❌ Respuesta no es JSON:', text.substring(0, 200));
+                throw new Error(`El servidor devolvió HTML (${response.status}). Ruta no encontrada.`);
+            }
+
             if (result.success) {
                 console.log('✅ Usuario eliminado de MongoDB');
                 return true;
             } else {
-                throw new Error(result.message);
+                throw new Error(result.message || 'Error desconocido al eliminar usuario');
             }
 
         } catch (error) {
