@@ -230,82 +230,110 @@
     <!-- Script principal (con toda la lógica y hora sincronizada) -->
     <script>
         // ============================================
-        // Sistema de Hora Sincronizada con Internet
+        // Sistema de Hora Sincronizada MEJORADO (con respaldo local y espera)
         // ============================================
-        let timeOffset = 0; // Diferencia entre la hora del servidor y la hora local (offset = servidor - local)
-        let syncInProgress = false;
+        let timeOffset = 0; // offset = serverTime - localTime
+        let syncCompleted = false;
+        let syncError = null;
 
-        // Función para obtener la hora de un servidor de internet
-        async function syncWithNetworkTime() {
-            if (syncInProgress) return;
-            syncInProgress = true;
-            console.log('🔄 Sincronizando hora con servidor de internet...');
+        async function syncWithNetworkTime(useLocalFallback = true) {
+            console.log('🔄 Sincronizando hora...');
 
-            // Lista de servidores de respaldo
-            const timeApis = [
+            // 1. Intentar con endpoint propio (más confiable)
+            try {
+                const start = Date.now();
+                const res = await fetch('/api/current-time', { cache: 'no-cache' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.timestamp) {
+                        const serverTime = data.timestamp;
+                        const end = Date.now();
+                        const rtt = end - start;
+                        timeOffset = serverTime - (start + rtt / 2);
+                        console.log(`✅ Hora sincronizada con servidor local. Offset: ${timeOffset}ms`);
+                        syncCompleted = true;
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ No se pudo conectar al endpoint local:', e.message);
+            }
+
+            // 2. Respaldo con APIs externas
+            const apis = [
                 'https://worldtimeapi.org/api/timezone/Etc/UTC',
-                'https://timeapi.io/api/Time/current/zone?timeZone=UTC',
-                // Podrías añadir un endpoint de tu propio backend en el futuro: '/api/current-time'
+                'https://timeapi.io/api/Time/current/zone?timeZone=UTC'
             ];
 
-            for (const apiUrl of timeApis) {
+            for (const api of apis) {
                 try {
-                    const startTime = Date.now(); // Tiempo local justo antes de la petición
-                    const response = await fetch(apiUrl, { method: 'GET', cache: 'no-cache' });
+                    const start = Date.now();
+                    const res = await fetch(api, { cache: 'no-cache' });
+                    if (!res.ok) continue;
 
-                    if (!response.ok) continue;
-
-                    // Intentar obtener la fecha de la cabecera 'Date' primero (es universal)
-                    const dateHeader = response.headers.get('date');
+                    // Intentar leer cabecera Date
+                    const dateHeader = res.headers.get('date');
                     if (dateHeader) {
                         const serverTime = new Date(dateHeader).getTime();
-                        const endTime = Date.now();
-                        // Estimación del tiempo de ida y vuelta (RTT)
-                        const rtt = endTime - startTime;
-                        // El momento aproximado en que el servidor generó la respuesta es (startTime + rtt/2)
-                        // Calculamos el offset: serverTime - (startTime + rtt/2)
-                        timeOffset = serverTime - (startTime + rtt / 2);
+                        const end = Date.now();
+                        const rtt = end - start;
+                        timeOffset = serverTime - (start + rtt / 2);
                         console.log(`✅ Hora sincronizada vía cabecera Date. Offset: ${timeOffset}ms`);
-                        syncInProgress = false;
-                        return;
+                        syncCompleted = true;
+                        return true;
                     }
 
-                    // Si no hay cabecera Date, intentar parsear el body (para worldtimeapi.org)
-                    if (apiUrl.includes('worldtimeapi')) {
-                        const data = await response.json();
+                    // Si no hay cabecera, leer body (worldtimeapi)
+                    if (api.includes('worldtimeapi')) {
+                        const data = await res.json();
                         if (data && data.datetime) {
                             const serverTime = new Date(data.datetime).getTime();
-                            const endTime = Date.now();
-                            const rtt = endTime - startTime;
-                            timeOffset = serverTime - (startTime + rtt / 2);
+                            const end = Date.now();
+                            const rtt = end - start;
+                            timeOffset = serverTime - (start + rtt / 2);
                             console.log(`✅ Hora sincronizada vía worldtimeapi. Offset: ${timeOffset}ms`);
-                            syncInProgress = false;
-                            return;
+                            syncCompleted = true;
+                            return true;
                         }
                     }
                 } catch (e) {
-                    console.warn(`⏳ Fallo al sincronizar con ${apiUrl}:`, e.message);
+                    console.warn(`⏳ Fallo con ${api}:`, e.message);
                 }
             }
 
-            console.warn('⚠️ No se pudo sincronizar la hora con ningún servidor. Se usará la hora local del equipo.');
-            timeOffset = 0; // Si todo falla, offset 0 (usar hora local)
-            syncInProgress = false;
+            // 3. Si todo falla
+            syncError = 'No se pudo sincronizar la hora con ningún servidor.';
+            if (useLocalFallback) {
+                timeOffset = 0;
+                console.warn('⚠️ Usando hora local del equipo (offset = 0).');
+            }
+            syncCompleted = true; // Marcamos como completado aunque haya error
+            return false;
         }
 
-        // Función para obtener la hora actual (corregida con el offset)
         function getCurrentNetworkTime() {
             return Date.now() + timeOffset;
         }
 
-        // Función para obtener un objeto Date con la hora corregida
         function getCurrentNetworkDate() {
             return new Date(getCurrentNetworkTime());
         }
 
-        // Llamar a la sincronización al cargar la página y luego cada hora (3600000 ms)
-        syncWithNetworkTime();
-        setInterval(syncWithNetworkTime, 3600000);
+        // Esperar a que la sincronización termine antes de continuar
+        async function waitForSync() {
+            if (syncCompleted) return;
+            // Iniciar sincronización y esperar
+            await syncWithNetworkTime(true);
+        }
+
+        // Exponer funciones globalmente (necesario para el resto del código)
+        window.getCurrentNetworkTime = getCurrentNetworkTime;
+        window.getCurrentNetworkDate = getCurrentNetworkDate;
+        window.waitForSync = waitForSync;
+
+        // Llamar a la sincronización al cargar la página (no bloqueante, pero luego esperamos)
+        syncWithNetworkTime(true);
+        setInterval(() => syncWithNetworkTime(true), 3600000);
 
         // ============================================
         // Resto del código (con las modificaciones)
@@ -658,8 +686,41 @@
             cargarClasesPublicas(true);
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM cargado, cargando clases...');
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📄 DOM cargado, sincronizando hora...');
+            
+            // Mostrar mensaje de sincronización en el grid
+            const grid = document.getElementById('dynamic-classes-grid');
+            if (grid) grid.innerHTML = '<div class="loading-classes">Sincronizando hora del sistema...</div>';
+
+            // Esperar sincronización con un timeout de 5 segundos
+            await Promise.race([
+                waitForSync(),
+                new Promise(resolve => setTimeout(resolve, 5000))
+            ]);
+
+            if (syncError) {
+                console.warn(syncError);
+                // Opcional: mostrar advertencia al usuario
+                const warning = document.createElement('div');
+                warning.className = 'time-warning';
+                warning.innerHTML = '⚠️ No se pudo sincronizar la hora. Algunas fechas pueden no ser exactas.';
+                warning.style.cssText = `
+                    background: #fff3cd;
+                    color: #856404;
+                    padding: 10px;
+                    border-radius: 5px;
+                    margin: 10px 0;
+                    text-align: center;
+                    font-weight: bold;
+                `;
+                const header = document.querySelector('.main-header');
+                if (header) header.appendChild(warning);
+            }
+
+            console.log('⏱️ Offset de tiempo:', timeOffset, 'ms');
+            
+            // Ahora cargar clases
             timeoutCarga = setTimeout(() => {
                 cargarClasesPublicas();
                 intervaloVerificacion = setInterval(verificarClasesExpiradas, 60000);
