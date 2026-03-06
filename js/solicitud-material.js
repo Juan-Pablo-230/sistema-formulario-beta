@@ -1,5 +1,51 @@
-console.log('📚 material-historico.js cargado - Usando authSystem de formularios.js');
+console.log('📚 solicitud-material.js cargado - Versión independiente');
 
+// ============================================
+// Funciones auxiliares basadas en authSystem
+// ============================================
+function waitForAuthSystem() {
+    return new Promise((resolve, reject) => {
+        const maxAttempts = 50;
+        let attempts = 0;
+        const check = () => {
+            if (typeof authSystem !== 'undefined' && authSystem) {
+                resolve(authSystem);
+            } else if (attempts++ < maxAttempts) {
+                setTimeout(check, 100);
+            } else {
+                reject(new Error('authSystem no disponible'));
+            }
+        };
+        check();
+    });
+}
+
+function getCurrentUserSafe() {
+    return authSystem?.getCurrentUser ? authSystem.getCurrentUser() : null;
+}
+
+function isLoggedInSafe() {
+    return authSystem?.isLoggedIn ? authSystem.isLoggedIn() : false;
+}
+
+async function makeRequestSafe(endpoint, data = null, method = 'POST') {
+    if (!authSystem || !authSystem.makeRequest) {
+        throw new Error('authSystem no listo');
+    }
+    const fullEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
+    return await authSystem.makeRequest(fullEndpoint, data, method);
+}
+
+function logoutSafe() {
+    if (authSystem && authSystem.logout) {
+        authSystem.logout();
+    }
+    window.location.href = '/index.html';
+}
+
+// ============================================
+// Clase MaterialHistorico (sin cambios)
+// ============================================
 class MaterialHistorico {
     constructor() {
         this.solicitudes = [];
@@ -21,17 +67,14 @@ class MaterialHistorico {
         console.log('🚀 Inicializando sistema de material histórico con filtro por año y mes...');
         
         try {
-            // Usar la función waitForAuthSystem de formularios.js
             await waitForAuthSystem();
             console.log('✅ authSystem listo para usar');
-            
         } catch (error) {
             console.error('❌ Error esperando por authSystem:', error);
             this.mostrarMensaje('Error al cargar el sistema de autenticación', 'error');
             return;
         }
         
-        // Verificar autenticación usando isLoggedInSafe() de formularios.js
         if (!isLoggedInSafe()) {
             console.log('🔐 Usuario no logueado, mostrando modal de login...');
             try {
@@ -39,9 +82,7 @@ class MaterialHistorico {
                 console.log('✅ Usuario autenticado:', getCurrentUserSafe());
             } catch (error) {
                 console.log('❌ Usuario canceló el login');
-                // Solo mostrar mensaje, NO redirigir
                 this.mostrarMensaje('Debe iniciar sesión para poder solicitar el material', 'error');
-                // Deshabilitar los controles
                 this.deshabilitarControles();
                 return;
             }
@@ -53,7 +94,6 @@ class MaterialHistorico {
     }
 
     deshabilitarControles() {
-        // Deshabilitar selects y botones si el usuario no está logueado
         const selects = document.querySelectorAll('select');
         const buttons = document.querySelectorAll('button');
         
@@ -64,7 +104,6 @@ class MaterialHistorico {
             }
         });
         
-        // Mostrar mensaje en el área principal
         const container = document.querySelector('.container');
         if (container) {
             const loginMessage = document.createElement('div');
@@ -89,23 +128,20 @@ class MaterialHistorico {
         const usuario = getCurrentUserSafe();
         console.log('👤 Usuario actual:', usuario);
         
-        // Autocompletar email si existe el campo
         const emailInput = document.getElementById('emailUsuario');
         if (emailInput && usuario && usuario.email) {
             emailInput.value = usuario.email;
         }
 
-        // Configurar botón de logout SOLO si existe
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => {
-                logoutSafe(); // Usar logoutSafe de formularios.js
+                logoutSafe();
             });
         } else {
             console.log('⚠️ Botón de logout no encontrado en el DOM');
         }
 
-        // Configurar formulario principal SOLO si existe
         const form = document.getElementById('materialHistoricoForm');
         if (form) {
             form.addEventListener('submit', async (e) => {
@@ -116,7 +152,6 @@ class MaterialHistorico {
             console.error('❌ Formulario de solicitud de material no encontrado');
         }
 
-        // Configurar botón de solicitar otra clase SOLO si existe
         const solicitarOtraBtn = document.getElementById('solicitarOtraClase');
         if (solicitarOtraBtn) {
             solicitarOtraBtn.addEventListener('click', () => {
@@ -148,7 +183,7 @@ class MaterialHistorico {
             const result = await response.json();
             
             if (result.success && result.data) {
-                // 🔥 CORRECCIÓN: Filtrar solo las clases con estado 'publicada'
+                // Filtrar solo las clases con estado 'publicada'
                 this.clasesHistoricas = result.data.filter(clase => 
                     clase.estado === 'publicada' || 
                     (clase.activa === true && !clase.estado) // Compatibilidad con datos antiguos
@@ -156,7 +191,6 @@ class MaterialHistorico {
                 
                 console.log(`✅ ${this.clasesHistoricas.length} clases publicadas cargadas`);
                 
-                // Mostrar las clases cargadas para debug
                 this.clasesHistoricas.forEach(clase => {
                     console.log(`📚 Clase: ${clase.nombre} - Estado: ${clase.estado || (clase.activa ? 'activa (legacy)' : 'inactiva')}`);
                 });
@@ -173,7 +207,6 @@ class MaterialHistorico {
     }
 
     procesarAnosDisponibles() {
-        // Extraer años únicos de las fechas de las clases
         const anos = new Set();
         
         this.clasesHistoricas.forEach(clase => {
@@ -186,9 +219,7 @@ class MaterialHistorico {
             }
         });
         
-        // Convertir a array y ordenar descendente (más reciente primero)
         this.anosDisponibles = Array.from(anos).sort((a, b) => b - a);
-        
         console.log(`📅 Años disponibles: ${this.anosDisponibles.join(', ')}`);
     }
 
@@ -201,7 +232,6 @@ class MaterialHistorico {
             return;
         }
         
-        // Agregar opción "Todos" al inicio
         selectAno.innerHTML = '<option value="">Seleccione un año</option>';
         selectAno.innerHTML += '<option value="todos">Todos los años</option>';
         
@@ -212,7 +242,6 @@ class MaterialHistorico {
             selectAno.appendChild(option);
         });
         
-        // Agregar evento de cambio
         selectAno.addEventListener('change', (e) => {
             this.anoSeleccionado = e.target.value;
             this.procesarMesesDisponibles();
@@ -228,22 +257,19 @@ class MaterialHistorico {
             return;
         }
         
-        // Extraer meses únicos para el año seleccionado
         const meses = new Set();
         
         this.clasesHistoricas.forEach(clase => {
             if (clase.fechaClase) {
                 const fecha = new Date(clase.fechaClase);
                 if (fecha.getFullYear() === parseInt(this.anoSeleccionado)) {
-                    const mes = fecha.getMonth(); // 0-11
+                    const mes = fecha.getMonth();
                     meses.add(mes);
                 }
             }
         });
         
-        // Convertir a array y ordenar (1-12)
         this.mesesDisponibles = Array.from(meses).sort((a, b) => a - b);
-        
         console.log(`Meses disponibles para ${this.anoSeleccionado}: ${this.mesesDisponibles.map(m => this.nombresMeses[m]).join(', ')}`);
         
         this.llenarSelectorMeses();
@@ -253,7 +279,6 @@ class MaterialHistorico {
         const selectMes = document.getElementById('mesSeleccionado');
         if (!selectMes) return;
         
-        // Limpiar y habilitar/deshabilitar
         selectMes.innerHTML = '';
         selectMes.disabled = false;
         
@@ -264,11 +289,9 @@ class MaterialHistorico {
         }
         
         if (this.anoSeleccionado === 'todos') {
-            // Si seleccionó "Todos los años", mostrar opción "Todos los meses"
             selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
             selectMes.innerHTML += '<option value="todos">Todos los meses</option>';
             
-            // Agregar todos los meses disponibles globalmente
             const todosMeses = new Set();
             this.clasesHistoricas.forEach(clase => {
                 if (clase.fechaClase) {
@@ -299,7 +322,6 @@ class MaterialHistorico {
             });
         }
         
-        // Agregar evento de cambio
         selectMes.addEventListener('change', (e) => {
             this.mesSeleccionado = e.target.value;
             this.filtrarClasesPorMes();
@@ -321,16 +343,13 @@ class MaterialHistorico {
             return;
         }
         
-        // Filtrar clases por año y mes (considerando opciones "todos")
         this.clasesFiltradas = this.clasesHistoricas.filter(clase => {
             if (!clase.fechaClase) return false;
             const fecha = new Date(clase.fechaClase);
             
-            // Filtrar por año
             const pasaAno = this.anoSeleccionado === 'todos' || 
                            fecha.getFullYear() === parseInt(this.anoSeleccionado);
             
-            // Filtrar por mes
             const pasaMes = this.mesSeleccionado === 'todos' || 
                            fecha.getMonth() === parseInt(this.mesSeleccionado);
             
@@ -340,14 +359,12 @@ class MaterialHistorico {
         console.log(`🔍 ${this.clasesFiltradas.length} clases publicadas encontradas para los filtros seleccionados`);
         
         if (this.clasesFiltradas.length === 0) {
-            // No hay clases para este período
             if (form) form.style.display = 'none';
             if (buscadorContainer) buscadorContainer.style.display = 'none';
             if (sinClasesMensaje) sinClasesMensaje.style.display = 'block';
             return;
         }
         
-        // Hay clases, mostrar el formulario y el buscador
         if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
         if (form) form.style.display = 'block';
         if (buscadorContainer) buscadorContainer.style.display = 'block';
@@ -360,11 +377,9 @@ class MaterialHistorico {
         const buscador = document.getElementById('buscadorClases');
         if (!buscador) return;
         
-        // Eliminar event listener anterior si existe
         const nuevoBuscador = buscador.cloneNode(true);
         buscador.parentNode.replaceChild(nuevoBuscador, buscador);
         
-        // Agregar nuevo event listener
         nuevoBuscador.addEventListener('input', (e) => {
             this.filtrarListaClases(e.target.value);
         });
@@ -378,7 +393,7 @@ class MaterialHistorico {
         const textoLower = textoBusqueda.toLowerCase();
         
         opciones.forEach(option => {
-            if (option.value === '') return; // Ignorar la opción por defecto
+            if (option.value === '') return;
             
             const textoOpcion = option.textContent.toLowerCase();
             if (textoOpcion.includes(textoLower)) {
@@ -395,7 +410,6 @@ class MaterialHistorico {
         
         select.innerHTML = '<option value="">Seleccione una clase</option>';
         
-        // Ordenar alfabéticamente por nombre
         this.clasesFiltradas.sort((a, b) => {
             return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
         });
@@ -404,7 +418,6 @@ class MaterialHistorico {
             const option = document.createElement('option');
             option.value = clase._id;
             
-            // Formatear fecha para mostrar
             let fechaTexto = '';
             if (clase.fechaClase) {
                 const fecha = new Date(clase.fechaClase);
@@ -418,9 +431,7 @@ class MaterialHistorico {
                 });
             }
             
-            // Mostrar el estado de la clase (opcional, para debug)
             const estadoTexto = clase.estado ? ` [${clase.estado}]` : '';
-            
             option.textContent = `${clase.nombre} (${fechaTexto})${estadoTexto}`;
             option.dataset.nombre = clase.nombre;
             option.dataset.descripcion = clase.descripcion || '';
@@ -434,7 +445,6 @@ class MaterialHistorico {
         
         console.log(`✅ Selector de clases cargado con ${this.clasesFiltradas.length} opciones (solo clases publicadas)`);
         
-        // Resetear buscador
         const buscador = document.getElementById('buscadorClases');
         if (buscador) {
             buscador.value = '';
@@ -467,10 +477,7 @@ class MaterialHistorico {
             instructores: selectOption.dataset.instructores
         };
 
-        // Mostrar enlaces del material
         this.mostrarMaterial(claseData);
-        
-        // Guardar solicitud en MongoDB
         await this.guardarSolicitud(claseData);
     }
 
@@ -486,7 +493,6 @@ class MaterialHistorico {
             return;
         }
         
-        // Formatear fecha para mostrar
         let fechaFormateada = '';
         if (claseData.fecha) {
             const fecha = new Date(claseData.fecha);
@@ -499,11 +505,9 @@ class MaterialHistorico {
                 minute: '2-digit',
                 hour12: false
             });
-            // Capitalizar primera letra
             fechaFormateada = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
         }
         
-        // Mostrar período seleccionado en el badge
         let periodoTexto = '';
         if (this.anoSeleccionado === 'todos' && this.mesSeleccionado === 'todos') {
             periodoTexto = 'Todos los períodos';
@@ -519,7 +523,6 @@ class MaterialHistorico {
         if (claseDescripcion) claseDescripcion.textContent = claseData.descripcion || 'Material de la clase grabada';
         if (claseFecha) claseFecha.textContent = `📅 ${fechaFormateada}`;
         
-        // Limpiar instructores anteriores
         const instructoresExistente = document.getElementById('instructoresInfo');
         if (instructoresExistente) {
             instructoresExistente.remove();
@@ -565,7 +568,6 @@ class MaterialHistorico {
             `;
         }
         
-        // Ocultar filtros y formulario, mostrar enlaces
         const filtrosContainer = document.querySelector('.filtros-container');
         if (filtrosContainer) filtrosContainer.style.display = 'none';
         
@@ -602,7 +604,6 @@ class MaterialHistorico {
         const buscador = document.getElementById('buscadorClases');
         if (buscador) buscador.value = '';
         
-        // Resetear selectores
         const selectAno = document.getElementById('anoSeleccionado');
         if (selectAno) selectAno.value = '';
         
@@ -632,7 +633,6 @@ class MaterialHistorico {
 
             console.log('📤 Guardando solicitud:', solicitudData);
             
-            // Usar makeRequestSafe de formularios.js
             const result = await makeRequestSafe('/material-historico/solicitudes', solicitudData);
             
             if (result.success) {
@@ -704,7 +704,6 @@ class MaterialHistorico {
             return;
         }
 
-        // Ordenar por fecha más reciente
         this.solicitudes.sort((a, b) => 
             new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud)
         );
@@ -775,26 +774,6 @@ class MaterialHistorico {
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM cargado, esperando funciones de formularios.js...');
-    
-    // Verificar que las funciones existen antes de inicializar
-    if (typeof waitForAuthSystem === 'undefined') {
-        console.error('❌ funciones de formularios.js no disponibles');
-        // Mostrar mensaje de error
-        const container = document.querySelector('.container');
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <div style="font-size: 3em; margin-bottom: 20px;">⚠️</div>
-                    <h3>Error de Carga</h3>
-                    <p>No se pudo cargar el sistema de autenticación.</p>
-                    <p style="color: #666; font-size: 0.9em;">Asegúrese de que formularios.js se cargue antes que solicitud-material.js</p>
-                    <button onclick="window.location.reload()" class="back-btn">Reintentar</button>
-                </div>
-            `;
-        }
-    } else {
-        console.log('✅ funciones de formularios.js disponibles, inicializando...');
-        window.materialHistorico = new MaterialHistorico();
-    }
+    console.log('📄 DOM cargado, inicializando...');
+    window.materialHistorico = new MaterialHistorico();
 });
