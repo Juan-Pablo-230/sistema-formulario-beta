@@ -1,6 +1,7 @@
 class ProfileUpdater {
     constructor() {
         this.availableLegajos = new Set();
+        this.materialButtonContainer = document.getElementById('materialButtonContainer');
         this.init();
     }
 
@@ -53,7 +54,7 @@ class ProfileUpdater {
     showGuestInfo() {
         const guestInfo = document.getElementById('guestInfo');
         if (guestInfo) {
-            guestInfo.style.display = 'flex';
+            guestInfo.style.display = 'block';
         }
     }
 
@@ -80,6 +81,11 @@ class ProfileUpdater {
             userName.textContent = `👤 ${user.apellidoNombre} - Legajo: ${user.legajo}${roleBadge}`;
             userInfo.style.display = 'block';
 
+            // Mostrar botón de material
+            if (this.materialButtonContainer) {
+                this.materialButtonContainer.style.display = 'block';
+            }
+
             // Mostrar botón de panel de administración si es admin o avanzado
             this.showAdminPanelButton(user);
         }
@@ -88,6 +94,11 @@ class ProfileUpdater {
     hideUserInfo() {
         const userInfo = document.getElementById('userInfo');
         if (userInfo) userInfo.style.display = 'none';
+
+        // Ocultar botón de material
+        if (this.materialButtonContainer) {
+            this.materialButtonContainer.style.display = 'none';
+        }
     }
 
     showAdminPanelButton(user) {
