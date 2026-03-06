@@ -1,6 +1,7 @@
 class ProfileUpdater {
     constructor() {
         this.availableLegajos = new Set();
+        this.materialButtonContainer = document.getElementById('materialButtonContainer');
         this.init();
     }
 
@@ -80,6 +81,11 @@ class ProfileUpdater {
             userName.textContent = `👤 ${user.apellidoNombre} - Legajo: ${user.legajo}${roleBadge}`;
             userInfo.style.display = 'block';
 
+            // Mostrar botón de material
+            if (this.materialButtonContainer) {
+                this.materialButtonContainer.style.display = 'block';
+            }
+
             // Mostrar botón de panel de administración si es admin o avanzado
             this.showAdminPanelButton(user);
         }
@@ -88,19 +94,20 @@ class ProfileUpdater {
     hideUserInfo() {
         const userInfo = document.getElementById('userInfo');
         if (userInfo) userInfo.style.display = 'none';
+        if (this.materialButtonContainer) {
+            this.materialButtonContainer.style.display = 'none';
+        }
     }
 
     showAdminPanelButton(user) {
         const userActions = document.querySelector('.user-actions');
         if (!userActions) return;
 
-        // Remover botón existente si ya está
         const existingAdminBtn = document.getElementById('adminPanelBtn');
         if (existingAdminBtn) {
             existingAdminBtn.remove();
         }
 
-        // Verificar si es admin o avanzado
         if (user.role === 'admin' || user.role === 'advanced') {
             const adminPanelBtn = document.createElement('button');
             adminPanelBtn.id = 'adminPanelBtn';
@@ -109,8 +116,6 @@ class ProfileUpdater {
             adminPanelBtn.onclick = () => {
                 window.location.href = '/admin/dashboard.html';
             };
-
-            // Insertar al principio de las acciones
             userActions.insertBefore(adminPanelBtn, userActions.firstChild);
         }
     }
@@ -129,12 +134,11 @@ class ProfileUpdater {
                 if (authSystem && authSystem.logout) {
                     authSystem.logout();
                 }
-                this.checkUserStatus(); // Actualizar UI después de logout
+                this.checkUserStatus();
                 window.location.reload();
             });
         }
 
-        // Nuevos event listeners para invitados
         const loginBtn = document.getElementById('loginBtn');
         if (loginBtn) {
             loginBtn.addEventListener('click', () => {
@@ -155,7 +159,6 @@ class ProfileUpdater {
     async showLoginModal() {
         try {
             await authSystem.showLoginModal();
-            // Después de login exitoso, actualizar UI
             this.checkUserStatus();
             window.location.reload();
         } catch (error) {
@@ -166,7 +169,6 @@ class ProfileUpdater {
     async showRegisterModal() {
         try {
             await authSystem.showLoginModal();
-            // Cambiar a pestaña de registro
             const modal = document.querySelector('.login-overlay');
             if (modal) {
                 const registerTab = modal.querySelector('[data-tab="register"]');
@@ -176,7 +178,6 @@ class ProfileUpdater {
             }
         } catch (error) {
             console.log('Modal no disponible');
-            // Si no hay modal activo, mostrar el modal de login
             await authSystem.showLoginModal();
         }
     }
