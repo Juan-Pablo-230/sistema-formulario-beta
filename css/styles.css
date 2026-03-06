@@ -1696,6 +1696,57 @@ footer {
     border: 1px solid var(--success-500);
 }
 
+/* ===== ESTADOS DE CLASE EN MODAL ===== */
+.estado-clase {
+    text-align: center;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.estado-clase.abierta {
+    background: rgba(52, 168, 83, 0.1);
+    color: var(--success-500);
+    border: 1px solid var(--success-500);
+}
+
+.estado-clase.cerrada {
+    background: rgba(234, 67, 53, 0.1);
+    color: var(--error-500);
+    border: 1px solid var(--error-500);
+}
+
+.estado-clase.proximamente {
+    background: rgba(249, 171, 0, 0.1);
+    color: var(--warning-500);
+    border: 1px solid var(--warning-500);
+}
+
+.btn-recordatorio {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-recordatorio:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-recordatorio:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* Ajustes responsivos */
 @media (max-width: 1200px) {
     .main-layout {
