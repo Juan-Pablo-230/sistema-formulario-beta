@@ -1634,6 +1634,68 @@ footer {
     margin-top: 40px;
 }
 
+/* ===== ESTILOS PARA EL MODAL DE INSCRIPCIÓN ===== */
+.fechas-modal {
+    margin: 20px 0;
+    text-align: left;
+    background: var(--bg-card);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.fechas-modal p {
+    margin: 8px 0;
+    color: var(--text-secondary);
+}
+
+.fechas-modal strong {
+    color: var(--text-primary);
+}
+
+.btn-unirse {
+    background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-unirse:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-unirse:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mensaje {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.mensaje.error {
+    background: rgba(234,67,53,0.1);
+    color: var(--error-500);
+    border: 1px solid var(--error-500);
+}
+
+.mensaje.success {
+    background: rgba(52,168,83,0.1);
+    color: var(--success-500);
+    border: 1px solid var(--success-500);
+}
+
 /* Ajustes responsivos */
 @media (max-width: 1200px) {
     .main-layout {

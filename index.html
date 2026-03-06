@@ -327,56 +327,69 @@
     }
 
     // Cargar detalles de la clase y mostrar modal
-    async function abrirModalClase(claseId) {
-        try {
-            modalClaseNombre.textContent = 'Cargando...';
-            modal.style.display = 'flex';
+async function abrirModalClase(claseId) {
+    try {
+        modalClaseNombre.textContent = 'Cargando...';
+        modal.style.display = 'flex';
 
-            // Intentar obtener clase pública
-            let clase = null;
+        // Intentar obtener clase pública
+        let clase = null;
+        try {
+            const res = await fetch(`/api/clases-publicas/${claseId}`);
+            const data = await res.json();
+            if (data.success && data.data) clase = data.data;
+        } catch (e) { /* ignorar */ }
+
+        if (!clase) {
             try {
-                const res = await fetch(`/api/clases-publicas/${claseId}`);
+                const res = await fetch(`/api/clases-historicas/${claseId}`);
                 const data = await res.json();
                 if (data.success && data.data) clase = data.data;
             } catch (e) { /* ignorar */ }
-
-            if (!clase) {
-                try {
-                    const res = await fetch(`/api/clases-historicas/${claseId}`);
-                    const data = await res.json();
-                    if (data.success && data.data) clase = data.data;
-                } catch (e) { /* ignorar */ }
-            }
-
-            if (!clase) throw new Error('No se pudo cargar la información de la clase');
-
-            claseSeleccionada = clase;
-            modalClaseNombre.textContent = clase.nombre || 'Clase';
-
-            // Formatear fechas (usar lo que venga del servidor o valores por defecto)
-            let apertura = 'No especificada';
-            let cierre = 'No especificado';
-            if (clase.fechaApertura) {
-                apertura = new Date(clase.fechaApertura).toLocaleString('es-AR');
-            } else if (clase.fechaClase) {
-                apertura = new Date(clase.fechaClase).toLocaleString('es-AR');
-            }
-            if (clase.fechaCierre) {
-                cierre = new Date(clase.fechaCierre).toLocaleString('es-AR');
-            } else if (clase.fechaClase) {
-                const fecha = new Date(clase.fechaClase);
-                fecha.setHours(20, 0, 0, 0);
-                cierre = fecha.toLocaleString('es-AR');
-            }
-            modalFechaApertura.textContent = apertura;
-            modalFechaCierre.textContent = cierre;
-
-        } catch (error) {
-            console.error('Error al cargar clase:', error);
-            alert('Error al cargar la información de la clase');
-            cerrarModal();
         }
+
+        if (!clase) throw new Error('No se pudo cargar la información de la clase');
+
+        claseSeleccionada = clase;
+        modalClaseNombre.textContent = clase.nombre || 'Clase';
+
+        // Opciones de formato para 24 horas
+        const opcionesFormato = {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        };
+
+        // Formatear fechas
+        let apertura = 'No especificada';
+        let cierre = 'No especificado';
+
+        if (clase.fechaApertura) {
+            apertura = new Date(clase.fechaApertura).toLocaleString('es-AR', opcionesFormato);
+        } else if (clase.fechaClase) {
+            apertura = new Date(clase.fechaClase).toLocaleString('es-AR', opcionesFormato);
+        }
+
+        if (clase.fechaCierre) {
+            cierre = new Date(clase.fechaCierre).toLocaleString('es-AR', opcionesFormato);
+        } else if (clase.fechaClase) {
+            const fecha = new Date(clase.fechaClase);
+            fecha.setHours(20, 0, 0, 0);
+            cierre = fecha.toLocaleString('es-AR', opcionesFormato);
+        }
+
+        modalFechaApertura.textContent = apertura;
+        modalFechaCierre.textContent = cierre;
+
+    } catch (error) {
+        console.error('Error al cargar clase:', error);
+        alert('Error al cargar la información de la clase');
+        cerrarModal();
     }
+}
 
     // Función para inscribirse y redirigir
     async function inscribirse() {
