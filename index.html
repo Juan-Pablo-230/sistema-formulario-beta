@@ -489,7 +489,7 @@
         }
 
         // Eventos del modal
-        document.querySelectorAll('.close-modal, .cancel-btn').forEach(btn => {
+        modal.querySelectorAll('.close-modal, .cancel-btn').forEach(btn => {
             btn.addEventListener('click', cerrarModal);
         });
         modal.addEventListener('click', (e) => {

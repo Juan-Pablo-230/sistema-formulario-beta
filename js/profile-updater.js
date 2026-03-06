@@ -213,8 +213,10 @@ class ProfileUpdater {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    if (confirm('¿Estás seguro? Los cambios no guardados se perderán.')) {
                     this.hideUpdateModal();
-                }
+                    }
+                }   
             });
         }
 
@@ -302,6 +304,7 @@ class ProfileUpdater {
             this.hideLegajoWarning();
             this.clearMessages();
             this.switchTab('update');
+            document.body.style.overflow = 'hidden';
             modal.style.display = 'flex';
         }
     }
@@ -310,6 +313,7 @@ class ProfileUpdater {
         const modal = document.getElementById('updateProfileModal');
         if (modal) {
             modal.style.display = 'none';
+            document.body.style.overflow = '';
             this.clearMessages();
             this.hideLegajoWarning();
         }
