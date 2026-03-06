@@ -225,10 +225,13 @@
 
     <script src="/js/auth.js"></script>
     <script src="/js/profile-updater.js"></script>
+    <!-- calendar.js eliminado -->
 
-        <!-- Script principal (con toda la lógica) -->
+    <!-- Script principal (con toda la lógica y hora sincronizada) -->
     <script>
-        // --- Sistema de Hora Sincronizada ---
+        // ============================================
+        // Sistema de Hora Sincronizada con Internet
+        // ============================================
         let timeOffset = 0; // Diferencia entre la hora del servidor y la hora local (offset = servidor - local)
         let syncInProgress = false;
 
@@ -304,6 +307,9 @@
         syncWithNetworkTime();
         setInterval(syncWithNetworkTime, 3600000);
 
+        // ============================================
+        // Resto del código (con las modificaciones)
+        // ============================================
         let clasesCargadas = false;
         let timeoutCarga = null;
         let intervaloVerificacion = null;
@@ -335,7 +341,7 @@
             }, 5000);
         }
 
-        // Funciones para ICS
+        // Funciones para ICS (ahora usan hora sincronizada para dtstamp)
         function generarICS(clase) {
             let inicio, fin;
             if (clase.fechaApertura) {
@@ -409,18 +415,15 @@
             let apertura = null;
             let cierre = null;
 
-            // Si existe fechaApertura, usarla (debe incluir hora)
             if (clase.fechaApertura) {
                 apertura = new Date(clase.fechaApertura).getTime();
             } else if (clase.fechaClase) {
-                // Si no, usar fechaClase completa (con su hora)
                 apertura = new Date(clase.fechaClase).getTime();
             }
 
             if (clase.fechaCierre) {
                 cierre = new Date(clase.fechaCierre).getTime();
             } else if (apertura) {
-                // Si no hay cierre, sumar 1 hora a la apertura real
                 cierre = apertura + 60 * 60 * 1000;
             }
 
