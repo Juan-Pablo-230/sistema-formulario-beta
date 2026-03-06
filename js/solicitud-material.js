@@ -1,4 +1,4 @@
-console.log('📚 solicitud-material.js cargado - Versión independiente');
+console.log('📚 solicitud-material.js cargado - Versión independiente con fetch directo');
 
 // ============================================
 // Funciones auxiliares basadas en authSystem
@@ -28,14 +28,6 @@ function isLoggedInSafe() {
     return authSystem?.isLoggedIn ? authSystem.isLoggedIn() : false;
 }
 
-async function makeRequestSafe(endpoint, data = null, method = 'POST') {
-    if (!authSystem || !authSystem.makeRequest) {
-        throw new Error('authSystem no listo');
-    }
-    const fullEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
-    return await authSystem.makeRequest(fullEndpoint, data, method);
-}
-
 function logoutSafe() {
     if (authSystem && authSystem.logout) {
         authSystem.logout();
@@ -44,7 +36,7 @@ function logoutSafe() {
 }
 
 // ============================================
-// Clase MaterialHistorico (sin cambios)
+// Clase MaterialHistorico
 // ============================================
 class MaterialHistorico {
     constructor() {
@@ -183,17 +175,12 @@ class MaterialHistorico {
             const result = await response.json();
             
             if (result.success && result.data) {
-                // Filtrar solo las clases con estado 'publicada'
                 this.clasesHistoricas = result.data.filter(clase => 
                     clase.estado === 'publicada' || 
-                    (clase.activa === true && !clase.estado) // Compatibilidad con datos antiguos
+                    (clase.activa === true && !clase.estado)
                 );
                 
                 console.log(`✅ ${this.clasesHistoricas.length} clases publicadas cargadas`);
-                
-                this.clasesHistoricas.forEach(clase => {
-                    console.log(`📚 Clase: ${clase.nombre} - Estado: ${clase.estado || (clase.activa ? 'activa (legacy)' : 'inactiva')}`);
-                });
                 
                 this.procesarAnosDisponibles();
                 this.llenarSelectorAnos();
@@ -203,22 +190,19 @@ class MaterialHistorico {
             
         } catch (error) {
             console.error('❌ Error cargando clases:', error);
+            this.mostrarMensaje('Error al cargar clases. Verifique su conexión.', 'error');
         }
     }
 
     procesarAnosDisponibles() {
         const anos = new Set();
-        
         this.clasesHistoricas.forEach(clase => {
             if (clase.fechaClase) {
                 const fecha = new Date(clase.fechaClase);
                 const ano = fecha.getFullYear();
-                if (!isNaN(ano)) {
-                    anos.add(ano);
-                }
+                if (!isNaN(ano)) anos.add(ano);
             }
         });
-        
         this.anosDisponibles = Array.from(anos).sort((a, b) => b - a);
         console.log(`📅 Años disponibles: ${this.anosDisponibles.join(', ')}`);
     }
@@ -247,7 +231,7 @@ class MaterialHistorico {
             this.procesarMesesDisponibles();
         });
         
-        console.log('✅ Selector de años cargado con opción "Todos"');
+        console.log('✅ Selector de años cargado');
     }
 
     procesarMesesDisponibles() {
@@ -258,20 +242,15 @@ class MaterialHistorico {
         }
         
         const meses = new Set();
-        
         this.clasesHistoricas.forEach(clase => {
             if (clase.fechaClase) {
                 const fecha = new Date(clase.fechaClase);
                 if (fecha.getFullYear() === parseInt(this.anoSeleccionado)) {
-                    const mes = fecha.getMonth();
-                    meses.add(mes);
+                    meses.add(fecha.getMonth());
                 }
             }
         });
-        
         this.mesesDisponibles = Array.from(meses).sort((a, b) => a - b);
-        console.log(`Meses disponibles para ${this.anoSeleccionado}: ${this.mesesDisponibles.map(m => this.nombresMeses[m]).join(', ')}`);
-        
         this.llenarSelectorMeses();
     }
 
@@ -295,11 +274,9 @@ class MaterialHistorico {
             const todosMeses = new Set();
             this.clasesHistoricas.forEach(clase => {
                 if (clase.fechaClase) {
-                    const fecha = new Date(clase.fechaClase);
-                    todosMeses.add(fecha.getMonth());
+                    todosMeses.add(new Date(clase.fechaClase).getMonth());
                 }
             });
-            
             Array.from(todosMeses).sort((a, b) => a - b).forEach(mesNum => {
                 const option = document.createElement('option');
                 option.value = mesNum;
@@ -313,7 +290,6 @@ class MaterialHistorico {
         } else {
             selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
             selectMes.innerHTML += '<option value="todos">Todos los meses</option>';
-            
             this.mesesDisponibles.forEach(mesNum => {
                 const option = document.createElement('option');
                 option.value = mesNum;
@@ -326,8 +302,6 @@ class MaterialHistorico {
             this.mesSeleccionado = e.target.value;
             this.filtrarClasesPorMes();
         });
-        
-        console.log('✅ Selector de meses cargado con opción "Todos"');
     }
 
     filtrarClasesPorMes() {
@@ -346,17 +320,12 @@ class MaterialHistorico {
         this.clasesFiltradas = this.clasesHistoricas.filter(clase => {
             if (!clase.fechaClase) return false;
             const fecha = new Date(clase.fechaClase);
-            
-            const pasaAno = this.anoSeleccionado === 'todos' || 
-                           fecha.getFullYear() === parseInt(this.anoSeleccionado);
-            
-            const pasaMes = this.mesSeleccionado === 'todos' || 
-                           fecha.getMonth() === parseInt(this.mesSeleccionado);
-            
+            const pasaAno = this.anoSeleccionado === 'todos' || fecha.getFullYear() === parseInt(this.anoSeleccionado);
+            const pasaMes = this.mesSeleccionado === 'todos' || fecha.getMonth() === parseInt(this.mesSeleccionado);
             return pasaAno && pasaMes;
         });
         
-        console.log(`🔍 ${this.clasesFiltradas.length} clases publicadas encontradas para los filtros seleccionados`);
+        console.log(`🔍 ${this.clasesFiltradas.length} clases encontradas`);
         
         if (this.clasesFiltradas.length === 0) {
             if (form) form.style.display = 'none';
@@ -376,31 +345,18 @@ class MaterialHistorico {
     configurarBuscadorClases() {
         const buscador = document.getElementById('buscadorClases');
         if (!buscador) return;
-        
-        const nuevoBuscador = buscador.cloneNode(true);
-        buscador.parentNode.replaceChild(nuevoBuscador, buscador);
-        
-        nuevoBuscador.addEventListener('input', (e) => {
-            this.filtrarListaClases(e.target.value);
-        });
+        const nuevo = buscador.cloneNode(true);
+        buscador.parentNode.replaceChild(nuevo, buscador);
+        nuevo.addEventListener('input', (e) => this.filtrarListaClases(e.target.value));
     }
 
-    filtrarListaClases(textoBusqueda) {
+    filtrarListaClases(texto) {
         const select = document.getElementById('claseSeleccionada');
         if (!select) return;
-        
-        const opciones = select.querySelectorAll('option');
-        const textoLower = textoBusqueda.toLowerCase();
-        
-        opciones.forEach(option => {
-            if (option.value === '') return;
-            
-            const textoOpcion = option.textContent.toLowerCase();
-            if (textoOpcion.includes(textoLower)) {
-                option.style.display = '';
-            } else {
-                option.style.display = 'none';
-            }
+        const term = texto.toLowerCase();
+        select.querySelectorAll('option').forEach(opt => {
+            if (opt.value === '') return;
+            opt.style.display = opt.textContent.toLowerCase().includes(term) ? '' : 'none';
         });
     }
 
@@ -410,9 +366,7 @@ class MaterialHistorico {
         
         select.innerHTML = '<option value="">Seleccione una clase</option>';
         
-        this.clasesFiltradas.sort((a, b) => {
-            return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
-        });
+        this.clasesFiltradas.sort((a, b) => a.nombre.localeCompare(b.nombre));
         
         this.clasesFiltradas.forEach(clase => {
             const option = document.createElement('option');
@@ -422,17 +376,12 @@ class MaterialHistorico {
             if (clase.fechaClase) {
                 const fecha = new Date(clase.fechaClase);
                 fechaTexto = fecha.toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: false
                 });
             }
             
-            const estadoTexto = clase.estado ? ` [${clase.estado}]` : '';
-            option.textContent = `${clase.nombre} (${fechaTexto})${estadoTexto}`;
+            option.textContent = `${clase.nombre} (${fechaTexto})`;
             option.dataset.nombre = clase.nombre;
             option.dataset.descripcion = clase.descripcion || '';
             option.dataset.fecha = clase.fechaClase;
@@ -443,8 +392,6 @@ class MaterialHistorico {
             select.appendChild(option);
         });
         
-        console.log(`✅ Selector de clases cargado con ${this.clasesFiltradas.length} opciones (solo clases publicadas)`);
-        
         const buscador = document.getElementById('buscadorClases');
         if (buscador) {
             buscador.value = '';
@@ -454,14 +401,12 @@ class MaterialHistorico {
 
     async procesarSolicitud() {
         const claseId = document.getElementById('claseSeleccionada').value;
-        
         if (!claseId) {
             this.mostrarMensaje('Por favor, seleccione una clase', 'error');
             return;
         }
 
         const selectOption = document.querySelector(`#claseSeleccionada option[value="${claseId}"]`);
-        
         if (!selectOption) {
             this.mostrarMensaje('Error: Clase no encontrada', 'error');
             return;
@@ -477,8 +422,88 @@ class MaterialHistorico {
             instructores: selectOption.dataset.instructores
         };
 
+        // Guardar en localStorage inmediatamente
+        await this.guardarSolicitudLocal(claseData);
+        
+        // Mostrar material
         this.mostrarMaterial(claseData);
-        await this.guardarSolicitud(claseData);
+    }
+
+    async guardarSolicitudLocal(claseData) {
+        const user = getCurrentUserSafe();
+        if (!user) return;
+
+        const solicitud = {
+            claseId: claseData.id,
+            claseNombre: claseData.nombre,
+            email: user.email,
+            youtube: claseData.youtube,
+            powerpoint: claseData.powerpoint,
+            fechaClase: claseData.fecha,
+            fechaSolicitud: new Date().toISOString()
+        };
+
+        // Guardar en localStorage
+        try {
+            const storageKey = `solicitudMaterial_${user._id}`;
+            let solicitudes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            const existe = solicitudes.some(s => s.claseId === claseData.id);
+            if (!existe) {
+                solicitudes.push(solicitud);
+                localStorage.setItem(storageKey, JSON.stringify(solicitudes));
+                console.log('💾 Solicitud guardada en localStorage');
+            }
+        } catch (e) {
+            console.error('Error guardando en localStorage:', e);
+        }
+
+        // Intentar enviar al servidor en segundo plano
+        this.enviarSolicitudServidor(solicitud).catch(err => {
+            console.warn('No se pudo sincronizar con el servidor:', err);
+        });
+    }
+
+    async enviarSolicitudServidor(solicitud) {
+        try {
+            const user = getCurrentUserSafe();
+            if (!user) return;
+
+            // Construir URL absoluta
+            const url = `${window.location.origin}/api/material-historico/solicitudes`;
+            
+            console.log('📤 Enviando solicitud a:', url);
+            console.log('📦 Datos:', solicitud);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': user._id
+                },
+                body: JSON.stringify(solicitud)
+            });
+
+            console.log('📥 Respuesta status:', response.status);
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('❌ Respuesta no es JSON. Primeros 200 caracteres:', text.substring(0, 200));
+                throw new Error('El servidor no respondió con JSON');
+            }
+
+            const result = await response.json();
+            console.log('📦 Respuesta JSON:', result);
+
+            if (response.ok && result.success) {
+                console.log('✅ Solicitud sincronizada con el servidor');
+            } else {
+                throw new Error(result.message || `Error ${response.status}`);
+            }
+        } catch (error) {
+            console.error('❌ Error al sincronizar con el servidor:', error);
+            // No mostramos error al usuario, ya se guardó localmente
+        }
     }
 
     mostrarMaterial(claseData) {
@@ -488,22 +513,14 @@ class MaterialHistorico {
         const claseFecha = document.getElementById('claseFecha');
         const linksContainer = document.getElementById('linksContainer');
         
-        if (!materialLinks || !claseNombre || !linksContainer) {
-            console.error('❌ Elementos necesarios para mostrar material no encontrados');
-            return;
-        }
+        if (!materialLinks || !claseNombre || !linksContainer) return;
         
         let fechaFormateada = '';
         if (claseData.fecha) {
             const fecha = new Date(claseData.fecha);
             fechaFormateada = fecha.toLocaleDateString('es-AR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false
             });
             fechaFormateada = fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
         }
@@ -523,25 +540,19 @@ class MaterialHistorico {
         if (claseDescripcion) claseDescripcion.textContent = claseData.descripcion || 'Material de la clase grabada';
         if (claseFecha) claseFecha.textContent = `📅 ${fechaFormateada}`;
         
+        // Instructores
         const instructoresExistente = document.getElementById('instructoresInfo');
-        if (instructoresExistente) {
-            instructoresExistente.remove();
-        }
-        
+        if (instructoresExistente) instructoresExistente.remove();
         if (claseData.instructores) {
             const instructoresElem = document.createElement('p');
             instructoresElem.id = 'instructoresInfo';
             instructoresElem.innerHTML = `👥 Instructores: ${claseData.instructores}`;
             instructoresElem.style.marginTop = '10px';
             instructoresElem.style.color = 'var(--text-secondary)';
-            const claseInfo = document.getElementById('claseInfo');
-            if (claseInfo) {
-                claseInfo.appendChild(instructoresElem);
-            }
+            document.getElementById('claseInfo')?.appendChild(instructoresElem);
         }
         
         linksContainer.innerHTML = '';
-        
         if (claseData.youtube) {
             linksContainer.innerHTML += `
                 <div class="link-card youtube" onclick="window.open('${claseData.youtube}', '_blank')">
@@ -549,12 +560,10 @@ class MaterialHistorico {
                         <div class="icon">▶️</div>
                         <div class="title">YouTube</div>
                         <div class="subtitle">Ver grabación de la clase</div>
-                        <div class="hover-info">Click para abrir el video</div>
                     </a>
                 </div>
             `;
         }
-        
         if (claseData.powerpoint) {
             linksContainer.innerHTML += `
                 <div class="link-card powerpoint" onclick="window.open('${claseData.powerpoint}', '_blank')">
@@ -562,182 +571,98 @@ class MaterialHistorico {
                         <div class="icon">📊</div>
                         <div class="title">PowerPoint</div>
                         <div class="subtitle">Descargar presentación</div>
-                        <div class="hover-info">Click para abrir la presentación</div>
                     </a>
                 </div>
             `;
         }
         
-        const filtrosContainer = document.querySelector('.filtros-container');
-        if (filtrosContainer) filtrosContainer.style.display = 'none';
-        
-        const form = document.getElementById('materialHistoricoForm');
-        if (form) form.style.display = 'none';
-        
-        const sinClasesMensaje = document.getElementById('sinClasesMensaje');
-        if (sinClasesMensaje) sinClasesMensaje.style.display = 'none';
-        
-        const buscadorContainer = document.getElementById('buscadorClasesContainer');
-        if (buscadorContainer) buscadorContainer.style.display = 'none';
-        
+        // Ocultar filtros y formulario, mostrar enlaces
+        document.querySelector('.filtros-container')?.style.setProperty('display', 'none');
+        document.getElementById('materialHistoricoForm')?.style.setProperty('display', 'none');
+        document.getElementById('sinClasesMensaje')?.style.setProperty('display', 'none');
+        document.getElementById('buscadorClasesContainer')?.style.setProperty('display', 'none');
         materialLinks.classList.add('visible');
-        
         this.mostrarMensaje('✅ Material disponible', 'success');
     }
 
     ocultarMaterial() {
-        const filtrosContainer = document.querySelector('.filtros-container');
-        if (filtrosContainer) filtrosContainer.style.display = 'block';
-        
-        const form = document.getElementById('materialHistoricoForm');
-        if (form) form.style.display = 'none';
-        
-        const materialLinks = document.getElementById('materialLinks');
-        if (materialLinks) materialLinks.classList.remove('visible');
-        
-        const claseSelect = document.getElementById('claseSeleccionada');
-        if (claseSelect) claseSelect.value = '';
-        
-        const buscadorContainer = document.getElementById('buscadorClasesContainer');
-        if (buscadorContainer) buscadorContainer.style.display = 'none';
-        
-        const buscador = document.getElementById('buscadorClases');
-        if (buscador) buscador.value = '';
+        document.querySelector('.filtros-container')?.style.setProperty('display', 'block');
+        document.getElementById('materialHistoricoForm')?.style.setProperty('display', 'none');
+        document.getElementById('materialLinks')?.classList.remove('visible');
+        document.getElementById('claseSeleccionada').value = '';
+        document.getElementById('buscadorClasesContainer')?.style.setProperty('display', 'none');
+        document.getElementById('buscadorClases')?.value = '';
         
         const selectAno = document.getElementById('anoSeleccionado');
-        if (selectAno) selectAno.value = '';
-        
         const selectMes = document.getElementById('mesSeleccionado');
+        if (selectAno) selectAno.value = '';
         if (selectMes) {
             selectMes.innerHTML = '<option value="">Primero seleccione año</option>';
             selectMes.disabled = true;
         }
-        
         this.anoSeleccionado = null;
         this.mesSeleccionado = null;
     }
 
-    async guardarSolicitud(claseData) {
-    const btnSubmit = document.querySelector('#materialHistoricoForm .submit-btn');
-    const textoOriginal = btnSubmit ? btnSubmit.textContent : '🔍 Obtener Material';
-    
-    try {
-        // Deshabilitar botón mientras se procesa
-        if (btnSubmit) {
-            btnSubmit.disabled = true;
-            btnSubmit.textContent = '⏳ Guardando solicitud...';
-        }
-
-        const user = getCurrentUserSafe();
-        if (!user || !user._id) {
-            throw new Error('No hay usuario autenticado');
-        }
-
-        const solicitudData = {
-            claseId: claseData.id,
-            claseNombre: claseData.nombre,
-            email: user.email,
-            youtube: claseData.youtube,
-            powerpoint: claseData.powerpoint,
-            fechaClase: claseData.fecha,
-            fechaSolicitud: new Date().toISOString()
-        };
-
-        console.log('📤 Enviando solicitud al servidor:', solicitudData);
-
-        // Usar makeRequestSafe que ya maneja la URL base
-        const result = await makeRequestSafe('/material-historico/solicitudes', solicitudData, 'POST');
-
-        if (result && result.success) {
-            console.log('✅ Solicitud guardada exitosamente en el servidor');
-            this.mostrarMensaje('✅ Solicitud registrada correctamente', 'success');
-            
-            // Actualizar la tabla de mis solicitudes
-            await this.cargarMisSolicitudes();
-        } else {
-            // Si el servidor responde pero no es exitoso
-            const mensaje = result?.message || 'Error al guardar la solicitud';
-            throw new Error(mensaje);
-        }
-
-    } catch (error) {
-        console.error('❌ Error al guardar solicitud:', error);
-        
-        // Mostrar mensaje de error específico
-        this.mostrarMensaje(`❌ Error: ${error.message}. Intente nuevamente.`, 'error');
-        
-        // Opcional: guardar en localStorage como respaldo
-        try {
-            const user = getCurrentUserSafe();
-            if (user) {
-                const storageKey = `solicitudMaterial_${user._id}`;
-                let solicitudesPrevias = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                
-                // Evitar duplicados (opcional)
-                const existe = solicitudesPrevias.some(s => s.claseId === claseData.id);
-                if (!existe) {
-                    solicitudesPrevias.push({
-                        ...claseData,
-                        fechaSolicitud: new Date().toISOString(),
-                        email: user.email
-                    });
-                    localStorage.setItem(storageKey, JSON.stringify(solicitudesPrevias));
-                    console.log('💾 Solicitud guardada en localStorage como respaldo');
-                    this.mostrarMensaje('📦 Solicitud guardada localmente (sin conexión al servidor)', 'info');
-                }
-            }
-        } catch (e) {
-            console.error('Error guardando en localStorage:', e);
-        }
-
-    } finally {
-        // Restaurar botón
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.textContent = textoOriginal;
-        }
-    }
-}
-
     async cargarMisSolicitudes() {
         try {
             const user = getCurrentUserSafe();
-            
-            console.log('🔍 Cargando historial de solicitudes...');
-            
-            const response = await fetch(`${this.apiBaseUrl}/material-historico/solicitudes`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'user-id': user._id
+            if (!user) return;
+
+            // Cargar desde localStorage
+            const storageKey = `solicitudMaterial_${user._id}`;
+            const stored = localStorage.getItem(storageKey);
+            const solicitudesLocal = stored ? JSON.parse(stored) : [];
+
+            // Intentar cargar desde servidor
+            let solicitudesServidor = [];
+            try {
+                const url = `${window.location.origin}/api/material-historico/solicitudes`;
+                console.log('📥 Cargando solicitudes desde:', url);
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'user-id': user._id
+                    }
+                });
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            solicitudesServidor = result.data;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('No se pudo conectar al servidor, usando solo datos locales');
+            }
+
+            // Combinar (evitar duplicados por claseId)
+            const combinadas = [...solicitudesServidor];
+            solicitudesLocal.forEach(local => {
+                if (!combinadas.some(s => s.claseId === local.claseId)) {
+                    combinadas.push(local);
                 }
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.data) {
-                    this.solicitudes = result.data;
-                } else {
-                    this.cargarSolicitudesLocal();
-                }
-            } else {
-                this.cargarSolicitudesLocal();
-            }
-            
+            this.solicitudes = combinadas.sort((a, b) => 
+                new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud)
+            );
+
             this.mostrarMisSolicitudes();
-            
+
         } catch (error) {
             console.error('❌ Error cargando solicitudes:', error);
-            this.cargarSolicitudesLocal();
-            this.mostrarMisSolicitudes();
+            const user = getCurrentUserSafe();
+            if (user) {
+                const storageKey = `solicitudMaterial_${user._id}`;
+                const stored = localStorage.getItem(storageKey);
+                this.solicitudes = stored ? JSON.parse(stored) : [];
+                this.mostrarMisSolicitudes();
+            }
         }
-    }
-
-    cargarSolicitudesLocal() {
-        const user = getCurrentUserSafe();
-        const storageKey = `solicitudMaterial_${user._id}`;
-        const stored = localStorage.getItem(storageKey);
-        this.solicitudes = stored ? JSON.parse(stored) : [];
-        console.log(`📋 ${this.solicitudes.length} solicitudes cargadas desde localStorage`);
     }
 
     mostrarMisSolicitudes() {
@@ -747,35 +672,21 @@ class MaterialHistorico {
         tbody.innerHTML = '';
 
         if (this.solicitudes.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" style="text-align: center; color: #666; padding: 20px;">
-                        Todavia no has solicitado material de clases grabadas. ¡Explora las clases disponibles y solicita el material que te interese!
-                    </td>
-                </tr>
-            `;
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">Todavía no has solicitado material de clases grabadas.</td></tr>';
             return;
         }
-
-        this.solicitudes.sort((a, b) => 
-            new Date(b.fechaSolicitud) - new Date(a.fechaSolicitud)
-        );
 
         this.solicitudes.forEach(solicitud => {
             const row = document.createElement('tr');
             
             const fechaClase = solicitud.fechaClase ? 
                 new Date(solicitud.fechaClase).toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
                 }) : 'Fecha no disponible';
             
             const fechaSolicitud = solicitud.fechaSolicitud ? 
-                new Date(solicitud.fechaSolicitud).toLocaleString('es-AR') : 
-                'Fecha no disponible';
+                new Date(solicitud.fechaSolicitud).toLocaleString('es-AR') : 'Fecha no disponible';
             
             const materialHTML = this.generarMaterialHTML(solicitud);
             
@@ -792,40 +703,25 @@ class MaterialHistorico {
 
     generarMaterialHTML(solicitud) {
         const enlaces = [];
-        
-        if (solicitud.youtube) {
-            enlaces.push(`<a href="${solicitud.youtube}" target="_blank" title="Ver en YouTube">▶️ YouTube</a>`);
-        }
-        
-        if (solicitud.powerpoint) {
-            enlaces.push(`<a href="${solicitud.powerpoint}" target="_blank" title="Ver presentación">📊 Presentacion</a>`);
-        }
-        
-        if (enlaces.length === 0) {
-            return '<span style="color: #666;">Material disponible</span>';
-        }
-        
-        return enlaces.join(' | ');
+        if (solicitud.youtube) enlaces.push(`<a href="${solicitud.youtube}" target="_blank">▶️ YouTube</a>`);
+        if (solicitud.powerpoint) enlaces.push(`<a href="${solicitud.powerpoint}" target="_blank">📊 Presentacion</a>`);
+        return enlaces.length ? enlaces.join(' | ') : '<span>Material disponible</span>';
     }
 
     mostrarMensaje(mensaje, tipo) {
-        const mensajeDiv = document.getElementById('statusMessage');
-        if (!mensajeDiv) {
+        const msgDiv = document.getElementById('statusMessage');
+        if (!msgDiv) {
             console.log('📢', mensaje, tipo);
             return;
         }
-        
-        mensajeDiv.textContent = mensaje;
-        mensajeDiv.className = `status-message ${tipo}`;
-        mensajeDiv.style.display = 'block';
-
-        setTimeout(() => {
-            mensajeDiv.style.display = 'none';
-        }, 5000);
+        msgDiv.textContent = mensaje;
+        msgDiv.className = `status-message ${tipo}`;
+        msgDiv.style.display = 'block';
+        setTimeout(() => msgDiv.style.display = 'none', 5000);
     }
 }
 
-// Inicializar cuando el DOM esté listo
+// Inicializar
 document.addEventListener('DOMContentLoaded', () => {
     console.log('📄 DOM cargado, inicializando...');
     window.materialHistorico = new MaterialHistorico();
