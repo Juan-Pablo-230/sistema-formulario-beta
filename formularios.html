@@ -3,85 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulario de Inscripción</title>
+    <title>Inscripción a clase</title>
     <link rel="stylesheet" href="/css/formularios.css">
     <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
 </head>
 <body>
     <div class="container">
-        <h1>Formulario de inscripción</h1>
-        <h2 id="claseTitulo">Cargando información de la clase...</h2>
-        
-        <!-- Indicador de clase seleccionada -->
-        <div class="clase-indicador" id="claseIndicador" style="display: none;">
-            <strong>📋 Clase seleccionada:</strong>
-            <span id="claseNombre"></span>
-            <div class="clase-detalles" id="claseDetalles"></div>
+        <h1>Inscripción a clase</h1>
+        <div id="claseInfo" class="clase-info" style="display: none;">
+            <h2 id="claseNombre"></h2>
+            <div class="fechas">
+                <p><strong>Apertura:</strong> <span id="fechaApertura"></span></p>
+                <p><strong>Cierre:</strong> <span id="fechaCierre"></span></p>
+            </div>
+            <button id="btnUnirse" class="btn-unirse">Unirse a la clase</button>
         </div>
-
-        <p class="deadline" id="deadline"></p>
-
+        <div id="mensaje" class="mensaje" style="display: none;"></div>
         <div class="back-btn-container">
             <a href="../index.html" class="back-btn">← Volver al Menú Principal</a>
         </div>
-        
-        <form id="inscripcionForm">
-            <!-- Campos ocultos -->
-            <input type="hidden" name="claseId" id="claseId" value="">
-            <input type="hidden" name="enlaceRedireccion" id="enlaceRedireccion" value="">
-            
-            <div class="form-group">
-                <label for="apellidoNombre">Apellido y Nombre *</label>
-                <input type="text" id="apellidoNombre" name="apellidoNombre" required readonly>
-            </div>
-
-            <div class="form-group">
-                <label for="legajo">Número de Legajo</label>
-                <input type="number" id="legajo" name="legajo" required readonly>
-            </div>
-
-            <div class="form-group">
-                <label for="clase">Clase:</label>
-                <select id="clase" name="clase" readonly required>
-                    <option id="claseOption" value="">Seleccione una clase</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="turno">Turno</label>
-                <select id="turno" name="turno" required readonly>
-                    <option value="">Seleccione turno</option>
-                    <option value="Turno mañana">Turno mañana</option>
-                    <option value="Turno tarde">Turno tarde</option>
-                    <option value="Turno noche A">Turno noche A</option>
-                    <option value="Turno noche B">Turno noche B</option>
-                    <option value="Turno intermedio">Turno intermedio</option>
-                    <option value="Turno SADOFE">Turno Sábado, Domingo y feriado</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="email">Correo Electrónico</label>
-                <input type="email" id="email" name="email" required readonly>
-            </div>
-
-            <button type="submit" class="submit-btn">Ingresar a la clase</button>
-        </form>
     </div>
 
     <script src="/js/config/horarios.js"></script>
     <script src="/js/auth.js"></script>
     <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const claseId = urlParams.get('claseId');
-    
-    if (!claseId) {
-        alert('Error: No se especificó la clase');
-        window.location.href = '/index.html';
-    }
-    
-    window.CLASE_ID = claseId;
-</script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const claseId = urlParams.get('claseId');
+        if (!claseId) {
+            alert('Error: No se especificó la clase');
+            window.location.href = '/index.html';
+        }
+        window.CLASE_ID = claseId;
+    </script>
     <script src="/js/formularios.js"></script>
 </body>
 </html>
