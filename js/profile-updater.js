@@ -53,7 +53,7 @@ class ProfileUpdater {
     showGuestInfo() {
         const guestInfo = document.getElementById('guestInfo');
         if (guestInfo) {
-            guestInfo.style.display = 'block';
+            guestInfo.style.display = 'flex';
         }
     }
 
