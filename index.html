@@ -225,10 +225,85 @@
 
     <script src="/js/auth.js"></script>
     <script src="/js/profile-updater.js"></script>
-    <!-- calendar.js eliminado -->
 
-    <!-- Script principal (con toda la lógica) -->
+        <!-- Script principal (con toda la lógica) -->
     <script>
+        // --- Sistema de Hora Sincronizada ---
+        let timeOffset = 0; // Diferencia entre la hora del servidor y la hora local (offset = servidor - local)
+        let syncInProgress = false;
+
+        // Función para obtener la hora de un servidor de internet
+        async function syncWithNetworkTime() {
+            if (syncInProgress) return;
+            syncInProgress = true;
+            console.log('🔄 Sincronizando hora con servidor de internet...');
+
+            // Lista de servidores de respaldo
+            const timeApis = [
+                'https://worldtimeapi.org/api/timezone/Etc/UTC',
+                'https://timeapi.io/api/Time/current/zone?timeZone=UTC',
+                // Podrías añadir un endpoint de tu propio backend en el futuro: '/api/current-time'
+            ];
+
+            for (const apiUrl of timeApis) {
+                try {
+                    const startTime = Date.now(); // Tiempo local justo antes de la petición
+                    const response = await fetch(apiUrl, { method: 'GET', cache: 'no-cache' });
+
+                    if (!response.ok) continue;
+
+                    // Intentar obtener la fecha de la cabecera 'Date' primero (es universal)
+                    const dateHeader = response.headers.get('date');
+                    if (dateHeader) {
+                        const serverTime = new Date(dateHeader).getTime();
+                        const endTime = Date.now();
+                        // Estimación del tiempo de ida y vuelta (RTT)
+                        const rtt = endTime - startTime;
+                        // El momento aproximado en que el servidor generó la respuesta es (startTime + rtt/2)
+                        // Calculamos el offset: serverTime - (startTime + rtt/2)
+                        timeOffset = serverTime - (startTime + rtt / 2);
+                        console.log(`✅ Hora sincronizada vía cabecera Date. Offset: ${timeOffset}ms`);
+                        syncInProgress = false;
+                        return;
+                    }
+
+                    // Si no hay cabecera Date, intentar parsear el body (para worldtimeapi.org)
+                    if (apiUrl.includes('worldtimeapi')) {
+                        const data = await response.json();
+                        if (data && data.datetime) {
+                            const serverTime = new Date(data.datetime).getTime();
+                            const endTime = Date.now();
+                            const rtt = endTime - startTime;
+                            timeOffset = serverTime - (startTime + rtt / 2);
+                            console.log(`✅ Hora sincronizada vía worldtimeapi. Offset: ${timeOffset}ms`);
+                            syncInProgress = false;
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`⏳ Fallo al sincronizar con ${apiUrl}:`, e.message);
+                }
+            }
+
+            console.warn('⚠️ No se pudo sincronizar la hora con ningún servidor. Se usará la hora local del equipo.');
+            timeOffset = 0; // Si todo falla, offset 0 (usar hora local)
+            syncInProgress = false;
+        }
+
+        // Función para obtener la hora actual (corregida con el offset)
+        function getCurrentNetworkTime() {
+            return Date.now() + timeOffset;
+        }
+
+        // Función para obtener un objeto Date con la hora corregida
+        function getCurrentNetworkDate() {
+            return new Date(getCurrentNetworkTime());
+        }
+
+        // Llamar a la sincronización al cargar la página y luego cada hora (3600000 ms)
+        syncWithNetworkTime();
+        setInterval(syncWithNetworkTime, 3600000);
+
         let clasesCargadas = false;
         let timeoutCarga = null;
         let intervaloVerificacion = null;
@@ -268,7 +343,7 @@
             } else if (clase.fechaClase) {
                 inicio = new Date(clase.fechaClase);
             } else {
-                inicio = new Date();
+                inicio = getCurrentNetworkDate(); // Usar hora sincronizada
             }
 
             if (clase.fechaCierre) {
@@ -281,7 +356,7 @@
                 return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
             }
 
-            const now = new Date();
+            const now = getCurrentNetworkDate(); // Usar hora sincronizada
             const dtstamp = formatDateForICS(now);
             const dtstart = formatDateForICS(inicio);
             const dtend = formatDateForICS(fin);
@@ -331,32 +406,32 @@
 
         // Función para obtener timestamps de apertura y cierre
         function obtenerTimestampsClase(clase) {
-    let apertura = null;
-    let cierre = null;
+            let apertura = null;
+            let cierre = null;
 
-    // Si existe fechaApertura, usarla (debe incluir hora)
-    if (clase.fechaApertura) {
-        apertura = new Date(clase.fechaApertura).getTime();
-    } else if (clase.fechaClase) {
-        // Si no, usar fechaClase completa (con su hora)
-        apertura = new Date(clase.fechaClase).getTime();
-    }
+            // Si existe fechaApertura, usarla (debe incluir hora)
+            if (clase.fechaApertura) {
+                apertura = new Date(clase.fechaApertura).getTime();
+            } else if (clase.fechaClase) {
+                // Si no, usar fechaClase completa (con su hora)
+                apertura = new Date(clase.fechaClase).getTime();
+            }
 
-    if (clase.fechaCierre) {
-        cierre = new Date(clase.fechaCierre).getTime();
-    } else if (apertura) {
-        // Si no hay cierre, sumar 1 hora a la apertura real
-        cierre = apertura + 60 * 60 * 1000;
-    }
+            if (clase.fechaCierre) {
+                cierre = new Date(clase.fechaCierre).getTime();
+            } else if (apertura) {
+                // Si no hay cierre, sumar 1 hora a la apertura real
+                cierre = apertura + 60 * 60 * 1000;
+            }
 
-    return { apertura, cierre };
-}
+            return { apertura, cierre };
+        }
 
         // Determinar si la clase debe mostrarse en el grid
         function claseEsVisible(clase) {
             const { cierre } = obtenerTimestampsClase(clase);
             if (!cierre) return true;
-            const ahora = Date.now();
+            const ahora = getCurrentNetworkTime(); // Usar hora sincronizada
             return ahora < cierre;
         }
 
@@ -402,7 +477,7 @@
                 modalFechaApertura.textContent = apertura ? new Date(apertura).toLocaleString('es-AR', opcionesFormato) : 'No especificada';
                 modalFechaCierre.textContent = cierre ? new Date(cierre).toLocaleString('es-AR', opcionesFormato) : 'No especificado';
 
-                const ahora = Date.now();
+                const ahora = getCurrentNetworkTime(); // Usar hora sincronizada
 
                 if (apertura && ahora < apertura) {
                     estadoClase.textContent = '📅 La clase aún no ha comenzado. Puedes agregar un recordatorio.';
@@ -455,7 +530,7 @@
                     usuarioId: user._id,
                     clase: claseSeleccionada.nombre,
                     turno: user.turno,
-                    fecha: new Date().toISOString()
+                    fecha: getCurrentNetworkDate().toISOString() // Usar hora sincronizada
                 };
                 if (claseSeleccionada._id) inscripcionData.claseId = claseSeleccionada._id;
 
