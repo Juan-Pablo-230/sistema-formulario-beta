@@ -2,6 +2,43 @@
 
 console.log('formularios.js cargado - Versión que ignora errores de API');
 
+// Función para cargar clase desde backend
+async function cargarClaseDesdeBackend(claseId) {
+    console.log('📡 Intentando cargar clase desde backend, ID:', claseId);
+    
+    // Intentar cargar como clase pública
+    try {
+        const response = await makeRequestSafe(`/clases-publicas/${claseId}`, null, 'GET');
+        if (response && response.success && response.data) {
+            console.log('✅ Clase pública cargada desde backend');
+            return {
+                success: true,
+                data: response.data,
+                tipo: 'publica'
+            };
+        }
+    } catch (error) {
+        console.log('⚠️ No se pudo cargar clase pública:', error.message);
+    }
+    
+    // Intentar cargar como clase histórica
+    try {
+        const response = await makeRequestSafe(`/clases-historicas/${claseId}`, null, 'GET');
+        if (response && response.success && response.data) {
+            console.log('✅ Clase histórica cargada desde backend');
+            return {
+                success: true,
+                data: response.data,
+                tipo: 'historica'
+            };
+        }
+    } catch (error) {
+        console.log('⚠️ No se pudo cargar clase histórica:', error.message);
+    }
+    
+    return { success: false };
+}
+
 // Variable global para verificar si authSystem está disponible
 let authSystemReady = false;
 let claseInfo = null; // Guardar información de la clase actual
@@ -53,6 +90,133 @@ function isAdminSafe() {
     return false;
 }
 
+// En formularios.js, después de las variables globales
+
+// VERIFICAR ESTADO DE LA CLASE (usa el nuevo sistema)
+function verificarEstadoClase() {
+    if (!claseInfo) {
+        console.log('⚠️ No hay información de clase');
+        return { abierta: true };
+    }
+    
+    const estado = HORARIOS_CONFIG.verificarEstado(
+        claseInfo._id || claseInfo.id || obtenerClaseId(),
+        claseInfo.nombre,
+        claseInfo.fechaClase
+    );
+    
+    console.log('📊 Estado de clase:', estado);
+    return estado;
+}
+
+// ACTUALIZAR UI CON INFORMACIÓN DE HORARIOS
+function actualizarUIconHorario(estado) {
+    const deadline = document.getElementById('deadline');
+    const claseDetalles = document.getElementById('claseDetalles');
+    const submitBtn = document.querySelector('.submit-btn');
+    
+    if (!deadline) return;
+    
+    // Limpiar deadline anterior
+    deadline.innerHTML = '';
+    
+    // Crear elementos de información
+    const infoHTML = `
+        <div style="background: var(--bg-card); padding: 15px; border-radius: 10px; margin-top: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <strong>📅 Apertura:</strong><br>
+                    ${HORARIOS_CONFIG.formatearFecha(estado.horario.timestampApertura)}
+                </div>
+                <div>
+                    <strong>🔒 Cierre:</strong><br>
+                    ${HORARIOS_CONFIG.formatearFecha(estado.horario.timestampCierre)}
+                </div>
+                <div>
+                    <strong>⏱️ Duración:</strong><br>
+                    ${estado.horario.duracion} minutos
+                </div>
+                <div>
+                    <strong>📍 Lugar:</strong><br>
+                    ${estado.horario.lugar || 'Por confirmar'}
+                </div>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: ${estado.abierta ? 'rgba(52, 168, 83, 0.1)' : 'rgba(234, 67, 53, 0.1)'}; border-radius: 5px; text-align: center;">
+                <strong style="color: ${estado.abierta ? '#34a853' : '#ea4335'};">${estado.mensaje}</strong>
+            </div>
+        </div>
+    `;
+    
+    deadline.innerHTML = infoHTML;
+    
+    // Actualizar botón según estado
+    if (submitBtn) {
+        if (!estado.abierta) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.title = estado.mensaje;
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+            submitBtn.title = '';
+        }
+    }
+    
+    // Mostrar/ocultar formulario según estado
+    const form = document.getElementById('inscripcionForm');
+    if (form) {
+        if (!estado.abierta && estado.estado !== 'proximamente') {
+            form.style.display = 'none';
+            mostrarMensajeEstado(estado);
+        } else {
+            form.style.display = 'block';
+        }
+    }
+}
+
+// MOSTRAR MENSAJE DE ESTADO (cuando no está abierta)
+function mostrarMensajeEstado(estado) {
+    const container = document.querySelector('.container');
+    const mensajeAnterior = document.querySelector('.mensaje-estado');
+    
+    if (mensajeAnterior) {
+        mensajeAnterior.remove();
+    }
+    
+    const mensaje = document.createElement('div');
+    mensaje.className = 'mensaje-estado';
+    
+    let icono = '⏰';
+    let color = '#ff6b6b';
+    
+    if (estado.estado === 'proximamente') {
+        icono = '📅';
+        color = '#ffd166';
+    } else if (estado.estado === 'cerrada') {
+        icono = '🔒';
+        color = '#ff6b6b';
+    }
+    
+    mensaje.innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+            <div style="font-size: 4em; margin-bottom: 20px;">${icono}</div>
+            <h2 style="color: ${color}; margin-bottom: 15px;">${estado.estado === 'proximamente' ? 'Próximamente' : 'Clase cerrada'}</h2>
+            <p style="color: #b0b0b0; margin-bottom: 20px; font-size: 1.1em;">
+                ${estado.mensaje}
+            </p>
+            <div style="margin-top: 20px;">
+                <button onclick="window.location.href='../index.html'" class="back-btn" style="margin: 5px;">
+                    ← Volver al Menú Principal
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertBefore(mensaje, document.getElementById('inscripcionForm'));
+}
+
 // Función segura para hacer requests - AHORA IGNORA ERRORES
 async function makeRequestSafe(endpoint, data = null, method = 'POST') {
     if (authSystemReady && authSystem && typeof authSystem.makeRequest === 'function') {
@@ -99,57 +263,28 @@ function obtenerClaseActual() {
     return null;
 }
 
-// VERIFICAR SI LA CLASE ESTÁ ABIERTA (USANDO FECHA LOCAL)
+// VERIFICAR SI LA CLASE ESTÁ ABIERTA (usando configuración)
 function claseEstaAbierta() {
-    console.log('🔍 Verificando si la clase está abierta (local)...');
+    console.log('🔍 Verificando si la clase está abierta...');
     
     if (!claseInfo) {
-        console.log('⚠️ No hay información de clase disponible - asumiendo abierta');
+        console.log('⚠️ No hay información de clase');
         return true;
     }
     
-    if (!claseInfo.fechaClase) {
-        console.log('⚠️ No hay fecha de clase disponible');
-        return true;
+    const estado = HORARIOS_CONFIG.estaAbierta(
+        claseInfo.fechaClase || new Date().toISOString(),
+        claseInfo._id,
+        claseInfo.nombre
+    );
+    
+    console.log('📊 Estado de clase:', estado);
+    
+    if (!estado.abierta) {
+        console.log('❌ Clase cerrada por:', estado.razon);
     }
     
-    const ahora = new Date();
-    const fechaClase = new Date(claseInfo.fechaClase);
-    
-    console.log('📅 Fecha actual:', ahora.toLocaleString());
-    console.log('📅 Fecha clase:', fechaClase.toLocaleString());
-    
-    // Comparar solo la fecha (sin hora)
-    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-    const diaClase = new Date(fechaClase.getFullYear(), fechaClase.getMonth(), fechaClase.getDate());
-    
-    console.log('📅 Día actual:', hoy.toDateString());
-    console.log('📅 Día clase:', diaClase.toDateString());
-    
-    // Si la fecha de la clase ya pasó
-    if (diaClase < hoy) {
-        console.log('❌ Clase de fecha pasada');
-        return false;
-    }
-    
-    // Si es el mismo día, verificar si ya pasaron las 20:00 hrs
-    if (diaClase.getTime() === hoy.getTime()) {
-        const horaActual = ahora.getHours();
-        const minutosActual = ahora.getMinutes();
-        const horaActualEnMinutos = horaActual * 60 + minutosActual;
-        const horaLimiteEnMinutos = 20 * 60; // 20:00 = 1200 minutos
-        
-        console.log(`⏰ Hora actual: ${horaActual}:${minutosActual} (${horaActualEnMinutos} minutos)`);
-        console.log(`⏰ Límite: 20:00 (${horaLimiteEnMinutos} minutos)`);
-        
-        if (horaActualEnMinutos >= horaLimiteEnMinutos) {
-            console.log('❌ Clase del día de hoy pero después de las 20:00');
-            return false;
-        }
-    }
-    
-    console.log('✅ Clase abierta para inscripción');
-    return true;
+    return estado.abierta;
 }
 
 // VERIFICAR SI EL FORMULARIO YA FUE COMPLETADO - VERSIÓN LOCAL
@@ -512,9 +647,7 @@ function crearOpcionesAdmin() {
     }
 }
 
-// formularios.js - Busca esta función y reemplázala
-
-// Cargar información de la clase - VERSIÓN CORREGIDA
+// Cargar información de la clase - VERSIÓN CON BACKEND + CONFIG
 async function cargarInformacionClase() {
     const claseId = obtenerClaseId();
     
@@ -526,118 +659,135 @@ async function cargarInformacionClase() {
         return false;
     }
     
-    // Intentar obtener información del backend, pero si falla usar datos del HTML
-    try {
-        document.getElementById('claseTitulo').textContent = 'Cargando información de la clase...';
-        
-        // Intentar cargar de API pero ignorar errores
-        try {
-            const response = await makeRequestSafe(`/clases-publicas/${claseId}`, null, 'GET');
-            if (response && response.success && response.data) {
-                claseInfo = response.data;
-                claseInfo.tipo = 'publica';
-                console.log('✅ Clase pública cargada:', claseInfo.nombre);
-            }
-        } catch (error) {
-            console.log('⚠️ No se pudo cargar clase pública:', error.message);
-        }
-        
-        if (!claseInfo) {
-            try {
-                const response = await makeRequestSafe(`/clases-historicas/${claseId}`, null, 'GET');
-                if (response && response.success && response.data) {
-                    claseInfo = response.data;
-                    claseInfo.tipo = 'historica';
-                    console.log('✅ Clase histórica cargada:', claseInfo.nombre);
-                }
-            } catch (error) {
-                console.log('⚠️ No se pudo cargar clase histórica:', error.message);
-            }
-        }
-    } catch (error) {
-        console.log('⚠️ Error general cargando clase:', error.message);
-    }
+    document.getElementById('claseTitulo').textContent = 'Cargando información de la clase...';
     
-    // Si no se pudo cargar, usar el ID para generar un nombre
-    if (!claseInfo) {
-        console.log('📝 Usando ID de clase como nombre');
+    // PRIMERO: Intentar cargar desde backend
+    const backendResult = await cargarClaseDesdeBackend(claseId);
+    
+    if (backendResult.success) {
+        claseInfo = backendResult.data;
+        claseInfo.tipo = backendResult.tipo;
+        console.log('✅ Usando datos del backend:', claseInfo);
+    } else {
+        // SEGUNDO: Si no hay backend, usar configuración local
+        console.log('📝 Usando configuración local de horarios');
         
-        // Extraer un nombre legible del ID (opcional)
-        let nombreClase = 'Clase';
-        
-        // Intentar obtener el nombre de la URL o del localStorage
+        // Obtener nombre de la URL si existe
         const urlParams = new URLSearchParams(window.location.search);
-        const claseNombreFromUrl = urlParams.get('nombre');
+        const claseNombre = urlParams.get('nombre') || 'Clase sin nombre';
         
-        if (claseNombreFromUrl) {
-            nombreClase = decodeURIComponent(claseNombreFromUrl);
-        } else {
-            // Si no hay nombre en URL, usar el ID como referencia
-            nombreClase = `Clase (${claseId.substring(0, 8)}...)`;
-        }
+        // Obtener horario de la configuración
+        const horario = HORARIOS_CONFIG.obtenerHorario(claseId, claseNombre);
         
         claseInfo = {
-            nombre: nombreClase,
-            fechaClase: new Date().toISOString(),
-            enlaceFormulario: document.getElementById('enlaceRedireccion')?.value || '',
-            instructores: ['Instructor'],
-            descripcion: 'Clase cargada con datos locales'
+            _id: claseId,
+            nombre: claseNombre,
+            fechaClase: new Date().toISOString(), // Fecha actual por defecto
+            enlaceFormulario: '',
+            lugar: horario.lugar,
+            instructores: horario.instructores,
+            horario: horario,
+            desdeConfig: true
         };
+        
+        console.log('📊 Usando configuración local:', claseInfo);
     }
     
-    console.log('📊 Clase cargada:', claseInfo);
+    // Actualizar UI con la información disponible
+    actualizarUIconClase(claseInfo);
     
-    // ACTUALIZAR EL TÍTULO
-    document.getElementById('claseTitulo').textContent = claseInfo.nombre || 'Clase';
+    return true;
+}
+
+// Nueva función para actualizar la UI
+function actualizarUIconClase(clase) {
+    // Actualizar título
+    document.getElementById('claseTitulo').textContent = clase.nombre || 'Clase';
     
-    // ACTUALIZAR EL INDICADOR DE CLASE
+    // Actualizar indicador de clase
     const claseIndicador = document.getElementById('claseIndicador');
     const claseNombre = document.getElementById('claseNombre');
+    const claseDetalles = document.getElementById('claseDetalles');
+    const deadline = document.getElementById('deadline');
     
     if (claseIndicador && claseNombre) {
-        claseNombre.textContent = claseInfo.nombre || 'Clase';
+        claseNombre.textContent = clase.nombre || 'Clase';
         claseIndicador.style.display = 'block';
-    }
-    
-    // ACTUALIZAR EL SELECT - ¡ESTA ES LA PARTE IMPORTANTE!
-    const selectClase = document.getElementById('clase');
-    const claseOption = document.getElementById('claseOption');
-    
-    if (selectClase && claseOption) {
-        // Actualizar la opción del select
-        claseOption.value = claseInfo.nombre;
-        claseOption.textContent = claseInfo.nombre;
         
-        // Forzar que el select muestre esta opción
-        selectClase.value = claseInfo.nombre;
+        // Mostrar detalles adicionales
+        if (claseDetalles) {
+            let detallesHTML = '';
+            
+            // Usar instructores de backend o de configuración
+            if (clase.instructores) {
+                let instructoresTexto = '';
+                if (Array.isArray(clase.instructores)) {
+                    instructoresTexto = clase.instructores.join(', ');
+                } else if (typeof clase.instructores === 'string') {
+                    instructoresTexto = clase.instructores;
+                }
+                if (instructoresTexto) {
+                    detallesHTML += `<p><strong>Instructores:</strong> ${instructoresTexto}</p>`;
+                }
+            }
+            
+            // Lugar
+            if (clase.lugar) {
+                detallesHTML += `<p><strong>Lugar:</strong> ${clase.lugar}</p>`;
+            }
+            
+            // Descripción
+            if (clase.descripcion) {
+                detallesHTML += `<p><strong>Descripción:</strong> ${clase.descripcion}</p>`;
+            }
+            
+            claseDetalles.innerHTML = detallesHTML;
+        }
         
-        console.log('✅ Select actualizado a:', claseInfo.nombre);
-    } else {
-        console.warn('⚠️ No se encontraron elementos del select');
-    }
-    
-    // ACTUALIZAR EL DEADLINE (fecha límite)
-    const deadline = document.getElementById('deadline');
-    if (deadline && claseInfo.fechaClase) {
-        try {
-            const fechaClase = new Date(claseInfo.fechaClase);
-            if (!isNaN(fechaClase.getTime())) {
-                const fechaFormateada = fechaClase.toLocaleDateString('es-AR', {
+        // Actualizar deadline con información de horario
+        if (deadline) {
+            const ahora = new Date();
+            const estado = HORARIOS_CONFIG.estaAbierta(
+                clase.fechaClase || new Date().toISOString(),
+                clase._id,
+                clase.nombre
+            );
+            
+            let fechaClase = 'Fecha no disponible';
+            if (clase.fechaClase) {
+                const fecha = new Date(clase.fechaClase);
+                fechaClase = fecha.toLocaleDateString('es-AR', {
                     day: '2-digit',
                     month: '2-digit',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
                 });
-                
-                deadline.innerHTML = `⏰ <strong>Fecha de la clase:</strong> ${fechaFormateada}`;
             }
-        } catch (e) {
-            console.warn('⚠️ Error formateando fecha:', e);
+            
+            deadline.innerHTML = `
+                ⏰ <strong>Fecha de la clase:</strong> ${fechaClase}<br>
+                <strong>📍 Lugar:</strong> ${clase.lugar || 'Por confirmar'}<br>
+                <strong>⏱️ Estado:</strong> ${estado.abierta ? '✅ Abierta' : '🔒 Cerrada'} - ${estado.mensaje || ''}
+            `;
         }
     }
     
-    return true;
+    // Actualizar select de clase
+    const selectClase = document.getElementById('clase');
+    const claseOption = document.getElementById('claseOption');
+    
+    if (selectClase && claseOption) {
+        claseOption.value = clase.nombre;
+        claseOption.textContent = clase.nombre;
+        selectClase.value = clase.nombre;
+    }
+    
+    // Guardar enlace de redirección si existe
+    const enlaceRedireccion = document.getElementById('enlaceRedireccion');
+    if (enlaceRedireccion && clase.enlaceFormulario) {
+        enlaceRedireccion.value = clase.enlaceFormulario;
+    }
 }
 
 // Validar y enviar formulario
@@ -734,13 +884,13 @@ async function inicializarAplicacion() {
     
     // VERIFICACIÓN LOCAL: ¿La clase está abierta?
     console.log('🔍 Ejecutando verificación de apertura...');
-    const abierta = claseEstaAbierta();
-    console.log('📊 Resultado verificación apertura:', abierta);
     
-    if (!abierta) {
-        console.log('🔒 Clase cerrada, mostrando mensaje');
-        mostrarClaseCerrada();
-        return;
+    const estado = verificarEstadoClase();
+    actualizarUIconHorario(estado);
+    
+    if (!estado.abierta) {
+        console.log(`🔒 Clase ${estado.estado}:`, estado.mensaje);
+    // No retornamos, dejamos que se muestre el mensaje pero no el formulario
     }
     
     // VERIFICACIÓN LOCAL: ¿Ya está inscrito?

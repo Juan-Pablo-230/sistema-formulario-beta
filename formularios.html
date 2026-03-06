@@ -69,20 +69,19 @@
         </form>
     </div>
 
+    <script src="/js/config/horarios.js"></script>
     <script src="/js/auth.js"></script>
     <script>
-        // SOLO pasar el claseId a formularios.js
-        const urlParams = new URLSearchParams(window.location.search);
-        const claseId = urlParams.get('claseId');
-        
-        if (!claseId) {
-            alert('Error: No se especificó la clase');
-            window.location.href = '/index.html';
-        }
-        
-        // Guardar claseId globalmente para que formularios.js lo use
-        window.CLASE_ID = claseId;
-    </script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const claseId = urlParams.get('claseId');
+    
+    if (!claseId) {
+        alert('Error: No se especificó la clase');
+        window.location.href = '/index.html';
+    }
+    
+    window.CLASE_ID = claseId;
+</script>
     <script src="/js/formularios.js"></script>
 </body>
 </html>
