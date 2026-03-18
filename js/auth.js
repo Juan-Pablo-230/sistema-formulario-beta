@@ -170,11 +170,14 @@ class AuthSystem {
         }
     }
 
-    // Muestra el modal obligatorio de migración (VERSIÓN CORREGIDA)
+    // Muestra el modal obligatorio de migración (VERSIÓN CORREGIDA CON AVISO Y SCROLL BLOQUEADO)
 async showMigrationModal() {
     return new Promise((resolve, reject) => {
         const user = this.currentUser;
         const needsPasswordChange = user.needsPasswordChange;
+        
+        // BLOQUEAR SCROLL DEL FONDO
+        document.body.style.overflow = 'hidden';
         
         // Crear overlay
         const overlay = document.createElement('div');
@@ -194,7 +197,7 @@ async showMigrationModal() {
             backdrop-filter: blur(5px);
         `;
         
-        // Construir el HTML del modal - SIN comentarios HTML
+        // Construir el HTML del modal
         let modalHTML = `
             <div class="migration-container" style="
                 background: #1e1e2e;
@@ -302,6 +305,10 @@ async showMigrationModal() {
             `;
         }
         
+        // Agregar sección de términos y condiciones (DESACTIVADA VISUALMENTE)
+        // En lugar de comentarios HTML, simplemente no la incluimos
+        // Si en el futuro se necesita, se puede agregar aquí
+        
         // Cerrar el modal
         modalHTML += `
                 <div id="migrationMessage" style="
@@ -331,6 +338,14 @@ async showMigrationModal() {
         overlay.innerHTML = modalHTML;
         document.body.appendChild(overlay);
         
+        // Función para restaurar scroll al cerrar
+        const restaurarScroll = () => {
+            document.body.style.overflow = '';
+            if (overlay.parentNode) {
+                overlay.remove();
+            }
+        };
+        
         // Funcionalidad de mostrar/ocultar contraseña
         overlay.querySelectorAll('.toggle-password').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -351,7 +366,7 @@ async showMigrationModal() {
         
         migrateBtn.addEventListener('click', async () => {
             
-            // Mostrar alerta de advertencia
+            // 👇 AVISO DE CONFIRMACIÓN (RESTAURADO)
             const advertencia = confirm(
                 '⚠️  CAMBIO DE CONTRASEÑA  ⚠️\n\n' +
                 'Al cambiar la contraseña:\n\n' +
@@ -367,6 +382,7 @@ async showMigrationModal() {
                 
                 // Redirigir a la versión estable después de 2 segundos
                 setTimeout(() => {
+                    restaurarScroll();
                     window.location.href = 'https://sistema-formularios-production.up.railway.app/';
                 }, 2000);
                 
@@ -374,10 +390,7 @@ async showMigrationModal() {
             }
             
             // Preparar datos base
-            const data = {
-                // Términos y condiciones desactivados temporalmente
-                // aceptarTyC: true
-            };
+            const data = {};
             
             // Validar y obtener valores SOLO si se requiere cambio de contraseña
             if (needsPasswordChange) {
@@ -435,7 +448,7 @@ async showMigrationModal() {
                     this.showMigrationMessage(overlay, '✅ Migración exitosa. Recargando...', 'success');
                     
                     setTimeout(() => {
-                        overlay.remove();
+                        restaurarScroll();
                         // Recargar la página para reflejar cambios
                         window.location.reload();
                     }, 2000);
@@ -448,7 +461,26 @@ async showMigrationModal() {
                 migrateBtn.textContent = 'Continuar';
             }
         });
+        
+        // Permitir cerrar el modal haciendo clic fuera (opcional, pero restaura scroll)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                if (confirm('¿Estás seguro? Si cierras esta ventana, no podrás acceder al sistema.')) {
+                    restaurarScroll();
+                }
+            }
+        });
     });
+}
+
+// Función auxiliar para mostrar mensajes en el modal
+showMigrationMessage(overlay, text, type) {
+    const msgDiv = overlay.querySelector('#migrationMessage');
+    msgDiv.style.display = 'block';
+    msgDiv.textContent = text;
+    msgDiv.style.background = type === 'error' ? '#5a2d2d' : type === 'info' ? '#2d5a5a' : '#2d5a2d';
+    msgDiv.style.color = type === 'error' ? '#ff6b6b' : type === 'info' ? '#6bffff' : '#6bff6b';
+    msgDiv.style.border = type === 'error' ? '1px solid #ff6b6b' : type === 'info' ? '1px solid #6bffff' : '1px solid #6bff6b';
 }
 
     showMigrationMessage(overlay, text, type) {
