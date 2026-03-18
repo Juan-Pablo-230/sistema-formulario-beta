@@ -104,11 +104,6 @@ class CalendarManager {
                 <p><strong>📍 Lugar:</strong> ${this.proximaClase.lugar}</p>
                 <p><strong>👥 Instructores:</strong> ${instructoresTexto}</p>
                 ${this.proximaClase.descripcion ? `<p><strong>📝 Descripción:</strong> ${this.proximaClase.descripcion}</p>` : ''}
-                ${this.proximaClase.enlace ? `
-                    <div class="proxima-enlace">
-                        <a href="${this.proximaClase.enlace}" class="btn-unirse" target="_blank">🔗 Acceder a la clase</a>
-                    </div>
-                ` : ''}
             `;
             proximaSection.style.display = 'block';
 
