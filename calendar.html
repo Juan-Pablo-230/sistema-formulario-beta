@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendario Educativo</title>
+    <title>Calendario Educativo - Próximas Clases</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/calendar.css">
     <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
@@ -11,8 +11,8 @@
 <body>
     <div class="container calendar-container">
         <header class="calendar-header">
-            <h1>📅 Calendario Educativo</h1>
-            <p>Visualiza todas las clases programadas y material grabado disponible</p>
+            <h1>📅 Próximas Clases</h1>
+            <p>Estas son las clases programadas para las próximas fechas</p>
             <button id="btnVolverCalendar" class="btn-volver" onclick="window.location.href='/index.html'">
                 <span class="btn-icon">←</span> Volver al Menú Principal
             </button>
@@ -30,17 +30,9 @@
             </div>
         </div>
 
-        <!-- Filtros rápidos -->
-        <div class="calendar-filtros">
-            <button class="filtro-btn active" data-filtro="todas">📋 Todas</button>
-            <button class="filtro-btn" data-filtro="publicas">📢 En Vivo</button>
-            <button class="filtro-btn" data-filtro="historicas">📚 Grabadas</button>
-            <button class="filtro-btn" data-filtro="proximas">🔜 Próximas</button>
-        </div>
-
-        <!-- Grid donde se mostrarán todas las clases -->
+        <!-- Grid donde se mostrarán todas las clases próximas -->
         <div class="calendar-grid" id="calendar-clases-grid">
-            <div class="loading-classes">Cargando calendario de clases...</div>
+            <div class="loading-classes">Cargando clases próximas...</div>
         </div>
 
         <div id="calendarMensaje" class="status-message" style="display: none;"></div>

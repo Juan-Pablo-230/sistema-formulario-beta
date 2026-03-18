@@ -1,11 +1,11 @@
 // calendar.js
-console.log('📅 calendar.js cargado');
+console.log('📅 calendar.js cargado - SOLO CLASES PRÓXIMAS');
 
 class CalendarManager {
     constructor() {
-        this.todasLasClases = [];
-        this.filtroActual = 'todas';
+        this.clasesProximas = [];
         this.proximaClase = null;
+        this.filtroActual = 'todas';
         this.init();
     }
 
@@ -32,126 +32,87 @@ class CalendarManager {
         };
 
         try {
-            console.log('🔄 Cargando clases para el calendario...');
-            gridContainer.innerHTML = '<div class="loading-classes">Cargando calendario de clases...</div>';
+            console.log('🔄 Cargando clases próximas...');
+            gridContainer.innerHTML = '<div class="loading-classes">Cargando clases próximas...</div>';
 
             // Obtener la hora del servidor para cálculos precisos
             const timeResponse = await fetch('/api/health');
             const timeData = await timeResponse.json();
             const ahora = new Date(timeData.timestamp).getTime();
 
-            // 1. Obtener clases públicas (clases en vivo)
+            // Obtener clases públicas (clases en vivo)
             const responsePublicas = await fetch('/api/clases-publicas/publicadas');
             const dataPublicas = await responsePublicas.json();
             let clasesPublicas = dataPublicas.success ? dataPublicas.data : [];
 
-            // 2. Obtener clases históricas (material grabado)
-            const responseHistoricas = await fetch('/api/clases-historicas');
-            const dataHistoricas = await responseHistoricas.json();
-            let clasesHistoricas = dataHistoricas.success ? dataHistoricas.data : [];
+            // Filtrar SOLO las clases futuras (fecha mayor a ahora)
+            this.clasesProximas = [];
 
-            // 3. Combinar todas las clases
-            this.todasLasClases = [];
-
-            // Procesar clases públicas
             clasesPublicas.forEach(clase => {
                 if (clase.fechaClase) {
-                    this.todasLasClases.push({
-                        _id: clase._id,
-                        nombre: clase.nombre,
-                        descripcion: clase.descripcion || '',
-                        fechaClase: clase.fechaClase,
-                        fechaApertura: clase.fechaApertura || clase.fechaClase,
-                        fechaCierre: clase.fechaCierre || (new Date(new Date(clase.fechaClase).getTime() + 60 * 60 * 1000).toISOString()),
-                        lugar: clase.lugar || 'Por definir',
-                        instructores: clase.instructores && clase.instructores.length > 0 ? clase.instructores : ['Instructor no especificado'],
-                        tipo: 'publica',
-                        enlace: clase.enlaceFormulario || null,
-                        publicada: clase.publicada || false,
-                        esProxima: false
-                    });
+                    const fechaClase = new Date(clase.fechaClase).getTime();
+                    
+                    // SOLO incluir si la fecha es FUTURA (mayor a ahora)
+                    if (fechaClase > ahora) {
+                        this.clasesProximas.push({
+                            _id: clase._id,
+                            nombre: clase.nombre,
+                            descripcion: clase.descripcion || '',
+                            fechaClase: clase.fechaClase,
+                            fechaApertura: clase.fechaApertura || clase.fechaClase,
+                            fechaCierre: clase.fechaCierre || (new Date(new Date(clase.fechaClase).getTime() + 60 * 60 * 1000).toISOString()),
+                            lugar: clase.lugar || 'Por definir',
+                            instructores: clase.instructores && clase.instructores.length > 0 ? clase.instructores : ['Instructor no especificado'],
+                            enlace: clase.enlaceFormulario || null,
+                            esProxima: false
+                        });
+                    }
                 }
             });
 
-            // Procesar clases históricas (solo las que tienen material/enlaces)
-            clasesHistoricas.forEach(clase => {
-                if (clase.fechaClase && (clase.enlaces?.youtube || clase.enlaces?.powerpoint)) {
-                    this.todasLasClases.push({
-                        _id: clase._id,
-                        nombre: clase.nombre,
-                        descripcion: clase.descripcion || 'Material de clase grabada',
-                        fechaClase: clase.fechaClase,
-                        fechaApertura: clase.fechaClase,
-                        fechaCierre: new Date(new Date(clase.fechaClase).getTime() + 2 * 60 * 60 * 1000).toISOString(),
-                        lugar: '📚 Material grabado disponible',
-                        instructores: clase.instructores && clase.instructores.length > 0 ? clase.instructores : ['Instructor no especificado'],
-                        tipo: 'historica',
-                        enlace: null,
-                        enlaces: clase.enlaces || {},
-                        publicada: true,
-                        esProxima: false
-                    });
-                }
-            });
-
-            if (this.todasLasClases.length === 0) {
-                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases cargadas en el sistema.</div>';
+            if (this.clasesProximas.length === 0) {
+                gridContainer.innerHTML = '<div class="no-classes-message">No hay clases próximas programadas.</div>';
                 proximaSection.style.display = 'none';
                 return;
             }
 
             // Ordenar las clases por fecha (más cercanas primero)
-            this.todasLasClases.sort((a, b) => new Date(a.fechaClase) - new Date(b.fechaClase));
+            this.clasesProximas.sort((a, b) => new Date(a.fechaClase) - new Date(b.fechaClase));
 
-            // Encontrar la PRÓXIMA clase (la primera con fecha posterior a ahora)
-            this.proximaClase = null;
-            for (let clase of this.todasLasClases) {
-                if (clase.tipo === 'publica' && new Date(clase.fechaClase).getTime() > ahora) {
-                    this.proximaClase = clase;
-                    break;
-                }
-            }
-
-            // Si no hay próximas clases públicas, buscar en históricas
-            if (!this.proximaClase) {
-                for (let clase of this.todasLasClases) {
-                    if (new Date(clase.fechaClase).getTime() > ahora) {
-                        this.proximaClase = clase;
-                        break;
-                    }
-                }
-            }
+            // La PRÓXIMA clase es la primera del array (la más cercana)
+            this.proximaClase = this.clasesProximas[0];
+            this.proximaClase.esProxima = true;
 
             // Mostrar la próxima clase destacada (en AMARILLO)
-            if (this.proximaClase) {
-                this.proximaClase.esProxima = true;
-                const fechaProxima = new Date(this.proximaClase.fechaClase).toLocaleString('es-AR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
+            const fechaProxima = new Date(this.proximaClase.fechaClase).toLocaleString('es-AR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
 
-                const instructoresTexto = Array.isArray(this.proximaClase.instructores) 
-                    ? this.proximaClase.instructores.join(', ') 
-                    : this.proximaClase.instructores;
+            const instructoresTexto = Array.isArray(this.proximaClase.instructores) 
+                ? this.proximaClase.instructores.join(', ') 
+                : this.proximaClase.instructores;
 
-                proximaInfo.innerHTML = `
-                    <h3>${this.proximaClase.nombre}</h3>
-                    <p><strong>📅 Fecha:</strong> ${fechaProxima.charAt(0).toUpperCase() + fechaProxima.slice(1)}</p>
-                    <p><strong>📍 Lugar:</strong> ${this.proximaClase.lugar}</p>
-                    <p><strong>👥 Instructores:</strong> ${instructoresTexto}</p>
-                    ${this.proximaClase.descripcion ? `<p><strong>📝 Descripción:</strong> ${this.proximaClase.descripcion}</p>` : ''}
-                `;
-                proximaSection.style.display = 'block';
-            } else {
-                proximaSection.style.display = 'none';
-            }
+            proximaInfo.innerHTML = `
+                <h3>${this.proximaClase.nombre}</h3>
+                <p><strong>📅 Fecha:</strong> ${fechaProxima.charAt(0).toUpperCase() + fechaProxima.slice(1)}</p>
+                <p><strong>📍 Lugar:</strong> ${this.proximaClase.lugar}</p>
+                <p><strong>👥 Instructores:</strong> ${instructoresTexto}</p>
+                ${this.proximaClase.descripcion ? `<p><strong>📝 Descripción:</strong> ${this.proximaClase.descripcion}</p>` : ''}
+                ${this.proximaClase.enlace ? `
+                    <div class="proxima-enlace">
+                        <a href="${this.proximaClase.enlace}" class="btn-unirse" target="_blank">🔗 Acceder a la clase</a>
+                    </div>
+                ` : ''}
+            `;
+            proximaSection.style.display = 'block';
 
-            // Mostrar todas las clases según el filtro actual
+            // Mostrar todas las clases próximas
             this.mostrarClases(this.filtroActual);
 
         } catch (error) {
@@ -165,20 +126,13 @@ class CalendarManager {
         const gridContainer = document.getElementById('calendar-clases-grid');
         if (!gridContainer) return;
 
-        let clasesFiltradas = this.todasLasClases;
-        const ahora = Date.now();
+        let clasesFiltradas = this.clasesProximas;
 
-        // Aplicar filtro
-        if (filtro === 'publicas') {
-            clasesFiltradas = this.todasLasClases.filter(c => c.tipo === 'publica');
-        } else if (filtro === 'historicas') {
-            clasesFiltradas = this.todasLasClases.filter(c => c.tipo === 'historica');
-        } else if (filtro === 'proximas') {
-            clasesFiltradas = this.todasLasClases.filter(c => new Date(c.fechaClase).getTime() > ahora);
-        }
+        // Aplicar filtro (por si queremos filtrar por lugar o instructor en el futuro)
+        // Por ahora solo mostramos todas las próximas
 
         if (clasesFiltradas.length === 0) {
-            gridContainer.innerHTML = `<div class="no-classes-message">No hay clases para mostrar en esta categoría.</div>`;
+            gridContainer.innerHTML = `<div class="no-classes-message">No hay clases próximas para mostrar.</div>`;
             return;
         }
 
@@ -198,30 +152,11 @@ class CalendarManager {
                 ? clase.instructores.join(', ') 
                 : clase.instructores;
 
-            // Determinar estado
-            let estadoClase = 'pasada';
-            let estadoTexto = 'Finalizada';
-            const fechaClaseTime = new Date(clase.fechaClase).getTime();
-
-            if (fechaClaseTime > ahora) {
-                estadoClase = 'futura';
-                estadoTexto = 'Próximamente';
-            }
-            if (esProxima) {
-                estadoClase = 'proxima';
-                estadoTexto = '¡PRÓXIMA!';
-            }
-
-            // Clase especial para históricas con enlaces
-            const tieneMaterial = clase.enlaces && (clase.enlaces.youtube || clase.enlaces.powerpoint);
-
             htmlString += `
-                <div class="calendar-card ${estadoClase} ${clase.tipo}" data-clase-id="${clase._id}">
+                <div class="calendar-card ${esProxima ? 'proxima' : 'futura'}" data-clase-id="${clase._id}">
                     <div class="calendar-card-header">
                         <h3>${clase.nombre}</h3>
-                        <span class="clase-tipo-badge ${clase.tipo}">
-                            ${clase.tipo === 'publica' ? '📢 EN VIVO' : '📚 GRABADA'}
-                        </span>
+                        ${esProxima ? '<span class="proxima-badge">⭐ PRÓXIMA ⭐</span>' : ''}
                     </div>
                     
                     <p class="clase-instructores">👥 ${instructoresTexto}</p>
@@ -233,34 +168,53 @@ class CalendarManager {
                     
                     ${clase.descripcion ? `<p class="clase-descripcion">${clase.descripcion}</p>` : ''}
                     
-                    ${tieneMaterial ? `
-                        <div class="clase-material">
-                            ${clase.enlaces.youtube ? `<a href="${clase.enlaces.youtube}" target="_blank" class="material-link youtube">▶️ Ver en YouTube</a>` : ''}
-                            ${clase.enlaces.powerpoint ? `<a href="${clase.enlaces.powerpoint}" target="_blank" class="material-link powerpoint">📊 Ver Presentación</a>` : ''}
+                    ${clase.enlace ? `
+                        <div class="clase-enlace">
+                            <a href="${clase.enlace}" class="btn-unirse-small" target="_blank">🔗 Acceder a la clase</a>
                         </div>
                     ` : ''}
                     
-                    <div class="clase-estado-badge ${estadoClase}">${estadoTexto}</div>
+                    <div class="clase-fecha-relativa">
+                        ${this.obtenerTiempoRestante(new Date(clase.fechaClase).getTime())}
+                    </div>
                 </div>
             `;
         });
 
         gridContainer.innerHTML = htmlString;
-        console.log(`✅ Calendario actualizado con filtro "${filtro}":`, clasesFiltradas.length, 'clases');
+        console.log(`✅ Calendario actualizado: ${clasesFiltradas.length} clases próximas`);
+    }
+
+    obtenerTiempoRestante(fechaClase) {
+        const ahora = Date.now();
+        const diffMs = fechaClase - ahora;
+        
+        if (diffMs <= 0) return '🚀 Comenzó';
+        
+        const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHoras = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        if (diffDias > 0) {
+            return `⏳ Faltan ${diffDias} día${diffDias !== 1 ? 's' : ''} y ${diffHoras} hora${diffHoras !== 1 ? 's' : ''}`;
+        } else if (diffHoras > 0) {
+            return `⏳ Faltan ${diffHoras} hora${diffHoras !== 1 ? 's' : ''}`;
+        } else {
+            const diffMinutos = Math.floor(diffMs / (1000 * 60));
+            return `⏳ Faltan ${diffMinutos} minuto${diffMinutos !== 1 ? 's' : ''}`;
+        }
     }
 
     configurarFiltros() {
+        // Por ahora no hay filtros funcionales, pero mantenemos la estructura
         const filtros = document.querySelectorAll('.filtro-btn');
         
         filtros.forEach(btn => {
             btn.addEventListener('click', () => {
-                // Actualizar botón activo
                 filtros.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 
-                // Aplicar filtro
-                this.filtroActual = btn.dataset.filtro;
-                this.mostrarClases(this.filtroActual);
+                // Por ahora solo mostramos todas las próximas siempre
+                this.mostrarClases('todas');
             });
         });
     }
