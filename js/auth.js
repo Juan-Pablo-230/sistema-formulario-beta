@@ -170,284 +170,286 @@ class AuthSystem {
         }
     }
 
-    // Muestra el modal obligatorio de migración
-    async showMigrationModal() {
-        return new Promise((resolve, reject) => {
-            const user = this.currentUser;
-            const needsPasswordChange = user.needsPasswordChange;
-            
-            // Crear overlay
-            const overlay = document.createElement('div');
-            overlay.className = 'migration-overlay';
-            overlay.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.9);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 20000;
-                font-family: 'Arial', sans-serif;
-                backdrop-filter: blur(5px);
-            `;
-            
-            // Contenido del modal
-            overlay.innerHTML = `
-                <div class="migration-container" style="
-                    background: #1e1e2e;
-                    padding: 30px;
-                    border-radius: 15px;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-                    width: 90%;
-                    max-width: 500px;
-                    color: #e0e0e0;
-                    max-height: 90vh;
-                    overflow-y: auto;
-                ">
-                    <h2 style="text-align: center; margin-bottom: 20px; color: #fff;">⚠️ Acción Requerida</h2>
-                    <p style="text-align: center; margin-bottom: 20px;">
-                        Por motivos de seguridad, debes realizar los siguientes pasos antes de continuar:
-                    </p>
-
-                    /* Esto queda comentado temporalmente debido a que los recursos no están disponibles */
+    // Muestra el modal obligatorio de migración (VERSIÓN CORREGIDA)
+async showMigrationModal() {
+    return new Promise((resolve, reject) => {
+        const user = this.currentUser;
+        const needsPasswordChange = user.needsPasswordChange;
+        
+        // Crear overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'migration-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000;
+            font-family: 'Arial', sans-serif;
+            backdrop-filter: blur(5px);
+        `;
+        
+        // Construir el HTML del modal - SIN comentarios HTML
+        let modalHTML = `
+            <div class="migration-container" style="
+                background: #1e1e2e;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                width: 90%;
+                max-width: 500px;
+                color: #e0e0e0;
+                max-height: 90vh;
+                overflow-y: auto;
+            ">
+                <h2 style="text-align: center; margin-bottom: 20px; color: #fff;">⚠️ Acción Requerida</h2>
+                <p style="text-align: center; margin-bottom: 20px;">
+                    Por motivos de seguridad, debes realizar los siguientes pasos antes de continuar:
+                </p>
+        `;
+        
+        // Agregar sección de cambio de contraseña SOLO si es necesario
+        if (needsPasswordChange) {
+            modalHTML += `
+                <div style="margin-bottom: 25px; padding: 15px; background: #2a2f36; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px; color: #ff6b6b;">🔐 Cambio de Contraseña Obligatorio</h3>
+                    <p>Se detecto en el sistema una vulnerabilidad que permitia obtener las contraseñas de los usuarios. El error fue corregido, pero para mayor seguridad, debes cambiar tu contraseña.</p>
                     
-                    /* <div style="margin-bottom: 25px; padding: 15px; background: #2a2f36; border-radius: 10px;">
-                        <h3 style="margin-bottom: 15px; color: #ffd166;">📜 Términos y Condiciones</h3>
-                        <p style="margin-bottom: 15px;">Para usar el sistema, debes aceptar nuestros Términos y Condiciones.</p>
-                        <div style="text-align: center; margin-bottom: 15px;">
-                            <a href="/tyc.pdf" target="_blank" style="
-                                display: inline-block;
-                                background: #4285f4;
-                                color: white;
-                                padding: 10px 20px;
-                                border-radius: 5px;
-                                text-decoration: none;
-                                font-weight: bold;
-                            ">📄 Ver Términos y Condiciones (PDF)</a>
-                        </div>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" id="tycCheckbox" style="width: 18px; height: 18px;">
-                            <span>He leído y acepto los Términos y Condiciones *</span>
-                        </label>
-                    </div> */ 
-                    
-                    ${needsPasswordChange ? `
-                    <div style="margin-bottom: 25px; padding: 15px; background: #2a2f36; border-radius: 10px;">
-                        <h3 style="margin-bottom: 15px; color: #ff6b6b;">🔐 Cambio de Contraseña Obligatorio</h3>
-                        <p>Se detecto en el sistema una vulnerabilidad que permitia obtener las contraseñas de los usuarios. El error fue corregido, pero para mayor seguridad, debes cambiar tu contraseña.</p>
-                        
-                        <div class="form-group" style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px;">Contraseña Actual *</label>
-                            <div style="position: relative;">
-                                <input type="password" id="currentPassword" required style="
-                                    width: 100%;
-                                    padding: 10px;
-                                    padding-right: 45px;
-                                    border: 2px solid #3d3d5c;
-                                    border-radius: 8px;
-                                    background: #1e1e2e;
-                                    color: #e0e0e0;
-                                ">
-                                <button type="button" class="toggle-password" data-target="currentPassword" style="
-                                    position: absolute;
-                                    right: 10px;
-                                    top: 50%;
-                                    transform: translateY(-50%);
-                                    background: none;
-                                    border: none;
-                                    cursor: pointer;
-                                    color: #b0b0b0;
-                                    font-size: 14px;
-                                ">👁️</button>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group" style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px;">Nueva Contraseña *</label>
-                            <div style="position: relative;">
-                                <input type="password" id="newPassword" required maxlength="15" style="
-                                    width: 100%;
-                                    padding: 10px;
-                                    padding-right: 45px;
-                                    border: 2px solid #3d3d5c;
-                                    border-radius: 8px;
-                                    background: #1e1e2e;
-                                    color: #e0e0e0;
-                                ">
-                                <button type="button" class="toggle-password" data-target="newPassword" style="
-                                    position: absolute;
-                                    right: 10px;
-                                    top: 50%;
-                                    transform: translateY(-50%);
-                                    background: none;
-                                    border: none;
-                                    cursor: pointer;
-                                    color: #b0b0b0;
-                                    font-size: 14px;
-                                ">👁️</button>
-                            </div>
-                            <small style="color: #b0b0b0;">Mínimo 8, máximo 15 caracteres</small>
-                        </div>
-                        
-                        <div class="form-group" style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px;">Confirmar Nueva Contraseña *</label>
-                            <div style="position: relative;">
-                                <input type="password" id="confirmNewPassword" required maxlength="15" style="
-                                    width: 100%;
-                                    padding: 10px;
-                                    padding-right: 45px;
-                                    border: 2px solid #3d3d5c;
-                                    border-radius: 8px;
-                                    background: #1e1e2e;
-                                    color: #e0e0e0;
-                                ">
-                                <button type="button" class="toggle-password" data-target="confirmNewPassword" style="
-                                    position: absolute;
-                                    right: 10px;
-                                    top: 50%;
-                                    transform: translateY(-50%);
-                                    background: none;
-                                    border: none;
-                                    cursor: pointer;
-                                    color: #b0b0b0;
-                                    font-size: 14px;
-                                ">👁️</button>
-                            </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">Contraseña Actual *</label>
+                        <div style="position: relative;">
+                            <input type="password" id="currentPassword" required style="
+                                width: 100%;
+                                padding: 10px;
+                                padding-right: 45px;
+                                border: 2px solid #3d3d5c;
+                                border-radius: 8px;
+                                background: #1e1e2e;
+                                color: #e0e0e0;
+                            ">
+                            <button type="button" class="toggle-password" data-target="currentPassword" style="
+                                position: absolute;
+                                right: 10px;
+                                top: 50%;
+                                transform: translateY(-50%);
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                                color: #b0b0b0;
+                                font-size: 14px;
+                            ">👁️</button>
                         </div>
                     </div>
-                    ` : ''}
                     
-                    <div id="migrationMessage" style="
-                        display: none;
-                        padding: 12px;
-                        border-radius: 5px;
-                        margin-bottom: 15px;
-                        text-align: center;
-                        font-weight: bold;
-                    "></div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">Nueva Contraseña *</label>
+                        <div style="position: relative;">
+                            <input type="password" id="newPassword" required maxlength="15" style="
+                                width: 100%;
+                                padding: 10px;
+                                padding-right: 45px;
+                                border: 2px solid #3d3d5c;
+                                border-radius: 8px;
+                                background: #1e1e2e;
+                                color: #e0e0e0;
+                            ">
+                            <button type="button" class="toggle-password" data-target="newPassword" style="
+                                position: absolute;
+                                right: 10px;
+                                top: 50%;
+                                transform: translateY(-50%);
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                                color: #b0b0b0;
+                                font-size: 14px;
+                            ">👁️</button>
+                        </div>
+                        <small style="color: #b0b0b0;">Mínimo 6, máximo 15 caracteres</small>
+                    </div>
                     
-                    <button id="migrateBtn" style="
-                        width: 100%;
-                        background: linear-gradient(135deg, #34a853 0%, #0f9d58 100%);
-                        color: white;
-                        padding: 15px;
-                        border: none;
-                        border-radius: 8px;
-                        font-size: 16px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        transition: transform 0.2s;
-                    ">Continuar</button>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px;">Confirmar Nueva Contraseña *</label>
+                        <div style="position: relative;">
+                            <input type="password" id="confirmNewPassword" required maxlength="15" style="
+                                width: 100%;
+                                padding: 10px;
+                                padding-right: 45px;
+                                border: 2px solid #3d3d5c;
+                                border-radius: 8px;
+                                background: #1e1e2e;
+                                color: #e0e0e0;
+                            ">
+                            <button type="button" class="toggle-password" data-target="confirmNewPassword" style="
+                                position: absolute;
+                                right: 10px;
+                                top: 50%;
+                                transform: translateY(-50%);
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                                color: #b0b0b0;
+                                font-size: 14px;
+                            ">👁️</button>
+                        </div>
+                    </div>
                 </div>
             `;
-            
-            document.body.appendChild(overlay);
-            
-            // Funcionalidad de mostrar/ocultar contraseña
-            overlay.querySelectorAll('.toggle-password').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const targetId = this.dataset.target;
-                    const input = document.getElementById(targetId);
-                    if (input.type === 'password') {
-                        input.type = 'text';
-                        this.textContent = '🙈';
-                    } else {
-                        input.type = 'password';
-                        this.textContent = '👁️';
-                    }
-                });
+        }
+        
+        // Cerrar el modal
+        modalHTML += `
+                <div id="migrationMessage" style="
+                    display: none;
+                    padding: 12px;
+                    border-radius: 5px;
+                    margin-bottom: 15px;
+                    text-align: center;
+                    font-weight: bold;
+                "></div>
+                
+                <button id="migrateBtn" style="
+                    width: 100%;
+                    background: linear-gradient(135deg, #34a853 0%, #0f9d58 100%);
+                    color: white;
+                    padding: 15px;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                ">Continuar</button>
+            </div>
+        `;
+        
+        overlay.innerHTML = modalHTML;
+        document.body.appendChild(overlay);
+        
+        // Funcionalidad de mostrar/ocultar contraseña
+        overlay.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.dataset.target;
+                const input = document.getElementById(targetId);
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    this.textContent = '🙈';
+                } else {
+                    input.type = 'password';
+                    this.textContent = '👁️';
+                }
             });
+        });
+        
+        // Manejar envío
+        const migrateBtn = overlay.querySelector('#migrateBtn');
+        
+        migrateBtn.addEventListener('click', async () => {
             
-            // Manejar envío
-            const migrateBtn = overlay.querySelector('#migrateBtn');
-            /* const tycCheckbox = overlay.querySelector('#tycCheckbox'); */ //Desactivado temporalmente debido a que los recursos no están disponibles
-
+            // Mostrar alerta de advertencia
             const advertencia = confirm(
                 '⚠️  CAMBIO DE CONTRASEÑA  ⚠️\n\n' +
-                'Se detecto una vulnerabilidad en el sistema. Esta ya esta corregida, pero necesitas cambiar tu contraseña para tu seguridad.\n\n' +
-                '❌ NO podrás acceder a la VERSIÓN ESTABLE hasta que la modificacion este aplicada en esa area\n' +
+                'Al cambiar la contraseña:\n\n' +
+                '❌ NO podrás acceder a la VERSIÓN ESTABLE\n' +
+                '   (sistema-formularios-production)\n\n' +
                 '✅ Solo podrás usar la VERSIÓN BETA\n' +
+                '   (sistema-formulario-beta)\n\n' +
                 '¿Estás seguro de continuar?'
             );
 
             if (!advertencia) {
-                this.showMigrationMessage(overlay, 'Cambio de contraseña cancelado', 'info');
-                    setTimeout(() => {
-                        window.location.href = 'https://sistema-formularios-production.up.railway.app/'; // Redirige a la versión estable
-                    }, 1000);
-                return;
+                this.showMigrationMessage(overlay, 'Cambio de contraseña cancelado. Serás redirigido a la versión estable.', 'info');
+                
+                // Redirigir a la versión estable después de 2 segundos
+                setTimeout(() => {
+                    window.location.href = 'https://sistema-formularios-production.up.railway.app/';
+                }, 2000);
+                
+                return; // Salir sin continuar
             }
             
-            migrateBtn.addEventListener('click', async () => {
-                // Validar TYC
-                // Desactivado temporalmente debido a que los recursos no están disponibles
-                /* if (!tycCheckbox.checked) {
-                    this.showMigrationMessage(overlay, 'Debes aceptar los Términos y Condiciones', 'error');
+            // Preparar datos base
+            const data = {
+                // Términos y condiciones desactivados temporalmente
+                // aceptarTyC: true
+            };
+            
+            // Validar y obtener valores SOLO si se requiere cambio de contraseña
+            if (needsPasswordChange) {
+                const currentPassword = overlay.querySelector('#currentPassword')?.value;
+                const newPassword = overlay.querySelector('#newPassword')?.value;
+                const confirmPassword = overlay.querySelector('#confirmNewPassword')?.value;
+                
+                // Validaciones
+                if (!currentPassword) {
+                    this.showMigrationMessage(overlay, 'Debes ingresar tu contraseña actual', 'error');
                     return;
-                } */
-                
-                // Preparar datos
-                const data = {
-                    /* aceptarTyC: true, */ //Desactivado temporalmente debido a que los recursos no están disponibles
-                    currentPassword: needsPasswordChange ? overlay.querySelector('#currentPassword').value : ''
-
-                };
-                
-                if (needsPasswordChange) {
-                    /* const newPass = overlay.querySelector('#newPassword').value; */ //Desactivado temporalmente debido a que los recursos no están disponibles
-                    const confirmPass = overlay.querySelector('#confirmNewPassword').value;
-                    
-                    if (!data.currentPassword) {
-                        this.showMigrationMessage(overlay, 'Debes ingresar tu contraseña actual', 'error');
-                        return;
-                    }
-                    if (!newPass || !confirmPass) {
-                        this.showMigrationMessage(overlay, 'Debes ingresar una nueva contraseña', 'error');
-                        return;
-                    }
-                    if (newPass.length < 7 || newPass.length > 15) {
-                        this.showMigrationMessage(overlay, 'La nueva contraseña debe tener entre 8 y 15 caracteres', 'error');
-                        return;
-                    }
-                    if (newPass !== confirmPass) {
-                        this.showMigrationMessage(overlay, 'Las contraseñas nuevas no coinciden', 'error');
-                        return;
-                    }
-                    data.newPassword = newPass;
                 }
                 
-                try {
-                    migrateBtn.disabled = true;
-                    migrateBtn.textContent = 'Procesando...';
-                    
-                    const result = await this.makeRequest('/usuarios/migrar', data);
-                    
-                    if (result.success) {
-                        // Actualizar usuario en localStorage
-                        this.currentUser = result.data;
-                        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-                        
-                        this.showMigrationMessage(overlay, '✅ Migración exitosa. Recargando...', 'success');
-                        
-                        setTimeout(() => {
-                            overlay.remove();
-                            // Recargar la página para reflejar cambios
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        throw new Error(result.message || 'Error en la migración');
-                    }
-                } catch (error) {
-                    this.showMigrationMessage(overlay, '❌ ' + error.message, 'error');
-                    migrateBtn.disabled = false;
-                    migrateBtn.textContent = 'Continuar';
+                if (!newPassword) {
+                    this.showMigrationMessage(overlay, 'Debes ingresar una nueva contraseña', 'error');
+                    return;
                 }
-            });
+                
+                if (!confirmPassword) {
+                    this.showMigrationMessage(overlay, 'Debes confirmar la nueva contraseña', 'error');
+                    return;
+                }
+                
+                if (newPassword.length < 6) {
+                    this.showMigrationMessage(overlay, 'La nueva contraseña debe tener al menos 6 caracteres', 'error');
+                    return;
+                }
+                
+                if (newPassword.length > 15) {
+                    this.showMigrationMessage(overlay, 'La nueva contraseña no puede tener más de 15 caracteres', 'error');
+                    return;
+                }
+                
+                if (newPassword !== confirmPassword) {
+                    this.showMigrationMessage(overlay, 'Las contraseñas nuevas no coinciden', 'error');
+                    return;
+                }
+                
+                // Asignar valores al objeto data
+                data.currentPassword = currentPassword;
+                data.newPassword = newPassword;
+            }
+            
+            try {
+                migrateBtn.disabled = true;
+                migrateBtn.textContent = 'Procesando...';
+                
+                const result = await this.makeRequest('/usuarios/migrar', data);
+                
+                if (result.success) {
+                    // Actualizar usuario en localStorage
+                    this.currentUser = result.data;
+                    localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+                    
+                    this.showMigrationMessage(overlay, '✅ Migración exitosa. Recargando...', 'success');
+                    
+                    setTimeout(() => {
+                        overlay.remove();
+                        // Recargar la página para reflejar cambios
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    throw new Error(result.message || 'Error en la migración');
+                }
+            } catch (error) {
+                this.showMigrationMessage(overlay, '❌ ' + error.message, 'error');
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = 'Continuar';
+            }
         });
-    }
+    });
+}
 
     showMigrationMessage(overlay, text, type) {
         const msgDiv = overlay.querySelector('#migrationMessage');
