@@ -573,6 +573,18 @@
                     }
 
                     htmlString += `
+        <div class="class-card" onclick="abrirModalClase('${clase._id}')">
+            <h3>${clase.nombre}</h3>
+            <p>${instructoresTexto}</p>
+            ${clase.lugar ? `<p><small class="class-lugar"> ${clase.lugar}</small></p>` : ''}
+            <div class="class-datetime">
+                <span class="class-date">📅 ${fechaFormateada}</span>
+                <span class="class-time">⏰ ${horaInicio} hs</span>
+            </div>
+        </div>
+    `;
+
+                    htmlString += `
                         <div class="class-card" onclick="abrirModalClase('${clase._id}')">
                             <h3>${clase.nombre}</h3>
                             <p>${instructoresTexto}</p>
