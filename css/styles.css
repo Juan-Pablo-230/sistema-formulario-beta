@@ -863,6 +863,11 @@ body {
 }
 
 /* ===== ESTILOS PARA EL MODAL DE INSCRIPCIÓN ===== */
+.modalClaseNombre {
+    text-align: center;
+    justify-content: center;
+}
+
 .fechas-modal {
     margin: 20px 0;
     text-align: left;
@@ -1133,7 +1138,8 @@ footer {
 
     .update-profile-btn,
     .logout-btn,
-    .admin-panel-btn {
+    .admin-panel-btn,
+    .calendar-btn{
         flex: 1;
         min-width: 160px;
         margin: 3px;

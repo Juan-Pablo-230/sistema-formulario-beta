@@ -52,6 +52,7 @@
                             <th>Legajo</th>
                             <th>Email</th>
                             <th>Turno</th>
+                            <th>Área</th>
                             <th>Rol</th>
                             <th>Fecha Registro</th>
                             <th>Acciones</th>
@@ -59,7 +60,7 @@
                     </thead>
                     <tbody id="usuariosBody">
                         <tr>
-                            <td colspan="8" class="loading-message">
+                            <td colspan="9" class="loading-message">
                                 <div class="spinner"></div>
                                 Cargando usuarios...
                             </td>
@@ -107,6 +108,18 @@
                         <option value="Sábado, Domingo y feriado">Sábado, Domingo y feriado</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+    <label>Área de Trabajo *</label>
+    <select id="userArea" required>
+        <option value="">Seleccione área</option>
+        <option value="Camilleros">Camilleros</option>
+        <option value="Asistentes">Asistentes</option>
+        <option value="Enfermeros">Enfermeros</option>
+        <option value="Personal general del Sanatorio">Personal general del Sanatorio</option>
+        <option value="Otros profesionales de la salud">Otros profesionales de la salud</option>
+    </select>
+</div>
                 
                 <div class="form-group">
                     <label>Rol *</label>

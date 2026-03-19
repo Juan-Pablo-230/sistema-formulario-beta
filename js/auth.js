@@ -774,6 +774,25 @@ class AuthSystem {
                                 </select>
                             </div>
                             <div class="form-group" style="margin-bottom: 15px; display: block;">
+    <label for="regArea" style="display: block; margin-bottom: 5px; font-weight: bold; color: #e0e0e0;">Área de Trabajo *</label>
+    <select id="regArea" name="area" required style="
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #3d3d5c;
+        border-radius: 8px;
+        font-size: 14px;
+        background: #1e1e2e;
+        color: #e0e0e0;
+    ">
+        <option value="">Seleccione área</option>
+        <option value="Camilleros">Camilleros</option>
+        <option value="Asistentes">Asistentes</option>
+        <option value="Enfermeros">Enfermeros</option>
+        <option value="Personal general del Sanatorio">Personal general del Sanatorio</option>
+        <option value="Otros profesionales de la salud">Otros profesionales de la salud</option>
+    </select>
+</div>
+                            <div class="form-group" style="margin-bottom: 15px; display: block;">
                                 <label for="regEmail" style="display: block; margin-bottom: 5px; font-weight: bold; color: #e0e0e0;">Correo Electrónico *</label>
                                 <input type="email" id="regEmail" name="email" required style="
                                     width: 100%;

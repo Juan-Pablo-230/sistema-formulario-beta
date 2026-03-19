@@ -325,6 +325,7 @@ showCalendarButton(userActions) {
             document.getElementById('updateApellidoNombre').value = user.apellidoNombre || '';
             document.getElementById('updateLegajo').value = user.legajo || '';
             document.getElementById('updateTurno').value = user.turno || '';
+            document.getElementById('updateArea').value = user.area || '';
             document.getElementById('updateEmail').value = user.email || '';
             document.getElementById('updateCurrentPassword').value = '';
             document.getElementById('updatePassword').value = '';
@@ -500,7 +501,7 @@ showCalendarButton(userActions) {
             return false;
         }
 
-        if (!data.apellidoNombre || !data.legajo || !data.turno || !data.email) {
+        if (!data.apellidoNombre || !data.legajo || !data.turno || !data.area || !data.email) {
             this.showMessage('❌ Todos los campos marcados con * son obligatorios', 'error');
             return false;
         }

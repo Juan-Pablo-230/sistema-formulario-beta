@@ -127,17 +127,29 @@ app.post('/api/auth/login', async (req, res) => {
         // Verificar contraseña: primero en texto plano (para usuarios antiguos)
         let passwordMatches = false;
         let needsPasswordChange = false;
-        
+        let passwordAlreadyUpdated = false;
+
         if (usuario.password === password) {
             // Coincide en texto plano -> usuario antiguo, debe migrar
             passwordMatches = true;
             needsPasswordChange = true;
+            passwordAlreadyUpdated = false;
         } else {
             // Probar con hash
             const hashedInput = hashPassword(password);
             if (usuario.password === hashedInput) {
                 passwordMatches = true;
-                needsPasswordChange = false; // ya tiene hash
+                
+                // Verificar si ya actualizó la contraseña antes
+                if (usuario.passwordUpdated === true) {
+                    // Ya hizo la migración, no necesita cambiar
+                    needsPasswordChange = false;
+                    passwordAlreadyUpdated = true;
+                } else {
+                    // Tiene hash pero no ha confirmado migración
+                    needsPasswordChange = true;
+                    passwordAlreadyUpdated = false;
+                }
             }
         }
 
@@ -149,7 +161,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         // Determinar si necesita aceptar TYC
-        const needsTyAceptacion = !usuario.tycAceptado;
+        /* const needsTyAceptacion = !usuario.tycAceptado; */ // DESACTIVADO TEMPORALMENTE HASTA QUE SE DEFINAN LOS NUEVOS TYC
 
         // Remover password de la respuesta
         const { password: _, ...usuarioSinPassword } = usuario;
@@ -160,7 +172,8 @@ app.post('/api/auth/login', async (req, res) => {
             data: {
                 ...usuarioSinPassword,
                 needsPasswordChange,
-                needsTyAceptacion
+                /* needsTyAceptacion, */ //DESACTIVADO TEMPORALMENTE HASTA QUE SE DEFINAN LOS NUEVOS TYC
+                passwordAlreadyUpdated  // 👈 NUEVO: indica si ya actualizó
             }
         });
 
@@ -177,10 +190,10 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
     try {
         console.log('📝 Registro de usuario:', req.body);
-        const { apellidoNombre, legajo, turno, email, password, role = 'user' } = req.body;
+        const { apellidoNombre, legajo, turno, area, email, password, role = 'user' } = req.body;
         
         // Validaciones básicas
-        if (!apellidoNombre || !legajo || !turno || !email || !password) {
+        if (!apellidoNombre || !legajo || !turno || !area || !email || !password) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Todos los campos son requeridos' 
@@ -213,17 +226,19 @@ app.post('/api/auth/register', async (req, res) => {
         // Hashear contraseña
         const hashedPassword = hashPassword(password);
         
-        // Crear nuevo usuario (con tycAceptado = false) DESACTIVADO TEMPORALMENTE DEBIDO A QUE LOS RECURSOS NO ESTÁN DISPONIBLES
-/*         const nuevoUsuario = {
+        // Crear nuevo usuario (con passwordUpdated = true)
+        const nuevoUsuario = {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
+            area,
             email,
             password: hashedPassword,
             role,
-            tycAceptado: false,
+            /* tycAceptado: false, */ // DESACTIVADO TEMPORALMENTE HASTA QUE SE DEFINAN LOS NUEVOS TYC
+            passwordUpdated: true,  // 👈 Los nuevos usuarios ya tienen contraseña hasheada
             fechaRegistro: new Date()
-        }; */
+        };
         
         const result = await db.collection('usuarios').insertOne(nuevoUsuario);
         
@@ -247,269 +262,91 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-app.get('/api/auth/check-legajo/:legajo', async (req, res) => {
+// NUEVA RUTA: Migración de contraseña (ACTUALIZADA)
+app.post('/api/usuarios/migrar', async (req, res) => {
     try {
-        const { legajo } = req.params;
-        const db = await mongoDB.getDatabaseSafe('formulario');
+        const userHeader = req.headers['user-id'];
         
-        const usuarioExistente = await db.collection('usuarios').findOne({ 
-            legajo: legajo.toString() 
-        });
+        if (!userHeader) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'No autenticado' 
+            });
+        }
         
-        res.json({ 
-            success: true, 
-            data: { exists: !!usuarioExistente } 
-        });
+        const { currentPassword, newPassword } = req.body;
         
-    } catch (error) {
-        console.error('❌ Error verificando legajo:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
-        });
-    }
-});
-
-// ==================== RUTAS DE INSCRIPCIONES ====================
-app.post('/api/inscripciones', async (req, res) => {
-    try {
-        const { usuarioId, clase, turno } = req.body;
-        const db = await mongoDB.getDatabaseSafe('formulario');
-        
-        // Verificar si ya está inscrito
-        const inscripcionExistente = await db.collection('inscripciones').findOne({
-            usuarioId: new ObjectId(usuarioId),
-            clase: clase
-        });
-        
-        if (inscripcionExistente) {
+        if (!currentPassword) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Ya estás inscrito en esta clase' 
+                message: 'La contraseña actual es requerida' 
             });
         }
         
-        // Crear nueva inscripción
-        const nuevaInscripcion = {
-            usuarioId: new ObjectId(usuarioId),
-            clase,
-            turno,
-            fecha: new Date()
+        const db = await mongoDB.getDatabaseSafe('formulario');
+        
+        const usuario = await db.collection('usuarios').findOne({ 
+            _id: new ObjectId(userHeader) 
+        });
+        
+        if (!usuario) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Usuario no encontrado' 
+            });
+        }
+        
+        const currentPasswordMatches = (usuario.password === currentPassword) || 
+                                       (usuario.password === hashPassword(currentPassword));
+        if (!currentPasswordMatches) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Contraseña actual incorrecta' 
+            });
+        }
+        
+        // Preparar datos de actualización
+        const updateData = {
+            passwordUpdated: true,  // 👈 NUEVO: marcar como actualizado
+            fechaMigracion: new Date()
         };
         
-        await db.collection('inscripciones').insertOne(nuevaInscripcion);
-        
-        res.json({ 
-            success: true, 
-            message: 'Inscripción registrada exitosamente' 
-        });
-        
-    } catch (error) {
-        console.error('❌ Error registrando inscripción:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
-        });
-    }
-});
-
-app.get('/api/inscripciones/verificar/:usuarioId/:clase', async (req, res) => {
-    try {
-        const { usuarioId, clase } = req.params;
-        
-        console.log('🔍 Verificando inscripción para:', { usuarioId, clase });
-        
-        const db = await mongoDB.getDatabaseSafe('formulario');
-        
-        // Primero intentar como ObjectId
-        let objectId;
-        if (ObjectId.isValid(usuarioId)) {
-            objectId = new ObjectId(usuarioId);
-        } else {
-            // Si no es ObjectId válido, buscar por legajo
-            const usuario = await db.collection('usuarios').findOne({ 
-                legajo: usuarioId.toString() 
-            });
-            
-            if (!usuario) {
-                return res.json({ 
-                    success: true, 
-                    data: { exists: false } 
+        if (newPassword) {
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La nueva contraseña debe tener al menos 6 caracteres'
                 });
             }
-            
-            objectId = usuario._id;
+            if (newPassword.length > 15) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'La nueva contraseña no puede exceder los 15 caracteres'
+                });
+            }
+            updateData.password = hashPassword(newPassword);
         }
         
-        const inscripcionExistente = await db.collection('inscripciones').findOne({
-            usuarioId: objectId,
-            clase: decodeURIComponent(clase)
-        });
+        await db.collection('usuarios').updateOne(
+            { _id: new ObjectId(userHeader) },
+            { $set: updateData }
+        );
         
-        console.log('📊 Inscripción existe:', !!inscripcionExistente);
+        const usuarioActualizado = await db.collection('usuarios').findOne(
+            { _id: new ObjectId(userHeader) },
+            { projection: { password: 0 } }
+        );
         
-        res.json({ 
-            success: true, 
-            data: { exists: !!inscripcionExistente } 
-        });
-        
-    } catch (error) {
-        console.error('❌ Error verificando inscripción:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
-        });
-    }
-});
-
-app.get('/api/inscripciones', async (req, res) => {
-    try {
-        const db = await mongoDB.getDatabaseSafe('formulario');
-        
-        // Obtener todas las inscripciones con datos del usuario
-        const inscripciones = await db.collection('inscripciones')
-            .aggregate([
-                {
-                    $lookup: {
-                        from: 'usuarios',
-                        localField: 'usuarioId',
-                        foreignField: '_id',
-                        as: 'usuario'
-                    }
-                },
-                { $unwind: '$usuario' },
-                { $sort: { fecha: -1 } }
-            ])
-            .toArray();
-        
-        // Formatear fechas para respuesta
-        const inscripcionesFormateadas = inscripciones.map(insc => {
-            const inscripcion = { ...insc };
-            
-            if (inscripcion.fecha instanceof Date) {
-                inscripcion.fecha = inscripcion.fecha.toISOString();
-            }
-            
-            if (inscripcion.usuario && inscripcion.usuario.password) {
-                delete inscripcion.usuario.password;
-            }
-            
-            return inscripcion;
-        });
-        
-        console.log(`📋 ${inscripcionesFormateadas.length} inscripciones obtenidas`);
+        console.log('✅ Usuario migrado', usuarioActualizado.apellidoNombre);
         
         res.json({ 
             success: true, 
-            data: inscripcionesFormateadas 
+            message: 'Migración completada exitosamente',
+            data: usuarioActualizado 
         });
         
     } catch (error) {
-        console.error('❌ Error obteniendo inscripciones:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno del servidor',
-            error: error.message 
-        });
-    }
-});
-
-app.get('/api/inscripciones/estadisticas', async (req, res) => {
-    try {
-        const db = await mongoDB.getDatabaseSafe('formulario');
-        
-        const inscripciones = await db.collection('inscripciones')
-            .aggregate([
-                {
-                    $lookup: {
-                        from: 'usuarios',
-                        localField: 'usuarioId',
-                        foreignField: '_id',
-                        as: 'usuario'
-                    }
-                },
-                { $unwind: '$usuario' }
-            ])
-            .toArray();
-        
-        console.log(`📊 Total inscripciones para estadísticas: ${inscripciones.length}`);
-        
-        const hoy = new Date().toISOString().split('T')[0];
-        
-        const inscripcionesHoy = inscripciones.filter(i => {
-            if (!i.fecha) return false;
-            
-            let fechaStr;
-            if (i.fecha instanceof Date) {
-                fechaStr = i.fecha.toISOString().split('T')[0];
-            } else if (typeof i.fecha === 'string') {
-                fechaStr = i.fecha.split('T')[0];
-            } else {
-                return false;
-            }
-            
-            return fechaStr === hoy;
-        }).length;
-        
-        const porClase = {};
-        inscripciones.forEach(insc => {
-            if (insc.clase) {
-                porClase[insc.clase] = (porClase[insc.clase] || 0) + 1;
-            }
-        });
-        
-        const porTurno = {};
-        inscripciones.forEach(insc => {
-            if (insc.turno) {
-                porTurno[insc.turno] = (porTurno[insc.turno] || 0) + 1;
-            }
-        });
-        
-        const ultimas = inscripciones.slice(0, 10).map(insc => {
-            let fechaFormateada = 'Fecha no disponible';
-            if (insc.fecha instanceof Date) {
-                fechaFormateada = insc.fecha.toLocaleString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
-            } else if (typeof insc.fecha === 'string') {
-                fechaFormateada = new Date(insc.fecha).toLocaleString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
-            }
-            
-            return {
-                usuario: insc.usuario?.apellidoNombre || 'N/A',
-                clase: insc.clase || 'N/A',
-                fecha: fechaFormateada
-            };
-        });
-        
-        res.json({ 
-            success: true, 
-            data: {
-                total: inscripciones.length,
-                hoy: inscripcionesHoy,
-                porClase: porClase,
-                porTurno: porTurno,
-                ultimas: ultimas
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ Error obteniendo estadísticas de inscripciones:', error);
+        console.error('❌ Error en migración:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Error interno del servidor',
@@ -1000,9 +837,9 @@ app.get('/api/admin/usuarios', async (req, res) => {
 
 app.post('/api/admin/usuarios', async (req, res) => {
     try {
-        const { apellidoNombre, legajo, turno, email, password, role = 'user' } = req.body;
+        const { apellidoNombre, legajo, turno, area, email, password, role = 'user' } = req.body;
         
-        if (!apellidoNombre || !legajo || !turno || !email || !password) {
+        if (!apellidoNombre || !legajo || !turno || !area || !email || !password) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Todos los campos son requeridos' 
@@ -1033,16 +870,18 @@ app.post('/api/admin/usuarios', async (req, res) => {
         
         const hashedPassword = hashPassword(password);
         
-/*         const nuevoUsuario = { DESESTIMADO TEMPORALMENTE DEBIDO A QUE LOS RECURSOS NO ESTÁN DISPONIBLES
+        const nuevoUsuario = {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
+            area,
             email,
             password: hashedPassword,
             role,
-            tycAceptado: false,
+            /* tycAceptado: false, */ // DESACTIVADO TEMPORALMENTE HASTA QUE SE DEFINAN LOS NUEVOS TYC
+            passwordUpdated: true,  // 👈 Los nuevos usuarios ya tienen contraseña hasheada
             fechaRegistro: new Date()
-        }; */
+        };
         
         const result = await db.collection('usuarios').insertOne(nuevoUsuario);
         
@@ -1160,11 +999,11 @@ app.put('/api/admin/usuarios/:id/password', async (req, res) => {
 app.put('/api/admin/usuarios/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { apellidoNombre, legajo, email, turno } = req.body;
+        const { apellidoNombre, legajo, email, turno, area } = req.body;
         
         console.log('✏️ Editando usuario ID:', id, 'Datos:', req.body);
         
-        if (!apellidoNombre || !legajo || !email || !turno) {
+        if (!apellidoNombre || !legajo || !email || !turno || !area) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Todos los campos son requeridos' 
@@ -1194,9 +1033,10 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
             { _id: new ObjectId(id) },
             { $set: { 
                 apellidoNombre, 
-                legajo: legajo.toString(), 
-                email, 
-                turno 
+                legajo: legajo.toString(),
+                email,
+                turno,
+                area
             }}
         );
         
@@ -1291,9 +1131,9 @@ app.put('/api/usuarios/perfil', async (req, res) => {
             });
         }
         
-        const { apellidoNombre, legajo, turno, email, password, currentPassword } = req.body;
+        const { apellidoNombre, legajo, turno, area, email, password, currentPassword } = req.body;
         
-        if (!apellidoNombre || !legajo || !turno || !email || !currentPassword) {
+        if (!apellidoNombre || !legajo || !turno || !area || !email || !currentPassword) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Todos los campos son requeridos' 
@@ -1345,6 +1185,7 @@ app.put('/api/usuarios/perfil', async (req, res) => {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
+            area,
             email
         };
         

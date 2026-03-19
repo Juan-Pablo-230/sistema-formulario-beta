@@ -126,6 +126,7 @@ class UsuariosManager {
                 <td>${usuario.apellidoNombre || 'N/A'}</td>
                 <td>${usuario.legajo || 'N/A'}</td>
                 <td>${usuario.email || 'N/A'}</td>
+                <td>${usuario.area || 'N/A'}</td>
                 <td>${usuario.turno || 'N/A'}</td>
                 <td><span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span></td>
                 <td>${usuario.fechaRegistro ? new Date(usuario.fechaRegistro).toLocaleString('es-AR') : 'N/A'}</td>
@@ -281,11 +282,12 @@ class UsuariosManager {
         const legajo = document.getElementById('userLegajo').value.trim();
         const email = document.getElementById('userEmail').value.trim();
         const turno = document.getElementById('userTurno').value;
+        const area = document.getElementById('userArea').value;
         const role = document.getElementById('userRole').value;
         const password = document.getElementById('userPassword').value;
         
         // Validaciones básicas
-        if (!apellidoNombre || !legajo || !email || !turno || !role) {
+        if (!apellidoNombre || !legajo || !email || !turno || !area || !role) {
             this.mostrarMensajeModal('❌ Todos los campos obligatorios deben estar completos', 'error');
             return;
         }
@@ -311,6 +313,7 @@ class UsuariosManager {
             legajo: legajo,
             email: email,
             turno: turno,
+            area: area,
             role: role
         };
         
