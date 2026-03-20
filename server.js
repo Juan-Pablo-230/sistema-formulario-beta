@@ -1076,6 +1076,185 @@ app.put('/api/usuarios/perfil', async (req, res) => {
     }
 });
 
+// 👇 RUTA DE MIGRACIÓN ÚNICA Y CORREGIDA (eliminar la duplicada anterior)
+app.post('/api/usuarios/migrar', async (req, res) => {
+    try {
+        const userHeader = req.headers['user-id'];
+        
+        console.log('🔄 Solicitud de migración para usuario ID:', userHeader);
+        
+        if (!userHeader) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'No autenticado' 
+            });
+        }
+        
+        const { currentPassword, newPassword, area } = req.body;
+        
+        const db = await mongoDB.getDatabaseSafe('formulario');
+        
+        const usuario = await db.collection('usuarios').findOne({ 
+            _id: new ObjectId(userHeader) 
+        });
+        
+        if (!usuario) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Usuario no encontrado' 
+            });
+        }
+        
+        // Preparar datos de actualización
+        const updateData = {
+            passwordUpdated: true,
+            fechaMigracion: new Date()
+        };
+        
+        // Si se proporciona área, actualizarla
+        if (area) {
+            updateData.area = area;
+            console.log('🏥 Actualizando área a:', area);
+        }
+        
+        // Si se requiere cambio de contraseña
+        if (newPassword || currentPassword) {
+            // Verificar contraseña actual si se va a cambiar
+            if (currentPassword) {
+                const currentPasswordMatches = (usuario.password === currentPassword) || 
+                                               (usuario.password === hashPassword(currentPassword));
+                if (!currentPasswordMatches) {
+                    return res.status(401).json({ 
+                        success: false, 
+                        message: 'Contraseña actual incorrecta' 
+                    });
+                }
+            }
+            
+            if (newPassword) {
+                // Validar nueva contraseña
+                if (newPassword.length < 6) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'La nueva contraseña debe tener al menos 6 caracteres'
+                    });
+                }
+                if (newPassword.length > 15) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'La nueva contraseña no puede exceder los 15 caracteres'
+                    });
+                }
+                updateData.password = hashPassword(newPassword);
+            }
+        }
+        
+        // Actualizar usuario
+        await db.collection('usuarios').updateOne(
+            { _id: new ObjectId(userHeader) },
+            { $set: updateData }
+        );
+        
+        // Obtener usuario actualizado (sin password)
+        const usuarioActualizado = await db.collection('usuarios').findOne(
+            { _id: new ObjectId(userHeader) },
+            { projection: { password: 0 } }
+        );
+        
+        console.log('✅ Usuario migrado exitosamente:', usuarioActualizado.apellidoNombre);
+        console.log('📊 Datos actualizados:', {
+            area: usuarioActualizado.area,
+            passwordUpdated: usuarioActualizado.passwordUpdated
+        });
+        
+        res.json({ 
+            success: true, 
+            message: 'Migración completada exitosamente',
+            data: usuarioActualizado 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error en migración:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor',
+            error: error.message 
+        });
+    }
+});
+
+app.delete('/api/usuarios/cuenta', async (req, res) => {
+    try {
+        const userHeader = req.headers['user-id'];
+        
+        console.log('🗑️ Eliminando cuenta para usuario ID:', userHeader);
+        
+        if (!userHeader) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'No autenticado' 
+            });
+        }
+        
+        const { currentPassword } = req.body;
+        
+        if (!currentPassword) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'La contraseña actual es requerida' 
+            });
+        }
+        
+        const db = await mongoDB.getDatabaseSafe('formulario');
+        
+        const usuario = await db.collection('usuarios').findOne({ 
+            _id: new ObjectId(userHeader) 
+        });
+        
+        if (!usuario) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Usuario no encontrado' 
+            });
+        }
+        
+        const passwordMatches = (usuario.password === currentPassword) || 
+                                (usuario.password === hashPassword(currentPassword));
+        if (!passwordMatches) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Contraseña incorrecta' 
+            });
+        }
+        
+        const result = await db.collection('usuarios').deleteOne({ 
+            _id: new ObjectId(userHeader) 
+        });
+        
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Usuario no encontrado' 
+            });
+        }
+        
+        console.log('✅ Cuenta eliminada:', usuario.apellidoNombre);
+        
+        res.json({ 
+            success: true, 
+            message: 'Cuenta eliminada correctamente' 
+        });
+        
+    } catch (error) {
+        console.error('❌ Error eliminando cuenta:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error interno del servidor',
+            error: error.message 
+        });
+    }
+});
+
 // NUEVA RUTA: Migración de contraseña
 app.post('/api/usuarios/migrar', async (req, res) => {
     try {
