@@ -697,11 +697,13 @@ class MaterialHistorico {
             const fechaClase = solicitud.fechaClase ? 
                 new Date(solicitud.fechaClase).toLocaleDateString('es-AR', {
                     day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
+                    hour: '2-digit', minute: '2-digit', hour12: false
                 }) : 'Fecha no disponible';
             
             const fechaSolicitud = solicitud.fechaSolicitud ? 
-                new Date(solicitud.fechaSolicitud).toLocaleString('es-AR') : 'Fecha no disponible';
+                new Date(solicitud.fechaSolicitud).toLocaleString('es-AR', {
+                    hour12: false
+                }) : 'Fecha no disponible';
             
             const materialHTML = this.generarMaterialHTML(solicitud);
             

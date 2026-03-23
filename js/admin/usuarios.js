@@ -1,5 +1,5 @@
-// usuarios.js - VERSIÓN CORREGIDA CON CAMPO ÁREA
-console.log('👥 Módulo de Usuarios cargado - Versión corregida');
+// usuarios.js
+console.log('👥 Módulo de Usuarios cargado');
 
 class UsuariosManager {
     constructor() {
@@ -127,7 +127,7 @@ class UsuariosManager {
                 <td>${usuario.legajo || 'N/A'}</td>
                 <td>${usuario.email || 'N/A'}</td>
                 <td>${usuario.turno || 'N/A'}</td>
-                <td>${usuario.area || 'N/A'}</td> <!-- 👈 NUEVO CAMPO -->
+                <td>${usuario.area || 'N/A'}</td>
                 <td><span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span></td>
                 <td>${usuario.fechaRegistro ? new Date(usuario.fechaRegistro).toLocaleString('es-AR') : 'N/A'}</td>
                 <td>
@@ -229,7 +229,7 @@ class UsuariosManager {
             document.getElementById('userLegajo').value = usuario.legajo || '';
             document.getElementById('userEmail').value = usuario.email || '';
             document.getElementById('userTurno').value = usuario.turno || '';
-            document.getElementById('userArea').value = usuario.area || ''; // 👈 NUEVO CAMPO
+            document.getElementById('userArea').value = usuario.area || '';
             document.getElementById('userRole').value = usuario.role || 'user';
             
             // En edición, la contraseña es opcional
@@ -245,7 +245,7 @@ class UsuariosManager {
             
             // En creación, la contraseña es obligatoria
             document.getElementById('userPassword').required = true;
-            document.getElementById('userPassword').placeholder = 'Mínimo 6, máximo 15 caracteres';
+            document.getElementById('userPassword').placeholder = 'Mínimo 8, máximo 15 caracteres';
             if (passwordGroup) passwordGroup.style.display = 'block';
         }
         
@@ -283,7 +283,7 @@ class UsuariosManager {
         const legajo = document.getElementById('userLegajo').value.trim();
         const email = document.getElementById('userEmail').value.trim();
         const turno = document.getElementById('userTurno').value;
-        const area = document.getElementById('userArea').value; // 👈 NUEVO CAMPO
+        const area = document.getElementById('userArea').value;
         const role = document.getElementById('userRole').value;
         const password = document.getElementById('userPassword').value;
         
@@ -299,8 +299,8 @@ class UsuariosManager {
             return;
         }
         
-        if (password && password.length < 6) {
-            this.mostrarMensajeModal('❌ La contraseña debe tener al menos 6 caracteres', 'error');
+        if (password && password.length < 8) {
+            this.mostrarMensajeModal('❌ La contraseña debe tener al menos 8 caracteres', 'error');
             return;
         }
         if (password && password.length > 15) {
@@ -314,7 +314,7 @@ class UsuariosManager {
             legajo: legajo,
             email: email,
             turno: turno,
-            area: area, // 👈 NUEVO CAMPO
+            area: area,
             role: role
         };
         
@@ -515,7 +515,7 @@ class UsuariosManager {
                         <div><strong>📋 Legajo:</strong> ${usuario.legajo}</div>
                         <div><strong>📧 Email:</strong> ${usuario.email}</div>
                         <div><strong>⏰ Turno:</strong> ${usuario.turno || 'No especificado'}</div>
-                        <div><strong>🏥 Área:</strong> ${usuario.area || 'No especificada'}</div> <!-- 👈 NUEVO CAMPO -->
+                        <div><strong>🏥 Área:</strong> ${usuario.area || 'No especificada'}</div>
                     </div>
                 </div>
                 
@@ -567,7 +567,7 @@ class UsuariosManager {
                 'Legajo',
                 'Email',
                 'Turno',
-                'Área', // 👈 NUEVO CAMPO
+                'Área',
                 'Rol',
                 'Fecha Registro'
             ];
@@ -604,7 +604,7 @@ class UsuariosManager {
                     escapar(usuario.legajo || ''),
                     escapar(usuario.email || ''),
                     escapar(usuario.turno || ''),
-                    escapar(usuario.area || ''), // 👈 NUEVO CAMPO
+                    escapar(usuario.area || ''),
                     escapar(rolTexto),
                     escapar(fechaRegistro)
                 ].join(',');

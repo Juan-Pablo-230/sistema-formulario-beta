@@ -38,7 +38,7 @@ else {
     }
     const footer = document.querySelector('footer');
     if (footer) {
-        footer.innerHTML = '<a href="https://sistema-formulario-beta-production.up.railway.app/" style="color: #667eea; text-decoration: none;">Ir a la versión BETA del sistema.</a>';
+        footer.innerHTML = '<a href="https://sistema-formularios-beta-production.up.railway.app/" style="color: #667eea; text-decoration: none;">Ir a la versión BETA del sistema.</a>';
     }
 }
 

@@ -104,7 +104,7 @@ mostrarLista(filtroTexto = '', filtroEstado = 'todos') {
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-                hour12: false // 🔥 FORZAR FORMATO 24h
+                hour12: false
             });
         }
         

@@ -11,7 +11,7 @@
         <header class="main-header">
             <div class="header-content">
                 <div>
-                    <img src="/img/logo.png" alt="logo" class="logo">
+                    <img src="/img/logo.png" alt="logo" class="logo" loading="lazy">
                 </div>
                 <div class="header-text">
                     <h1></h1>
@@ -414,7 +414,8 @@
                     minute: '2-digit',
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric'
+                    year: 'numeric',
+                    hour12: false
                 };
 
                 modalFechaApertura.textContent = apertura ? new Date(apertura).toLocaleString('es-AR', opcionesFormato) : 'No especificada';
