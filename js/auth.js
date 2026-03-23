@@ -353,7 +353,7 @@ async showMigrationModal() {
                                 z-index: 10;
                             ">👁️</button>
                         </div>
-                        <small style="color: #b0b0b0;">Mínimo 6, máximo 15 caracteres</small>
+                        <small style="color: #b0b0b0;">Mínimo 8, máximo 15 caracteres</small>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 15px;">
@@ -424,40 +424,72 @@ async showMigrationModal() {
             }
         };
         
-        // ========== FUNCIONALIDAD DEL OJITO CORREGIDA (VERSIÓN ROBUSTA) ==========
-        // Esperar un momento para que el DOM se actualice
-        setTimeout(() => {
-            const toggleButtons = overlay.querySelectorAll('.toggle-password');
-            console.log('🔍 Botones toggle encontrados en modal de migración:', toggleButtons.length);
+        // ========== FUNCIONALIDAD DEL OJITO (VERSIÓN QUE REEMPLAZA EL INPUT) ==========
+setTimeout(() => {
+    const toggleButtons = overlay.querySelectorAll('.toggle-password');
+    console.log('🔍 Botones toggle encontrados en modal de migración:', toggleButtons.length);
+    
+    toggleButtons.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            toggleButtons.forEach(btn => {
-                // Eliminar event listeners anteriores si existen (para evitar duplicados)
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
+            const targetId = this.getAttribute('data-target');
+            const originalInput = document.getElementById(targetId);
+            
+            if (!originalInput) {
+                console.warn('⚠️ Input no encontrado:', targetId);
+                return;
+            }
+            
+            const parentDiv = originalInput.parentNode;
+            const currentValue = originalInput.value;
+            const inputStyles = originalInput.style.cssText;
+            const inputClass = originalInput.className;
+            const isRequired = originalInput.required;
+            const maxLength = originalInput.maxLength;
+            const inputName = originalInput.name;
+            
+            // Si está en modo password, cambiar a texto
+            if (originalInput.type === 'password') {
+                // Crear un input de texto
+                const textInput = document.createElement('input');
+                textInput.type = 'text';
+                textInput.id = targetId;
+                textInput.name = inputName;
+                textInput.value = currentValue;
+                textInput.required = isRequired;
+                if (maxLength) textInput.maxLength = maxLength;
+                textInput.style.cssText = inputStyles;
+                textInput.className = inputClass;
                 
-                newBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const targetId = this.getAttribute('data-target');
-                    const input = document.getElementById(targetId);
-                    console.log('👁️ Botón clickeado en migración, target:', targetId, 'input encontrado:', !!input);
-                    
-                    if (input) {
-                        if (input.type === 'password') {
-                            input.type = 'text';
-                            this.textContent = '🙈';
-                            console.log('👁️ Contraseña visible');
-                        } else {
-                            input.type = 'password';
-                            this.textContent = '👁️';
-                            console.log('👁️ Contraseña oculta');
-                        }
-                    } else {
-                        console.warn('⚠️ Input no encontrado para target:', targetId);
-                    }
-                });
-            });
-        }, 100);
+                // Reemplazar
+                parentDiv.replaceChild(textInput, originalInput);
+                this.textContent = '🙈';
+                console.log('👁️ Contraseña visible (input texto)');
+            } 
+            // Si está en modo texto, volver a password
+            else {
+                const passwordInput = document.createElement('input');
+                passwordInput.type = 'password';
+                passwordInput.id = targetId;
+                passwordInput.name = inputName;
+                passwordInput.value = currentValue;
+                passwordInput.required = isRequired;
+                if (maxLength) passwordInput.maxLength = maxLength;
+                passwordInput.style.cssText = inputStyles;
+                passwordInput.className = inputClass;
+                
+                parentDiv.replaceChild(passwordInput, originalInput);
+                this.textContent = '👁️';
+                console.log('👁️ Contraseña oculta (input password)');
+            }
+        });
+    });
+}, 100);
         
         // Manejar envío
         const migrateBtn = overlay.querySelector('#migrateBtn');
@@ -497,8 +529,8 @@ async showMigrationModal() {
                     return;
                 }
                 
-                if (newPassword.length < 6) {
-                    this.showMigrationMessage(overlay, 'La nueva contraseña debe tener al menos 6 caracteres', 'error');
+                if (newPassword.length < 8) {
+                    this.showMigrationMessage(overlay, 'La nueva contraseña debe tener al menos 8 caracteres', 'error');
                     return;
                 }
                 
@@ -630,8 +662,8 @@ showMigrationMessage(overlay, text, type) {
         if (password !== confirmPassword) {
             throw new Error('Las contraseñas no coinciden');
         }
-        if (password.length < 6) {
-            throw new Error('La contraseña debe tener al menos 6 caracteres');
+        if (password.length < 8) {
+            throw new Error('La contraseña debe tener al menos 8 caracteres');
         }
         if (password.length > 15) {
             throw new Error('La contraseña no puede tener más de 15 caracteres');
@@ -1072,7 +1104,7 @@ showMigrationMessage(overlay, text, type) {
                     apellidoNombre: formData.get('apellidoNombre'),
                     legajo: formData.get('legajo'),
                     turno: formData.get('turno'),
-                    area: formData.get('area'), // 👈 NUEVO CAMPO
+                    area: formData.get('area'),
                     email: formData.get('email'),
                     password: formData.get('password'),
                     role: 'user'
