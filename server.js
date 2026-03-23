@@ -11,9 +11,69 @@ const { connectToDatabase, getDB, mongoDB } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ==================== FUNCIÓN HASH ====================
+// ==================== FUNCIONES DE HASH CON SCRYPT ====================
+
+// Configuración de scrypt (optimizada para Railway gratuito)
+const SCRYPT_CONFIG = {
+    N: 8192,        // Factor de costo (8MB de memoria)
+    r: 8,           // Tamaño de bloque
+    p: 1,           // Paralelismo
+    keyLength: 32,  // Longitud de clave (32 bytes es suficiente)
+    saltLength: 16  // Longitud del salt
+};
+
+// Función principal para hashear con scrypt
+function hashPasswordScrypt(password) {
+    // 1. Generar salt aleatorio
+    const salt = crypto.randomBytes(SCRYPT_CONFIG.saltLength);
+    
+    // 2. Derivar clave con scrypt
+    const hash = crypto.scryptSync(password, salt, SCRYPT_CONFIG.keyLength, {
+        N: SCRYPT_CONFIG.N,
+        r: SCRYPT_CONFIG.r,
+        p: SCRYPT_CONFIG.p
+    });
+    
+    // 3. Guardar en formato: scrypt|N|r|p|salt|hash
+    return `scrypt|${SCRYPT_CONFIG.N}|${SCRYPT_CONFIG.r}|${SCRYPT_CONFIG.p}|${salt.toString('base64')}|${hash.toString('base64')}`;
+}
+
+// Función para verificar contraseña (soporta scrypt y texto plano para migración)
+function verifyPassword(password, storedHash) {
+    // 1. Verificar si es texto plano (para migración manual)
+    if (!storedHash.includes('|') && storedHash.length < 64) {
+        return storedHash === password;
+    }
+    
+    // 2. Verificar si es scrypt (formato con pipe)
+    if (storedHash.startsWith('scrypt|')) {
+        const parts = storedHash.split('|');
+        if (parts.length === 6 && parts[0] === 'scrypt') {
+            const N = parseInt(parts[1]);
+            const r = parseInt(parts[2]);
+            const p = parseInt(parts[3]);
+            const salt = Buffer.from(parts[4], 'base64');
+            const hashGuardado = Buffer.from(parts[5], 'base64');
+            
+            // Calcular hash con los mismos parámetros
+            const hashCalculado = crypto.scryptSync(password, salt, hashGuardado.length, {
+                N: N,
+                r: r,
+                p: p
+            });
+            
+            // Comparación segura en tiempo constante
+            return crypto.timingSafeEqual(hashGuardado, hashCalculado);
+        }
+    }
+    
+    // Si no es ninguno de los formatos conocidos, fallar
+    return false;
+}
+
+// Función unificada para crear hash (usar scrypt por defecto)
 function hashPassword(password) {
-    return crypto.createHash('sha256').update(password).digest('hex');
+    return hashPasswordScrypt(password);
 }
 
 // ==================== CONFIGURACIÓN INICIAL ====================
@@ -131,35 +191,12 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        // Verificar contraseña: primero en texto plano (para usuarios antiguos)
-        let passwordMatches = false;
-        let needsPasswordChange = false;
-        let passwordAlreadyUpdated = false;
-
-        if (usuario.password === password) {
-            // Coincide en texto plano -> usuario antiguo, debe migrar
-            passwordMatches = true;
-            needsPasswordChange = true;
-            passwordAlreadyUpdated = false;
-        } else {
-            // Probar con hash
-            const hashedInput = hashPassword(password);
-            if (usuario.password === hashedInput) {
-                passwordMatches = true;
-                
-                // Verificar si ya actualizó la contraseña antes
-                if (usuario.passwordUpdated === true) {
-                    // Ya hizo la migración, no necesita cambiar
-                    needsPasswordChange = false;
-                    passwordAlreadyUpdated = true;
-                } else {
-                    // Tiene hash pero no ha confirmado migración
-                    needsPasswordChange = true;
-                    passwordAlreadyUpdated = false;
-                }
-            }
-        }
-
+        // Verificar contraseña (soporta scrypt y texto plano)
+        const passwordMatches = verifyPassword(password, usuario.password);
+        
+        // Detectar si necesita migración (solo si es texto plano)
+        const needsMigration = !usuario.password.includes('|') && usuario.password.length < 64;
+        
         if (!passwordMatches) {
             return res.status(401).json({ 
                 success: false, 
@@ -175,8 +212,7 @@ app.post('/api/auth/login', async (req, res) => {
             message: 'Login exitoso', 
             data: {
                 ...usuarioSinPassword,
-                needsPasswordChange,
-                passwordAlreadyUpdated
+                needsMigration: needsMigration  // Indicar si necesita migración
             }
         });
 
@@ -193,10 +229,9 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
     try {
         console.log('📝 Registro de usuario:', req.body);
-        // Agregar 'area' a la desestructuración
         const { apellidoNombre, legajo, turno, area, email, password, role = 'user' } = req.body;
         
-        // Validaciones básicas - agregar area
+        // Validaciones básicas
         if (!apellidoNombre || !legajo || !turno || !area || !email || !password) {
             return res.status(400).json({ 
                 success: false, 
@@ -207,6 +242,12 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'La contraseña no puede exceder los 15 caracteres'
+            });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe tener al menos 6 caracteres'
             });
         }
         
@@ -227,19 +268,18 @@ app.post('/api/auth/register', async (req, res) => {
             });
         }
         
-        // Hashear contraseña
-        const hashedPassword = hashPassword(password);
+        // Usar scrypt para hashear
+        const hashedPassword = hashPasswordScrypt(password);
         
-        // Crear nuevo usuario (con passwordUpdated = true)
+        // Crear nuevo usuario
         const nuevoUsuario = {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
-            area, // 👈 NUEVO CAMPO
+            area,
             email,
             password: hashedPassword,
             role,
-            passwordUpdated: true,
             fechaRegistro: new Date()
         };
         
@@ -1025,10 +1065,9 @@ app.get('/api/admin/usuarios', async (req, res) => {
 
 app.post('/api/admin/usuarios', async (req, res) => {
     try {
-        // Agregar 'area' a la desestructuración
         const { apellidoNombre, legajo, turno, area, email, password, role = 'user' } = req.body;
         
-        // Validaciones - agregar area
+        // Validaciones
         if (!apellidoNombre || !legajo || !turno || !area || !email || !password) {
             return res.status(400).json({ 
                 success: false, 
@@ -1039,6 +1078,12 @@ app.post('/api/admin/usuarios', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'La contraseña no puede exceder los 15 caracteres'
+            });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'La contraseña debe tener al menos 6 caracteres'
             });
         }
         
@@ -1058,17 +1103,17 @@ app.post('/api/admin/usuarios', async (req, res) => {
             });
         }
         
-        const hashedPassword = hashPassword(password);
+        // Usar scrypt
+        const hashedPassword = hashPasswordScrypt(password);
         
         const nuevoUsuario = {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
-            area, // 👈 NUEVO CAMPO
+            area,
             email,
             password: hashedPassword,
             role,
-            passwordUpdated: true,
             fechaRegistro: new Date()
         };
         
@@ -1156,11 +1201,15 @@ app.put('/api/admin/usuarios/:id/password', async (req, res) => {
         
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        const hashedPassword = hashPassword(newPassword);
+        // Usar scrypt
+        const hashedPassword = hashPasswordScrypt(newPassword);
         
         const result = await db.collection('usuarios').updateOne(
             { _id: new ObjectId(id) },
-            { $set: { password: hashedPassword } }
+            { $set: { 
+                password: hashedPassword,
+                fechaActualizacion: new Date()
+            } }
         );
         
         if (result.matchedCount === 0) {
@@ -1188,12 +1237,10 @@ app.put('/api/admin/usuarios/:id/password', async (req, res) => {
 app.put('/api/admin/usuarios/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // Agregar 'area' a la desestructuración
         const { apellidoNombre, legajo, email, turno, area } = req.body;
         
         console.log('✏️ Editando usuario ID:', id, 'Datos:', req.body);
         
-        // Validaciones - agregar area
         if (!apellidoNombre || !legajo || !email || !turno || !area) {
             return res.status(400).json({ 
                 success: false, 
@@ -1227,7 +1274,7 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
                 legajo: legajo.toString(), 
                 email, 
                 turno,
-                area // 👈 NUEVO CAMPO
+                area
             }}
         );
         
@@ -1623,10 +1670,8 @@ app.put('/api/usuarios/perfil', async (req, res) => {
             });
         }
         
-        // Agregar 'area' a la desestructuración
         const { apellidoNombre, legajo, turno, area, email, password, currentPassword } = req.body;
         
-        // Validaciones - agregar area
         if (!apellidoNombre || !legajo || !turno || !area || !email || !currentPassword) {
             return res.status(400).json({ 
                 success: false, 
@@ -1647,8 +1692,8 @@ app.put('/api/usuarios/perfil', async (req, res) => {
             });
         }
         
-        const currentPasswordMatches = (usuarioActual.password === currentPassword) || 
-                                       (usuarioActual.password === hashPassword(currentPassword));
+        // Verificar contraseña actual
+        const currentPasswordMatches = verifyPassword(currentPassword, usuarioActual.password);
         if (!currentPasswordMatches) {
             return res.status(401).json({ 
                 success: false, 
@@ -1679,7 +1724,7 @@ app.put('/api/usuarios/perfil', async (req, res) => {
             apellidoNombre,
             legajo: legajo.toString(),
             turno,
-            area, // 👈 NUEVO CAMPO
+            area,
             email
         };
         
@@ -1696,7 +1741,8 @@ app.put('/api/usuarios/perfil', async (req, res) => {
                     message: 'La nueva contraseña no puede exceder los 15 caracteres'
                 });
             }
-            updateData.password = hashPassword(password);
+            // Usar scrypt para nueva contraseña
+            updateData.password = hashPasswordScrypt(password);
         }
         
         await db.collection('usuarios').updateOne(
@@ -1727,7 +1773,7 @@ app.put('/api/usuarios/perfil', async (req, res) => {
     }
 });
 
-// RUTA DE MIGRACIÓN - CON ÁREA
+// RUTA DE MIGRACIÓN (texto plano a scrypt)
 app.post('/api/usuarios/migrar', async (req, res) => {
     try {
         const userHeader = req.headers['user-id'];
@@ -1746,17 +1792,8 @@ app.post('/api/usuarios/migrar', async (req, res) => {
         
         console.log('📦 Datos recibidos:', { area, tieneCurrentPassword: !!currentPassword, tieneNewPassword: !!newPassword });
         
-        // Validar que al menos venga área o contraseña
-        if (!area && !currentPassword && !newPassword) {
-            return res.status(400).json({
-                success: false,
-                message: 'No hay datos para actualizar'
-            });
-        }
-        
         const db = await mongoDB.getDatabaseSafe('formulario');
         
-        // Buscar usuario
         let usuario;
         try {
             usuario = await db.collection('usuarios').findOne({ 
@@ -1778,9 +1815,24 @@ app.post('/api/usuarios/migrar', async (req, res) => {
         
         console.log('👤 Usuario encontrado:', usuario.apellidoNombre);
         
+        // Verificar contraseña actual (soporta texto plano y scrypt)
+        if (!currentPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere la contraseña actual'
+            });
+        }
+        
+        const passwordMatches = verifyPassword(currentPassword, usuario.password);
+        if (!passwordMatches) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Contraseña actual incorrecta' 
+            });
+        }
+        
         // Preparar datos de actualización
         const updateData = {
-            passwordUpdated: true,
             fechaMigracion: new Date()
         };
         
@@ -1790,54 +1842,25 @@ app.post('/api/usuarios/migrar', async (req, res) => {
             console.log('🏥 Área a actualizar:', area);
         }
         
-        // Si viene nueva contraseña, validar y actualizar
-        if (newPassword) {
-            console.log('🔐 Procesando cambio de contraseña');
-            
-            // Validar que venga la contraseña actual
-            if (!currentPassword) {
+        // Migrar contraseña a scrypt (usar la nueva contraseña si se proporcionó, o la actual)
+        let passwordToHash = newPassword || currentPassword;
+        
+        if (passwordToHash) {
+            if (passwordToHash.length < 6) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Se requiere la contraseña actual para cambiar la contraseña'
+                    message: 'La contraseña debe tener al menos 6 caracteres'
                 });
             }
-            
-            // Verificar contraseña actual
-            const currentPasswordMatches = (usuario.password === currentPassword) || 
-                                           (usuario.password === hashPassword(currentPassword));
-            if (!currentPasswordMatches) {
-                return res.status(401).json({ 
-                    success: false, 
-                    message: 'Contraseña actual incorrecta' 
-                });
-            }
-            
-            // Validar nueva contraseña
-            if (newPassword.length < 6) {
+            if (passwordToHash.length > 15) {
                 return res.status(400).json({
                     success: false,
-                    message: 'La nueva contraseña debe tener al menos 6 caracteres'
-                });
-            }
-            if (newPassword.length > 15) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'La nueva contraseña no puede exceder los 15 caracteres'
+                    message: 'La contraseña no puede exceder los 15 caracteres'
                 });
             }
             
-            updateData.password = hashPassword(newPassword);
-            console.log('✅ Nueva contraseña hasheada');
-        } else if (currentPassword) {
-            // Si solo viene currentPassword sin newPassword, verificar que sea correcta
-            const currentPasswordMatches = (usuario.password === currentPassword) || 
-                                           (usuario.password === hashPassword(currentPassword));
-            if (!currentPasswordMatches) {
-                return res.status(401).json({ 
-                    success: false, 
-                    message: 'Contraseña actual incorrecta' 
-                });
-            }
+            updateData.password = hashPasswordScrypt(passwordToHash);
+            console.log('✅ Contraseña migrada a scrypt');
         }
         
         // Actualizar usuario
@@ -1852,7 +1875,7 @@ app.post('/api/usuarios/migrar', async (req, res) => {
             { projection: { password: 0 } }
         );
         
-        console.log('✅ Usuario migrado exitosamente');
+        console.log('✅ Usuario migrado exitosamente a scrypt');
         
         res.json({ 
             success: true, 
@@ -1905,8 +1928,7 @@ app.delete('/api/usuarios/cuenta', async (req, res) => {
             });
         }
         
-        const passwordMatches = (usuario.password === currentPassword) || 
-                                (usuario.password === hashPassword(currentPassword));
+        const passwordMatches = verifyPassword(currentPassword, usuario.password);
         if (!passwordMatches) {
             return res.status(401).json({ 
                 success: false, 
