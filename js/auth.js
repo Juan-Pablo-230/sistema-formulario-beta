@@ -224,6 +224,8 @@ async showMigrationModal() {
         // Verificar si necesita migración de contraseña (texto plano)
         const needsMigration = user.needsMigration === true;
         
+        console.log('📋 Mostrando modal de migración. needsMigration:', needsMigration);
+        
         // BLOQUEAR SCROLL DEL FONDO
         document.body.style.overflow = 'hidden';
         
@@ -321,6 +323,7 @@ async showMigrationModal() {
                                 cursor: pointer;
                                 color: #b0b0b0;
                                 font-size: 14px;
+                                z-index: 10;
                             ">👁️</button>
                         </div>
                     </div>
@@ -347,6 +350,7 @@ async showMigrationModal() {
                                 cursor: pointer;
                                 color: #b0b0b0;
                                 font-size: 14px;
+                                z-index: 10;
                             ">👁️</button>
                         </div>
                         <small style="color: #b0b0b0;">Mínimo 6, máximo 15 caracteres</small>
@@ -374,6 +378,7 @@ async showMigrationModal() {
                                 cursor: pointer;
                                 color: #b0b0b0;
                                 font-size: 14px;
+                                z-index: 10;
                             ">👁️</button>
                         </div>
                     </div>
@@ -419,25 +424,40 @@ async showMigrationModal() {
             }
         };
         
-        // ========== FUNCIONALIDAD DEL OJITO CORREGIDA ==========
-        // Usamos event delegation en lugar de asignar eventos directamente
-        overlay.addEventListener('click', function(e) {
-            const btn = e.target.closest('.toggle-password');
-            if (btn) {
-                e.preventDefault();
-                const targetId = btn.getAttribute('data-target');
-                const input = document.getElementById(targetId);
-                if (input) {
-                    if (input.type === 'password') {
-                        input.type = 'text';
-                        btn.textContent = '🙈';
+        // ========== FUNCIONALIDAD DEL OJITO CORREGIDA (VERSIÓN ROBUSTA) ==========
+        // Esperar un momento para que el DOM se actualice
+        setTimeout(() => {
+            const toggleButtons = overlay.querySelectorAll('.toggle-password');
+            console.log('🔍 Botones toggle encontrados en modal de migración:', toggleButtons.length);
+            
+            toggleButtons.forEach(btn => {
+                // Eliminar event listeners anteriores si existen (para evitar duplicados)
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const targetId = this.getAttribute('data-target');
+                    const input = document.getElementById(targetId);
+                    console.log('👁️ Botón clickeado en migración, target:', targetId, 'input encontrado:', !!input);
+                    
+                    if (input) {
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            this.textContent = '🙈';
+                            console.log('👁️ Contraseña visible');
+                        } else {
+                            input.type = 'password';
+                            this.textContent = '👁️';
+                            console.log('👁️ Contraseña oculta');
+                        }
                     } else {
-                        input.type = 'password';
-                        btn.textContent = '👁️';
+                        console.warn('⚠️ Input no encontrado para target:', targetId);
                     }
-                }
-            }
-        });
+                });
+            });
+        }, 100);
         
         // Manejar envío
         const migrateBtn = overlay.querySelector('#migrateBtn');
