@@ -1,4 +1,4 @@
-// inscripciones.js
+// inscripciones.js - Versión con hora 24h
 console.log('📋 Módulo de Inscripciones cargado');
 
 class InscripcionesManager {
@@ -29,12 +29,10 @@ class InscripcionesManager {
     filtrarDatos() {
         let datos = [...this.data];
 
-        // Filtrar por clase
         if (this.filtroClase !== 'todas') {
             datos = datos.filter(d => d.clase === this.filtroClase);
         }
 
-        // Filtrar por período
         const ahora = new Date();
         if (this.filtroPeriodo === 'hoy') {
             const hoy = ahora.toDateString();
@@ -89,26 +87,42 @@ class InscripcionesManager {
 
         if (datosFiltrados.length === 0) {
             tbody.innerHTML = `
-                <tr>
+                 <tr>
                     <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
                         No hay inscripciones para mostrar
-                    </td>
-                </tr>
+                     </td>
+                 </tr>
             `;
             return;
         }
 
-        tbody.innerHTML = datosFiltrados.map((insc, index) => `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${insc.usuario?.apellidoNombre || 'N/A'}</td>
-                <td>${insc.usuario?.legajo || 'N/A'}</td>
-                <td>${insc.clase || 'N/A'}</td>
-                <td>${insc.turno || 'N/A'}</td>
-                <td><a href="mailto:${insc.usuario?.email || ''}" class="email-link">${insc.usuario?.email || 'N/A'}</a></td>
-                <td>${insc.fecha ? new Date(insc.fecha).toLocaleString('es-AR') : 'N/A'}</td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = datosFiltrados.map((insc, index) => {
+            // Formatear fecha en 24h
+            let fechaFormateada = 'N/A';
+            if (insc.fecha) {
+                const fecha = new Date(insc.fecha);
+                fechaFormateada = fecha.toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
+            
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${insc.usuario?.apellidoNombre || 'N/A'}</td>
+                    <td>${insc.usuario?.legajo || 'N/A'}</td>
+                    <td>${insc.clase || 'N/A'}</td>
+                    <td>${insc.turno || 'N/A'}</td>
+                    <td><a href="mailto:${insc.usuario?.email || ''}" class="email-link">${insc.usuario?.email || 'N/A'}</a></td>
+                    <td>${fechaFormateada}</td>
+                </tr>
+            `;
+        }).join('');
 
         document.getElementById('contadorResultados').textContent = 
             `${datosFiltrados.length} inscripciones mostradas`;
@@ -137,11 +151,11 @@ class InscripcionesManager {
         const tbody = document.getElementById('inscripcionesBody');
         if (tbody) {
             tbody.innerHTML = `
-                <tr>
+                 <tr>
                     <td colspan="7" style="text-align: center; padding: 40px; color: #ff6b6b;">
                         ⚠️ Error al cargar las inscripciones
-                    </td>
-                </tr>
+                     </td>
+                 </tr>
             `;
         }
     }
@@ -157,14 +171,29 @@ class InscripcionesManager {
         const headers = ['Apellido y Nombre', 'Legajo', 'Clase', 'Turno', 'Email', 'Fecha'];
         const csv = [
             headers.join(','),
-            ...datosFiltrados.map(insc => [
-                `"${insc.usuario?.apellidoNombre || ''}"`,
-                `"${insc.usuario?.legajo || ''}"`,
-                `"${insc.clase || ''}"`,
-                `"${insc.turno || ''}"`,
-                `"${insc.usuario?.email || ''}"`,
-                `"${insc.fecha ? new Date(insc.fecha).toLocaleString('es-AR') : ''}"`
-            ].join(','))
+            ...datosFiltrados.map(insc => {
+                let fechaFormateada = '';
+                if (insc.fecha) {
+                    const fecha = new Date(insc.fecha);
+                    fechaFormateada = fecha.toLocaleString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+                
+                return [
+                    `"${insc.usuario?.apellidoNombre || ''}"`,
+                    `"${insc.usuario?.legajo || ''}"`,
+                    `"${insc.clase || ''}"`,
+                    `"${insc.turno || ''}"`,
+                    `"${insc.usuario?.email || ''}"`,
+                    `"${fechaFormateada}"`
+                ].join(',');
+            })
         ].join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

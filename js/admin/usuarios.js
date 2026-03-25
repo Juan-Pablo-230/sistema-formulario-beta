@@ -119,6 +119,17 @@ class UsuariosManager {
 
         tbody.innerHTML = usuariosFiltrados.map((usuario, index) => {
             const totalActividades = this.contarActividadesUsuario(usuario._id);
+            
+            // Formatear fecha de registro en 24 horas
+            const fechaRegistro = usuario.fechaRegistro ? 
+                new Date(usuario.fechaRegistro).toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }) : 'N/A';
 
             return `
             <tr>
@@ -129,7 +140,7 @@ class UsuariosManager {
                 <td>${usuario.turno || 'N/A'}</td>
                 <td>${usuario.area || 'N/A'}</td>
                 <td><span class="role-badge ${usuario.role || 'user'}">${this.getRoleText(usuario.role)}</span></td>
-                <td>${usuario.fechaRegistro ? new Date(usuario.fechaRegistro).toLocaleString('es-AR') : 'N/A'}</td>
+                <td>${fechaRegistro}</td>
                 <td>
                     <div class="user-actions-stacked">
                         ${esAdmin ? `
@@ -204,7 +215,7 @@ class UsuariosManager {
         }
     }
 
-    // ===== MÉTODOS DEL MODAL CORREGIDOS =====
+    // ===== MÉTODOS DEL MODAL =====
     
     abrirModal(usuario = null) {
         const modal = document.getElementById('userModal');
@@ -218,11 +229,9 @@ class UsuariosManager {
             return;
         }
         
-        // Resetear el formulario completamente
         form.reset();
         
         if (usuario) {
-            // MODO EDICIÓN
             title.textContent = '✏️ Editar Usuario';
             userIdInput.value = usuario._id;
             document.getElementById('userNombre').value = usuario.apellidoNombre || '';
@@ -232,27 +241,22 @@ class UsuariosManager {
             document.getElementById('userArea').value = usuario.area || '';
             document.getElementById('userRole').value = usuario.role || 'user';
             
-            // En edición, la contraseña es opcional
             document.getElementById('userPassword').required = false;
             document.getElementById('userPassword').placeholder = 'Dejar en blanco para mantener (máx 15)';
             if (passwordGroup) passwordGroup.style.display = 'block';
             
             console.log('✏️ Editando usuario:', usuario.apellidoNombre);
         } else {
-            // MODO CREACIÓN
             title.textContent = '➕ Crear Usuario';
             userIdInput.value = '';
             
-            // En creación, la contraseña es obligatoria
             document.getElementById('userPassword').required = true;
             document.getElementById('userPassword').placeholder = 'Mínimo 8, máximo 15 caracteres';
             if (passwordGroup) passwordGroup.style.display = 'block';
         }
         
-        // Mostrar el modal
         modal.style.display = 'flex';
         
-        // Prevenir que el click en el modal lo cierre
         const modalContainer = modal.querySelector('.modal-container');
         if (modalContainer) {
             modalContainer.addEventListener('click', (e) => {
@@ -265,8 +269,6 @@ class UsuariosManager {
         const modal = document.getElementById('userModal');
         if (modal) {
             modal.style.display = 'none';
-            
-            // Resetear el formulario al cerrar
             const form = document.getElementById('userForm');
             if (form) form.reset();
         }
@@ -277,7 +279,6 @@ class UsuariosManager {
         
         console.log('💾 Guardando usuario...');
         
-        // Obtener datos del formulario
         const userId = document.getElementById('userId').value;
         const apellidoNombre = document.getElementById('userNombre').value.trim();
         const legajo = document.getElementById('userLegajo').value.trim();
@@ -287,13 +288,11 @@ class UsuariosManager {
         const role = document.getElementById('userRole').value;
         const password = document.getElementById('userPassword').value;
         
-        // Validaciones básicas
         if (!apellidoNombre || !legajo || !email || !turno || !area || !role) {
             this.mostrarMensajeModal('❌ Todos los campos obligatorios deben estar completos', 'error');
             return;
         }
         
-        // Validar contraseña según el modo
         if (!userId && !password) {
             this.mostrarMensajeModal('❌ La contraseña es obligatoria para nuevos usuarios', 'error');
             return;
@@ -308,7 +307,6 @@ class UsuariosManager {
             return;
         }
         
-        // Preparar datos para enviar
         const userData = {
             apellidoNombre: apellidoNombre,
             legajo: legajo,
@@ -322,11 +320,9 @@ class UsuariosManager {
             let response;
             
             if (userId) {
-                // MODO EDICIÓN - Actualizar datos básicos
                 console.log('📤 Actualizando usuario:', userId, userData);
                 response = await authSystem.makeRequest(`/admin/usuarios/${userId}`, userData, 'PUT');
                 
-                // Si hay nueva contraseña, actualizarla también
                 if (password) {
                     console.log('🔐 Actualizando contraseña');
                     await authSystem.makeRequest(`/admin/usuarios/${userId}/password`, { newPassword: password }, 'PUT');
@@ -334,17 +330,15 @@ class UsuariosManager {
                 
                 this.mostrarMensajeModal('✅ Usuario actualizado correctamente', 'success');
             } else {
-                // MODO CREACIÓN - Crear nuevo usuario
                 console.log('📤 Creando nuevo usuario:', userData);
-                userData.password = password; // Agregar contraseña solo en creación
+                userData.password = password;
                 response = await authSystem.makeRequest('/admin/usuarios', userData);
                 this.mostrarMensajeModal('✅ Usuario creado correctamente', 'success');
             }
             
-            // Cerrar modal después de guardar exitosamente
             setTimeout(() => {
                 this.cerrarModal();
-                this.cargarDatos(); // Recargar la lista de usuarios
+                this.cargarDatos();
                 this.cargarInscripciones();
                 this.cargarSolicitudes();
             }, 1500);
@@ -459,6 +453,16 @@ class UsuariosManager {
             }))
         ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
+        // Opciones de formato de fecha en 24 horas
+        const opcionesFecha = {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        };
+
         let actividadesHTML = '';
         if (todasActividades.length === 0) {
             actividadesHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Este usuario no tiene actividades registradas.</p>';
@@ -477,7 +481,13 @@ class UsuariosManager {
                             </tr>
                         </thead>
                         <tbody>
-                            ${todasActividades.map((act, index) => `
+                            ${todasActividades.map((act, index) => {
+                                let fechaFormateada = 'N/A';
+                                if (act.fecha) {
+                                    fechaFormateada = new Date(act.fecha).toLocaleString('es-AR', opcionesFecha);
+                                }
+                                
+                                return `
                                 <tr style="border-bottom: 1px solid var(--border-color);">
                                     <td style="padding: 12px;">${index + 1}</td>
                                     <td style="padding: 12px;">
@@ -487,7 +497,7 @@ class UsuariosManager {
                                     </td>
                                     <td style="padding: 12px; font-weight: 500;">${act.clase}</td>
                                     <td style="padding: 12px;">${act.turno}</td>
-                                    <td style="padding: 12px;">${act.fecha ? new Date(act.fecha).toLocaleString('es-AR') : 'N/A'}</td>
+                                    <td style="padding: 12px;">${fechaFormateada}</td>
                                     <td style="padding: 12px;">
                                         ${act.tipo === 'solicitud' && (act.youtube || act.powerpoint) ? `
                                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -497,7 +507,7 @@ class UsuariosManager {
                                         ` : act.tipo === 'inscripcion' ? 'Inscripción a clase' : 'Sin detalles'}
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `}).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -572,18 +582,21 @@ class UsuariosManager {
                 'Fecha Registro'
             ];
 
+            // Opciones de formato de fecha en 24 horas
+            const opcionesFecha = {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            };
+
             const rows = this.data.map(usuario => {
                 let fechaRegistro = 'N/A';
                 if (usuario.fechaRegistro) {
                     const fecha = new Date(usuario.fechaRegistro);
-                    fechaRegistro = fecha.toLocaleString('es-AR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
+                    fechaRegistro = fecha.toLocaleString('es-AR', opcionesFecha);
                 }
 
                 const roles = {
@@ -651,22 +664,18 @@ class UsuariosManager {
     }
 
     setupEventListeners() {
-        // Botón crear usuario
         document.getElementById('createUserBtn')?.addEventListener('click', () => {
             this.abrirModal();
         });
 
-        // Botón exportar
         document.getElementById('exportUsersBtn')?.addEventListener('click', () => {
             this.exportarUsuariosCSV();
         });
 
-        // Búsqueda de usuarios
         document.getElementById('searchUser')?.addEventListener('input', (e) => {
             this.mostrarTabla(e.target.value);
         });
 
-        // Botón actualizar
         document.getElementById('refreshUsersBtn')?.addEventListener('click', async () => {
             const btn = document.getElementById('refreshUsersBtn');
             const originalText = btn.textContent;
@@ -681,7 +690,6 @@ class UsuariosManager {
             btn.disabled = false;
         });
 
-        // Cerrar modal con botones X y Cancelar
         document.querySelectorAll('.close-modal, .cancel-modal, .cancel-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -690,7 +698,6 @@ class UsuariosManager {
             });
         });
 
-        // Cerrar modal de historial
         const closeHistorial = document.getElementById('closeHistorialModal');
         if (closeHistorial) {
             closeHistorial.addEventListener('click', () => {
@@ -698,7 +705,6 @@ class UsuariosManager {
             });
         }
 
-        // Cerrar modal haciendo click fuera del contenedor (SOLO para el modal de historial)
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('historialModal');
             if (e.target === modal) {
@@ -706,7 +712,6 @@ class UsuariosManager {
             }
         });
 
-        // Evento submit del formulario
         const form = document.getElementById('userForm');
         if (form) {
             form.removeEventListener('submit', this.handleSubmit);
@@ -719,7 +724,6 @@ class UsuariosManager {
             form.addEventListener('submit', this.handleSubmit);
         }
 
-        // Prevenir cierre del modal al hacer click en el overlay
         const userModal = document.getElementById('userModal');
         if (userModal) {
             userModal.addEventListener('click', (e) => {
