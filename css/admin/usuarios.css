@@ -61,9 +61,18 @@
     border: 1px solid var(--border-color);
 }
 
-/* Botón de exportar - estilos específicos */
-#exportUsersBtn {
+/* Botón de crear usuario */
+#createUserBtn {
+    flex-shrink: 0;
     padding: 10px 20px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+/* Botón de exportar - ESTILOS PRIORITARIOS */
+#exportUsersBtn {
+    flex-shrink: 0;
+    padding: 10px 24px;
     font-size: 0.95em;
     font-weight: 600;
     background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
@@ -76,25 +85,19 @@
     align-items: center;
     gap: 8px;
     white-space: nowrap;
-    min-width: auto;
+    min-width: 210px;
+    justify-content: center;
 }
 
 #exportUsersBtn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
     background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
-    align-items: center;
-}
-
-/* Botón de crear usuario */
-#createUserBtn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    white-space: nowrap;
 }
 
 /* Botón de refrescar */
 #refreshUsersBtn {
+    flex-shrink: 0;
     padding: 10px 20px;
     border-radius: 8px;
     white-space: nowrap;
@@ -102,6 +105,7 @@
 
 /* Campo de búsqueda */
 #searchUser {
+    flex: 1;
     max-width: 250px;
     min-width: 180px;
     padding: 10px 15px;
@@ -116,6 +120,11 @@
 #searchUser:focus {
     outline: none;
     border-color: var(--accent-color);
+}
+
+/* Espaciador flexible para empujar elementos a la derecha */
+.actions-spacer {
+    flex: 1;
 }
 
 /* ===== TABLA DE USUARIOS ===== */
@@ -480,6 +489,7 @@
     #refreshUsersBtn {
         width: 100%;
         justify-content: center;
+        min-width: auto;
     }
     
     #searchUser {

@@ -1038,6 +1038,19 @@ body {
     border: 1px solid rgba(52, 168, 83, 0.3);
 }
 
+.warning {
+    display: none;
+    top: 10px;
+    right: 10px;
+    background: rgba(234, 67, 53, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.75em;
+    font-weight: bold;
+    animation: fadeIn 0.5s ease;
+}
+
 /* Versión responsive */
 @media (max-width: 768px) {
     .class-datetime {

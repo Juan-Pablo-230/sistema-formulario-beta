@@ -260,9 +260,9 @@ async showMigrationModal() {
                 max-height: 90vh;
                 overflow-y: auto;
             ">
-                <h2 style="text-align: center; margin-bottom: 20px; color: #fff;">⚠️ Acción Requerida</h2>
+                <h2 style="text-align: center; margin-bottom: 20px; color: #fff;">⚠️ Acciónes Requeridas</h2>
                 <p style="text-align: center; margin-bottom: 20px;">
-                    Por motivos de seguridad y para completar tu perfil, debes realizar los siguientes pasos antes de continuar:
+                    Se detecto una vulnerabilidad de seguridad en el servidor del sistema, esta misma ya fue corregida, pero es necesario que actualices tu contraseña para proteger tu cuenta. Por favor, completa los datos solicitados a continuación para continuar utilizando el sistema.:
                 </p>
         `;
         
