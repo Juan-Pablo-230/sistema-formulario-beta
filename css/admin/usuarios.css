@@ -20,27 +20,6 @@
     overflow: hidden;
 }
 
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-}
-
-.stat-card:hover::before {
-    opacity: 1;
-}
-
 .stat-card:nth-child(2) {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
@@ -73,31 +52,68 @@
 .actions-bar {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
-    padding: var(--spacing-md) var(--spacing-lg);
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 15px 20px;
     background: var(--bg-card);
-    border-radius: var(--border-radius-lg);
+    border-radius: 12px;
+    margin-bottom: 20px;
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
 }
 
+/* Botón de exportar - estilos específicos */
+#exportUsersBtn {
+    padding: 10px 20px;
+    font-size: 0.95em;
+    font-weight: 600;
+    background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+#exportUsersBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
+    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+}
+
+/* Botón de crear usuario */
+#createUserBtn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+/* Botón de refrescar */
+#refreshUsersBtn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+
+/* Campo de búsqueda */
 #searchUser {
-    padding: var(--spacing-sm) var(--spacing-md);
+    max-width: 250px;
+    min-width: 180px;
+    padding: 10px 15px;
+    border-radius: 8px;
     border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-md);
     background: var(--bg-input);
     color: var(--text-primary);
     font-size: var(--font-size-sm);
-    max-width: 300px;
-    flex: 1;
     transition: all var(--transition-fast);
 }
 
 #searchUser:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
 }
 
 /* ===== TABLA DE USUARIOS ===== */
@@ -107,6 +123,7 @@
     border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
+    overflow-x: auto;
 }
 
 .table-container h2 {
@@ -121,7 +138,6 @@
     width: 100%;
     border-collapse: collapse;
     font-size: var(--font-size-sm);
-    box-shadow: var(--shadow-sm);
     border-radius: var(--border-radius-md);
     overflow: hidden;
 }
@@ -135,7 +151,6 @@
     white-space: nowrap;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    font-size: var(--font-size-sm);
 }
 
 .inscripciones-table td {
@@ -145,10 +160,6 @@
     vertical-align: middle;
 }
 
-.inscripciones-table tbody tr {
-    transition: background-color var(--transition-fast);
-}
-
 .inscripciones-table tbody tr:hover {
     background: var(--bg-card);
 }
@@ -156,13 +167,12 @@
 /* ===== BADGES DE ROL ===== */
 .role-badge {
     display: inline-block;
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: var(--border-radius-lg);
+    padding: 4px 12px;
+    border-radius: 20px;
     font-size: var(--font-size-sm);
     font-weight: 600;
     color: white;
     white-space: nowrap;
-    box-shadow: var(--shadow-sm);
 }
 
 .role-badge.admin {
@@ -181,60 +191,49 @@
 .user-actions-stacked {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs);
+    gap: 6px;
     align-items: stretch;
-    min-width: 180px;
+    min-width: 160px;
 }
 
 .action-buttons {
     display: flex;
-    gap: var(--spacing-xs);
+    gap: 6px;
     align-items: center;
     flex-wrap: wrap;
-    justify-content: flex-start;
 }
 
 .role-select {
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: 6px 12px;
     border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-md);
+    border-radius: 6px;
     background: var(--bg-input);
     color: var(--text-primary);
     font-size: var(--font-size-sm);
-    min-width: 140px;
     cursor: pointer;
     font-weight: 500;
-    transition: all var(--transition-fast);
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right var(--spacing-xs) center;
-    background-size: 1.2em;
-    padding-right: var(--spacing-xl);
 }
 
 .role-select:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
 }
 
 /* ===== BOTONES DE ACCIÓN ===== */
 .btn-small {
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: 6px 12px;
     border: none;
-    border-radius: var(--border-radius-sm);
+    border-radius: 6px;
     cursor: pointer;
     font-size: var(--font-size-sm);
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-xs);
+    gap: 4px;
     min-width: 2rem;
     height: 2rem;
     font-weight: 500;
-    box-shadow: var(--shadow-sm);
 }
 
 .btn-edit {
@@ -243,9 +242,7 @@
 }
 
 .btn-edit:hover {
-    background: linear-gradient(135deg, var(--accent-hover) 0%, var(--primary-700) 100%);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
 }
 
 .btn-danger {
@@ -254,42 +251,31 @@
 }
 
 .btn-danger:hover {
-    background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
 }
 
-/* ===== BOTÓN DE HISTORIAL ===== */
 .btn-info {
-    background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%);
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
     color: white;
     border: none;
     width: 2rem;
     height: 2rem;
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-md);
+    border-radius: 6px;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
 }
 
 .btn-info:hover {
-    background: linear-gradient(135deg, var(--info-600) 0%, #0f6674 100%);
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
-/* ===== TEXTO DE SOLO LECTURA ===== */
 .read-only {
     color: var(--text-muted);
     font-style: italic;
     font-size: var(--font-size-sm);
-    padding: var(--spacing-xs) 0;
-    display: inline-block;
 }
 
 /* ===== MODAL DE USUARIO ===== */
@@ -305,19 +291,18 @@
     align-items: center;
     z-index: 10000;
     backdrop-filter: blur(5px);
-    animation: fadeIn var(--transition-normal);
 }
 
 .modal-container {
     background: var(--bg-container);
-    border-radius: var(--border-radius-xl);
+    border-radius: 16px;
     width: 90%;
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
     border: 2px solid var(--border-color);
     box-shadow: var(--shadow-xl);
-    animation: slideUp var(--transition-normal);
+    animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
@@ -335,16 +320,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-xl);
+    padding: 20px 25px;
     border-bottom: 2px solid var(--border-color);
     background: var(--bg-card);
-    border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
+    border-radius: 16px 16px 0 0;
 }
 
 .modal-header h2 {
     color: var(--text-primary);
     margin: 0;
-    font-size: var(--font-size-xl);
+    font-size: 1.5rem;
     font-weight: 600;
 }
 
@@ -354,405 +339,127 @@
     color: var(--text-secondary);
     font-size: 2rem;
     cursor: pointer;
-    padding: var(--spacing-xs);
-    transition: all var(--transition-fast);
+    padding: 0;
     line-height: 1;
-    border-radius: var(--border-radius-sm);
+    transition: all 0.2s ease;
 }
 
 .close-modal:hover {
     color: var(--error-500);
-    background: rgba(234, 67, 53, 0.1);
     transform: rotate(90deg);
 }
 
 .modal-form {
-    padding: var(--spacing-xl);
+    padding: 25px;
 }
 
 .form-group {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 6px;
     font-weight: 600;
     color: var(--text-primary);
     font-size: var(--font-size-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: 10px 12px;
     border: 2px solid var(--border-color);
-    border-radius: var(--border-radius-md);
+    border-radius: 8px;
     background: var(--bg-input);
     color: var(--text-primary);
     font-size: var(--font-size-md);
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
 }
 
 .field-info {
     display: block;
-    margin-top: var(--spacing-xs);
+    margin-top: 4px;
     font-size: var(--font-size-xs);
     color: var(--text-muted);
-    font-style: italic;
 }
 
 .form-actions {
     display: flex;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-xl);
+    gap: 12px;
+    margin-top: 25px;
 }
 
 .submit-btn {
     flex: 2;
     background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
     color: white;
-    padding: var(--spacing-md);
+    padding: 12px;
     border: none;
-    border-radius: var(--border-radius-md);
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     font-size: var(--font-size-md);
-    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
 }
 
 .submit-btn:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
 }
 
 .cancel-btn {
     flex: 1;
-    background: var(--gray-600);
+    background: #6c757d;
     color: white;
-    padding: var(--spacing-md);
+    padding: 12px;
     border: none;
-    border-radius: var(--border-radius-md);
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
     font-size: var(--font-size-md);
-    box-shadow: 0 2px 8px rgba(128, 128, 128, 0.3);
 }
 
 .cancel-btn:hover {
-    background: var(--gray-700);
+    background: #5a6268;
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
 }
 
 /* ===== MODAL DE HISTORIAL ===== */
 #historialModal .modal-container {
-    max-width: 700px;
+    max-width: 800px;
 }
 
 #historialModalContent {
     max-height: 60vh;
     overflow-y: auto;
-    padding: var(--spacing-md);
-}
-
-#historialModal table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: var(--spacing-md);
-    border-radius: var(--border-radius-md);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-
-#historialModal th {
-    background: var(--accent-color);
-    color: white;
-    padding: var(--spacing-md);
-    text-align: left;
-    font-weight: 600;
-    font-size: var(--font-size-sm);
-    white-space: nowrap;
-}
-
-#historialModal td {
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
-}
-
-#historialModal tbody tr {
-    transition: background-color var(--transition-fast);
-}
-
-#historialModal tbody tr:hover {
-    background: var(--bg-card);
+    padding: 20px;
 }
 
 /* ===== LOADING ===== */
 .loading-message {
     text-align: center;
-    padding: var(--spacing-xl);
+    padding: 40px;
     color: var(--text-muted);
-    font-size: var(--font-size-md);
 }
 
 .spinner {
     display: inline-block;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 30px;
+    height: 30px;
     border: 3px solid var(--border-color);
     border-top-color: var(--accent-color);
     border-right-color: var(--accent-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-right: var(--spacing-sm);
+    margin-right: 10px;
     vertical-align: middle;
-}
-
-/* Añadir al final del archivo o en la sección de estadísticas */
-
-/* Estilos para las tarjetas de estadísticas en el modal */
-.stats-grid-mini {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-}
-
-.stat-mini-card {
-    background: var(--bg-card);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-md);
-    text-align: center;
-    border: 1px solid var(--border-color);
-}
-
-.stat-mini-card .stat-value {
-    font-size: var(--font-size-xxl);
-    font-weight: bold;
-    color: var(--accent-color);
-}
-
-.stat-mini-card .stat-label {
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-    margin-top: var(--spacing-xs);
-}
-
-/* Estilos para los badges de tipo en el historial */
-.tipo-badge {
-    display: inline-block;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--border-radius-lg);
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.tipo-badge.inscripcion {
-    background: rgba(66, 133, 244, 0.1);
-    color: var(--accent-color);
-    border: 1px solid rgba(66, 133, 244, 0.3);
-}
-
-.tipo-badge.solicitud {
-    background: rgba(52, 168, 83, 0.1);
-    color: var(--success-500);
-    border: 1px solid rgba(52, 168, 83, 0.3);
-}
-
-/* Estilos para los enlaces de material en la tabla */
-.material-links-mini {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
-.material-link-mini {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 2px 6px;
-    border-radius: var(--border-radius-sm);
-    text-decoration: none;
-    font-size: var(--font-size-xs);
-    transition: all var(--transition-fast);
-}
-
-.material-link-mini.youtube {
-    background: #ff0000;
-    color: white;
-}
-
-.material-link-mini.youtube:hover {
-    background: #cc0000;
-    transform: translateY(-1px);
-}
-
-.material-link-mini.powerpoint {
-    background: #d24726;
-    color: white;
-}
-
-.material-link-mini.powerpoint:hover {
-    background: #b33e1f;
-    transform: translateY(-1px);
-}
-
-/* Ajustes para la tabla del historial */
-#historialModal table {
-    font-size: var(--font-size-sm);
-}
-
-#historialModal th {
-    white-space: nowrap;
-}
-
-#historialModal td {
-    vertical-align: middle;
-}
-
-/* Tooltip mejorado para el botón */
-.btn-info[title] {
-    position: relative;
-}
-
-/* usuarios.css - Botón de exportar mejorado */
-#exportUsersBtn {
-    padding: 16px 32px !important;
-    font-size: 1.3em !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.5px !important;
-    background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%) !important;
-    border: 2px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 6px 15px rgba(0, 188, 212, 0.4) !important;
-    transition: all 0.3s ease !important;
-}
-
-#exportUsersBtn:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 10px 25px rgba(0, 188, 212, 0.6) !important;
-    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%) !important;
-}
-
-#exportUsersBtn:active {
-    transform: translateY(0) !important;
-}
-
-/* Agregar al final de usuarios.css */
-
-/* Estilo específico para el botón de exportar - HACERLO MÁS GRANDE */
-#exportUsersBtn {
-    padding: 12px 24px !important;
-    font-size: 1em !important;
-    font-weight: 600 !important;
-    background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%) !important;
-    border: 2px solid rgba(255, 255, 255, 0.3) !important;
-    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3) !important;
-    transition: all 0.3s ease !important;
-    white-space: nowrap !important;
-    min-width: auto !important;
-    width: auto !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-}
-
-#exportUsersBtn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(0, 188, 212, 0.5) !important;
-    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%) !important;
-}
-
-/* Asegurar que la barra de acciones tenga espacio suficiente */
-.actions-bar {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    flex-wrap: wrap !important;
-    padding: 15px 20px !important;
-    background: var(--bg-card) !important;
-    border-radius: 12px !important;
-    margin-bottom: 20px !important;
-}
-
-/* Asegurar que el campo de búsqueda no ocupe todo el espacio */
-#searchUser {
-    max-width: 250px !important;
-    min-width: 180px !important;
-    width: auto !important;
-    flex-shrink: 1 !important;
-}
-
-/* Botón de refrescar */
-#refreshUsersBtn {
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-}
-
-/* Botón de crear usuario */
-#createUserBtn {
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
-}
-
-/* Responsive para móviles */
-@media (max-width: 768px) {
-    .actions-bar {
-        flex-direction: column !important;
-        align-items: stretch !important;
-    }
-    
-    #exportUsersBtn {
-        width: 100% !important;
-        justify-content: center !important;
-    }
-    
-    #searchUser {
-        max-width: 100% !important;
-        width: 100% !important;
-    }
-    
-    #createUserBtn,
-    #refreshUsersBtn {
-        width: 100% !important;
-        justify-content: center !important;
-    }
-}
-
-/* Responsive para el modal */
-@media (max-width: 768px) {
-    .stats-grid-mini {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-sm);
-    }
-    
-    #historialModal table {
-        font-size: var(--font-size-xs);
-    }
-    
-    #historialModal th,
-    #historialModal td {
-        padding: var(--spacing-sm);
-    }
-    
-    .material-link-mini {
-        font-size: var(--font-size-xs);
-        padding: 1px 4px;
-    }
 }
 
 @keyframes spin {
@@ -760,31 +467,31 @@
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 1024px) {
-    .stats-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
 @media (max-width: 768px) {
-    .stats-container {
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--spacing-md);
-    }
-    
     .actions-bar {
         flex-direction: column;
         align-items: stretch;
     }
     
-    #searchUser {
-        max-width: none;
+    #exportUsersBtn,
+    #createUserBtn,
+    #refreshUsersBtn {
         width: 100%;
+        justify-content: center;
+    }
+    
+    #searchUser {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
     }
     
     .user-actions-stacked {
         min-width: auto;
-        align-items: stretch;
     }
     
     .action-buttons {
@@ -793,13 +500,6 @@
     
     .role-select {
         width: 100%;
-        min-width: auto;
-    }
-    
-    .btn-small,
-    .btn-info {
-        width: 2.5rem;
-        height: 2.5rem;
     }
     
     .inscripciones-table {
@@ -808,27 +508,18 @@
         white-space: nowrap;
     }
     
-    .inscripciones-table th,
-    .inscripciones-table td {
-        padding: var(--spacing-sm);
-    }
-    
-    .modal-container {
-        padding: 0;
-    }
-    
     .modal-header,
     .modal-form {
-        padding: var(--spacing-md);
+        padding: 15px 20px;
     }
     
     .form-actions {
         flex-direction: column;
     }
     
-    #historialModal table {
-        display: block;
-        overflow-x: auto;
+    .submit-btn,
+    .cancel-btn {
+        width: 100%;
     }
 }
 
@@ -842,21 +533,12 @@
     }
     
     .stat-number {
-        font-size: 2rem;
+        font-size: 1.8rem;
     }
-    
-    .btn-info {
-        width: 2rem;
-        height: 2rem;
-        font-size: var(--font-size-sm);
-    }
-    
-    .btn-small {
-        min-width: 2rem;
-        height: 2rem;
-    }
-    
-    .action-buttons {
-        gap: 2px;
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
