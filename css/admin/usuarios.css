@@ -76,12 +76,14 @@
     align-items: center;
     gap: 8px;
     white-space: nowrap;
+    min-width: auto;
 }
 
 #exportUsersBtn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 188, 212, 0.4);
     background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+    align-items: center;
 }
 
 /* Botón de crear usuario */
