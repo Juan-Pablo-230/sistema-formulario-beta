@@ -863,9 +863,13 @@ body {
 }
 
 /* ===== ESTILOS PARA EL MODAL DE INSCRIPCIÓN ===== */
-.modalClaseNombre {
+
+#modalClaseNombre {
     text-align: center;
-    justify-content: center;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+    font-size: 1.3em;
+    font-weight: 700;
 }
 
 .fechas-modal {
