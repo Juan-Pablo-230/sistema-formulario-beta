@@ -650,6 +650,106 @@ textarea.form-control {
     border: 2px dashed var(--error-500);
     animation: fadeIn var(--transition-normal);
 }
+/* ===== ESTADOS COMO BOTONES ===== */
+.estado-opciones {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    margin-top: var(--spacing-xs);
+}
+
+.estado-opcion {
+    flex: 1;
+    min-width: 140px;
+}
+
+.estado-opcion input[type="radio"] {
+    display: none;
+}
+
+.estado-boton {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    gap: var(--spacing-xs);
+}
+
+.estado-boton:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-md);
+}
+
+.estado-icono {
+    font-size: 1.5rem;
+}
+
+.estado-texto {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+
+.estado-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+/* Estados específicos */
+.estado-boton.publicada {
+    border-left-color: var(--success-500);
+}
+.estado-boton.publicada:hover {
+    background: rgba(52, 168, 83, 0.05);
+}
+.estado-opcion input[type="radio"]:checked + .estado-boton.publicada {
+    background: rgba(52, 168, 83, 0.15);
+    border-color: var(--success-500);
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.2);
+}
+
+.estado-boton.activa {
+    border-left-color: var(--accent-color);
+}
+.estado-boton.activa:hover {
+    background: rgba(66, 133, 244, 0.05);
+}
+.estado-opcion input[type="radio"]:checked + .estado-boton.activa {
+    background: rgba(66, 133, 244, 0.15);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+}
+
+.estado-boton.cancelada {
+    border-left-color: var(--error-500);
+}
+.estado-boton.cancelada:hover {
+    background: rgba(234, 67, 53, 0.05);
+}
+.estado-opcion input[type="radio"]:checked + .estado-boton.cancelada {
+    background: rgba(234, 67, 53, 0.15);
+    border-color: var(--error-500);
+    box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .estado-opciones {
+        flex-direction: column;
+    }
+    
+    .estado-opcion {
+        min-width: auto;
+    }
+}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {

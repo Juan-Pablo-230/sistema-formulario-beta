@@ -50,208 +50,207 @@ class GestionClasesManager {
         }
     }
 
-mostrarLista(filtroTexto = '', filtroEstado = 'todos') {
-    const container = document.getElementById('clasesList');
-    if (!container) return;
+    mostrarLista(filtroTexto = '', filtroEstado = 'todos') {
+        const container = document.getElementById('clasesList');
+        if (!container) return;
 
-    let clasesFiltradas = this.data;
-    
-    // Filtrar por texto
-    if (filtroTexto) {
-        const termino = filtroTexto.toLowerCase();
-        clasesFiltradas = clasesFiltradas.filter(c => 
-            c.nombre?.toLowerCase().includes(termino) ||
-            c.descripcion?.toLowerCase().includes(termino) ||
-            (c.instructores && c.instructores.some(i => i.toLowerCase().includes(termino)))
-        );
-    }
-    
-    // Filtrar por estado
-    if (filtroEstado === 'publicadas') {
-        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'publicada');
-    } else if (filtroEstado === 'activas') {
-        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
-    } else if (filtroEstado === 'canceladas') {
-        clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'cancelada');
-    }
-
-    if (clasesFiltradas.length === 0) {
-        container.innerHTML = `
-            <div class="empty-message">
-                No hay clases para mostrar
-            </div>
-        `;
-        return;
-    }
-
-    clasesFiltradas.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
-
-    container.innerHTML = clasesFiltradas.map(clase => {
-        // Determinar el estado
-        const estado = clase.estado || (clase.activa ? 'activa' : 'inactiva');
+        let clasesFiltradas = this.data;
         
-        // Verificar si tiene enlaces
-        const tieneYoutube = clase.enlaces?.youtube ? true : false;
-        const tienePowerpoint = clase.enlaces?.powerpoint ? true : false;
-        
-        // Formatear fecha con hour12: false para forzar 24h
-        let fechaFormateada = 'N/A';
-        if (clase.fechaClase) {
-            const fecha = new Date(clase.fechaClase);
-            fechaFormateada = fecha.toLocaleString('es-AR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
+        // Filtrar por texto
+        if (filtroTexto) {
+            const termino = filtroTexto.toLowerCase();
+            clasesFiltradas = clasesFiltradas.filter(c => 
+                c.nombre?.toLowerCase().includes(termino) ||
+                c.descripcion?.toLowerCase().includes(termino) ||
+                (c.instructores && c.instructores.some(i => i.toLowerCase().includes(termino)))
+            );
         }
         
-        // Icono y texto según estado
-        let estadoIcono = '';
-        let estadoTexto = '';
-        let estadoClass = '';
-        
-        if (estado === 'publicada') {
-            estadoIcono = '📢';
-            estadoTexto = 'Publicada';
-            estadoClass = 'publicada';
-        } else if (estado === 'activa') {
-            estadoIcono = '✅';
-            estadoTexto = 'Activa';
-            estadoClass = 'activa';
-        } else if (estado === 'cancelada') {
-            estadoIcono = '❌';
-            estadoTexto = 'Cancelada';
-            estadoClass = 'cancelada';
-        } else {
-            estadoIcono = clase.activa ? '✅' : '❌';
-            estadoTexto = clase.activa ? 'Activa' : 'Inactiva';
-            estadoClass = clase.activa ? 'activa' : 'inactiva';
+        // Filtrar por estado
+        if (filtroEstado === 'publicadas') {
+            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'publicada');
+        } else if (filtroEstado === 'activas') {
+            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'activa');
+        } else if (filtroEstado === 'canceladas') {
+            clasesFiltradas = clasesFiltradas.filter(c => c.estado === 'cancelada');
         }
-        
-        return `
-        <div class="clase-card ${estadoClass}">
-            <div class="clase-header">
-                <span class="clase-titulo">${clase.nombre}</span>
-                <span class="clase-estado ${estadoClass}">
-                    ${estadoIcono} ${estadoTexto}
-                </span>
-            </div>
-            
-            ${clase.descripcion ? `<p class="clase-descripcion">${clase.descripcion}</p>` : ''}
-            
-            <div class="clase-detalles">
-                <span>📅 ${fechaFormateada}</span>
-                ${clase.instructores?.length ? `<span>👥 ${clase.instructores.join(', ')}</span>` : ''}
-            </div>
-            
-            <div class="clase-enlaces">
-                ${tieneYoutube ? `
-                    <a href="${clase.enlaces.youtube}" target="_blank" class="material-link youtube" title="Ver en YouTube">
-                        ▶️ YouTube
-                    </a>
-                ` : ''}
-                ${tienePowerpoint ? `
-                    <a href="${clase.enlaces.powerpoint}" target="_blank" class="material-link powerpoint" title="Ver presentación">
-                        📊 Presentación
-                    </a>
-                ` : ''}
-                ${!tieneYoutube && !tienePowerpoint ? 
-                    '<span class="sin-enlaces">Sin material disponible</span>' : ''}
-            </div>
-            
-            ${clase.tags?.length ? `
-                <div class="clase-tags">
-                    ${clase.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+
+        if (clasesFiltradas.length === 0) {
+            container.innerHTML = `
+                <div class="empty-message">
+                    No hay clases para mostrar
                 </div>
-            ` : ''}
-            
-            <div class="clase-acciones">
-                <button class="btn-small btn-edit" onclick="gestionClasesManager.editarClase('${clase._id}')">✏️ Editar</button>
-                <button class="btn-small btn-danger" onclick="gestionClasesManager.eliminarClase('${clase._id}')">🗑️ Eliminar</button>
-            </div>
-        </div>
-    `}).join('');
-}
+            `;
+            return;
+        }
 
-    // En la función guardarClase(), asegurar que la fecha se envía en formato correcto
-async guardarClase(event) {
-    event.preventDefault();
-    
-    // Validar campos requeridos
-    const nombre = document.getElementById('claseNombre')?.value.trim();
-    const fecha = document.getElementById('claseFecha')?.value;
-    const youtube = document.getElementById('claseYoutube')?.value.trim();
-    const powerpoint = document.getElementById('clasePowerpoint')?.value.trim();
-    
-    // Validaciones
-    if (!nombre) {
-        this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
-        return;
+        clasesFiltradas.sort((a, b) => new Date(b.fechaClase) - new Date(a.fechaClase));
+
+        container.innerHTML = clasesFiltradas.map(clase => {
+            // Determinar el estado
+            const estado = clase.estado || (clase.activa ? 'activa' : 'inactiva');
+            
+            // Verificar si tiene enlaces
+            const tieneYoutube = clase.enlaces?.youtube ? true : false;
+            const tienePowerpoint = clase.enlaces?.powerpoint ? true : false;
+            
+            // Formatear fecha con hour12: false para forzar 24h
+            let fechaFormateada = 'N/A';
+            if (clase.fechaClase) {
+                const fecha = new Date(clase.fechaClase);
+                fechaFormateada = fecha.toLocaleString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
+            
+            // Icono y texto según estado
+            let estadoIcono = '';
+            let estadoTexto = '';
+            let estadoClass = '';
+            
+            if (estado === 'publicada') {
+                estadoIcono = '📢';
+                estadoTexto = 'Publicada';
+                estadoClass = 'publicada';
+            } else if (estado === 'activa') {
+                estadoIcono = '✅';
+                estadoTexto = 'Activa';
+                estadoClass = 'activa';
+            } else if (estado === 'cancelada') {
+                estadoIcono = '❌';
+                estadoTexto = 'Cancelada';
+                estadoClass = 'cancelada';
+            } else {
+                estadoIcono = clase.activa ? '✅' : '❌';
+                estadoTexto = clase.activa ? 'Activa' : 'Inactiva';
+                estadoClass = clase.activa ? 'activa' : 'inactiva';
+            }
+            
+            return `
+            <div class="clase-card ${estadoClass}">
+                <div class="clase-header">
+                    <span class="clase-titulo">${clase.nombre}</span>
+                    <span class="clase-estado ${estadoClass}">
+                        ${estadoIcono} ${estadoTexto}
+                    </span>
+                </div>
+                
+                ${clase.descripcion ? `<p class="clase-descripcion">${clase.descripcion}</p>` : ''}
+                
+                <div class="clase-detalles">
+                    <span>📅 ${fechaFormateada}</span>
+                    ${clase.instructores?.length ? `<span>👥 ${clase.instructores.join(', ')}</span>` : ''}
+                </div>
+                
+                <div class="clase-enlaces">
+                    ${tieneYoutube ? `
+                        <a href="${clase.enlaces.youtube}" target="_blank" class="material-link youtube" title="Ver en YouTube">
+                            ▶️ YouTube
+                        </a>
+                    ` : ''}
+                    ${tienePowerpoint ? `
+                        <a href="${clase.enlaces.powerpoint}" target="_blank" class="material-link powerpoint" title="Ver presentación">
+                            📊 Presentación
+                        </a>
+                    ` : ''}
+                    ${!tieneYoutube && !tienePowerpoint ? 
+                        '<span class="sin-enlaces">Sin material disponible</span>' : ''}
+                </div>
+                
+                ${clase.tags?.length ? `
+                    <div class="clase-tags">
+                        ${clase.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+                    </div>
+                ` : ''}
+                
+                <div class="clase-acciones">
+                    <button class="btn-small btn-edit" onclick="gestionClasesManager.editarClase('${clase._id}')">✏️ Editar</button>
+                    <button class="btn-small btn-danger" onclick="gestionClasesManager.eliminarClase('${clase._id}')">🗑️ Eliminar</button>
+                </div>
+            </div>
+        `}).join('');
     }
-    
-    if (!fecha) {
-        this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
-        return;
-    }
-    
-    const hora = document.getElementById('claseHora')?.value || '10:00';
-    // Asegurar formato YYYY-MM-DDTHH:mm:ss
-    const fechaCompleta = `${fecha}T${hora}:00`;
-    
-    console.log('📤 Enviando fecha al servidor:', fechaCompleta);
-    
-    // Procesar instructores
-    const instructores = document.getElementById('claseInstructores')?.value
-        ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()).filter(i => i)
-        : [];
-    
-    // Procesar tags
-    const tags = document.getElementById('claseTags')?.value
-        ? document.getElementById('claseTags').value.split(',').map(t => t.trim()).filter(t => t)
-        : [];
-    
-    // Obtener el estado del selector
-    const estadoSelect = document.getElementById('claseEstado');
-    const estado = estadoSelect ? estadoSelect.value : 'activa';
-    
-    // Preparar datos en el formato que espera el servidor
-    const claseData = {
-        nombre: nombre,
-        descripcion: document.getElementById('claseDescripcion')?.value || '',
-        fechaClase: fechaCompleta,
-        enlaces: {
-            youtube: youtube || '',
-            powerpoint: powerpoint || ''
-        },
-        estado: estado,
-        instructores: instructores,
-        tags: tags
-    };
-    
-    console.log('📤 Enviando datos al servidor:', JSON.stringify(claseData, null, 2));
-    
-    try {
-        let response;
-        if (this.editandoId) {
-            response = await authSystem.makeRequest(`/clases-historicas/${this.editandoId}`, claseData, 'PUT');
-            this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
-        } else {
-            response = await authSystem.makeRequest('/clases-historicas', claseData);
-            this.mostrarMensaje('✅ Clase creada correctamente', 'success');
+
+    async guardarClase(event) {
+        event.preventDefault();
+        
+        // Validar campos requeridos
+        const nombre = document.getElementById('claseNombre')?.value.trim();
+        const fecha = document.getElementById('claseFecha')?.value;
+        const youtube = document.getElementById('claseYoutube')?.value.trim();
+        const powerpoint = document.getElementById('clasePowerpoint')?.value.trim();
+        
+        // Validaciones
+        if (!nombre) {
+            this.mostrarMensaje('❌ El nombre de la clase es obligatorio', 'error');
+            return;
         }
         
-        console.log('✅ Respuesta del servidor:', response);
+        if (!fecha) {
+            this.mostrarMensaje('❌ La fecha de la clase es obligatoria', 'error');
+            return;
+        }
         
-        this.cancelarEdicion();
-        await this.cargarDatos();
-    } catch (error) {
-        console.error('❌ Error detallado:', error);
-        this.mostrarMensaje('❌ Error: ' + error.message, 'error');
+        const hora = document.getElementById('claseHora')?.value || '10:00';
+        // Asegurar formato YYYY-MM-DDTHH:mm:ss
+        const fechaCompleta = `${fecha}T${hora}:00`;
+        
+        console.log('📤 Enviando fecha al servidor:', fechaCompleta);
+        
+        // Procesar instructores
+        const instructores = document.getElementById('claseInstructores')?.value
+            ? document.getElementById('claseInstructores').value.split(',').map(i => i.trim()).filter(i => i)
+            : [];
+        
+        // Procesar tags
+        const tags = document.getElementById('claseTags')?.value
+            ? document.getElementById('claseTags').value.split(',').map(t => t.trim()).filter(t => t)
+            : [];
+        
+        // Obtener el estado del selector de RADIO BUTTONS
+        const estadoRadio = document.querySelector('input[name="claseEstado"]:checked');
+        const estado = estadoRadio ? estadoRadio.value : 'publicada';
+        
+        // Preparar datos en el formato que espera el servidor
+        const claseData = {
+            nombre: nombre,
+            descripcion: document.getElementById('claseDescripcion')?.value || '',
+            fechaClase: fechaCompleta,
+            enlaces: {
+                youtube: youtube || '',
+                powerpoint: powerpoint || ''
+            },
+            estado: estado,
+            instructores: instructores,
+            tags: tags
+        };
+        
+        console.log('📤 Enviando datos al servidor:', JSON.stringify(claseData, null, 2));
+        
+        try {
+            let response;
+            if (this.editandoId) {
+                response = await authSystem.makeRequest(`/clases-historicas/${this.editandoId}`, claseData, 'PUT');
+                this.mostrarMensaje('✅ Clase actualizada correctamente', 'success');
+            } else {
+                response = await authSystem.makeRequest('/clases-historicas', claseData);
+                this.mostrarMensaje('✅ Clase creada correctamente', 'success');
+            }
+            
+            console.log('✅ Respuesta del servidor:', response);
+            
+            this.cancelarEdicion();
+            await this.cargarDatos();
+        } catch (error) {
+            console.error('❌ Error detallado:', error);
+            this.mostrarMensaje('❌ Error: ' + error.message, 'error');
+        }
     }
-}
 
     editarClase(id) {
         const clase = this.data.find(c => c._id === id);
@@ -279,19 +278,30 @@ async guardarClase(event) {
         // Cargar tags
         document.getElementById('claseTags').value = clase.tags?.join(', ') || '';
         
-        // Cargar el estado - CON VERIFICACIÓN DE EXISTENCIA
-        const estadoSelect = document.getElementById('claseEstado');
-        if (estadoSelect) {
-            if (clase.estado) {
-                // Si tiene el nuevo campo estado, usarlo
-                estadoSelect.value = clase.estado;
-            } else {
-                // Si no, derivar del campo activa (compatibilidad)
-                estadoSelect.value = clase.activa ? 'activa' : 'inactiva';
-            }
-            console.log('✅ Estado cargado:', estadoSelect.value);
+        // ========== Cargar el estado - CON RADIO BUTTONS ==========
+        // Desmarcar todos los radios primero
+        document.querySelectorAll('input[name="claseEstado"]').forEach(radio => {
+            radio.checked = false;
+        });
+        
+        // Determinar el valor del estado
+        let estadoValor;
+        if (clase.estado) {
+            estadoValor = clase.estado;
         } else {
-            console.warn('⚠️ Selector de estado no encontrado en el DOM');
+            estadoValor = clase.activa ? 'activa' : 'inactiva';
+        }
+        
+        // Marcar el radio correspondiente
+        const radioToCheck = document.querySelector(`input[name="claseEstado"][value="${estadoValor}"]`);
+        if (radioToCheck) {
+            radioToCheck.checked = true;
+            console.log('✅ Estado cargado:', estadoValor);
+        } else {
+            console.warn('⚠️ No se encontró radio button para estado:', estadoValor);
+            // Fallback: marcar "publicada" por defecto
+            const radioPublicada = document.querySelector('input[name="claseEstado"][value="publicada"]');
+            if (radioPublicada) radioPublicada.checked = true;
         }
         
         document.getElementById('formTitle').innerHTML = '✏️ Editando: ' + clase.nombre;
@@ -313,10 +323,18 @@ async guardarClase(event) {
         document.getElementById('claseForm').reset();
         document.getElementById('claseHora').value = '10:00';
         
-        const estadoSelect = document.getElementById('claseEstado');
-        if (estadoSelect) {
-            estadoSelect.value = 'publicada';
+        // Resetear radio buttons - seleccionar "publicada" por defecto
+        const radioPublicada = document.querySelector('input[name="claseEstado"][value="publicada"]');
+        if (radioPublicada) {
+            radioPublicada.checked = true;
         }
+        
+        // Asegurar que los demás radios estén desmarcados
+        document.querySelectorAll('input[name="claseEstado"]').forEach(radio => {
+            if (radio.value !== 'publicada') {
+                radio.checked = false;
+            }
+        });
         
         this.ocultarMensaje();
     }
