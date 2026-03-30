@@ -655,6 +655,11 @@
 async function cargarCarteleraIndex() {
     const container = document.getElementById('carteleraContainer');
     if (!container) return;
+
+    if (!authSystem.isLoggedIn()) {
+        container.style.display = 'none';
+        return;
+    }
     
     try {
         const response = await fetch('/api/cartelera/activos');
