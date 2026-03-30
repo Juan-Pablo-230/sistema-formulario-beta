@@ -358,7 +358,7 @@
             if (clase.fechaApertura) {
                 apertura = new Date(clase.fechaApertura).getTime();
             } else if (clase.fechaClase) {
-                apertura = new Date(clase.fechaClase).getTime();
+                apertura = new Date(clase.fechaClase).getTime() - (10 * 60 * 1000);
             }
 
             if (clase.fechaCierre) {
