@@ -364,7 +364,7 @@
             if (clase.fechaCierre) {
                 cierre = new Date(clase.fechaCierre).getTime();
             } else if (apertura) {
-                cierre = apertura + 60 * 60 * 1000;
+                cierre = apertura + 70 * 60 * 1000;
             }
 
             return { apertura, cierre };
