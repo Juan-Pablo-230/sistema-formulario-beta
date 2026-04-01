@@ -1,8 +1,8 @@
 let versionBeta = true; // Variable global para indicar en que version estamos, true = beta, false = estable
 
 if (versionBeta == true) {
-    console.warn("Esta es una versión BETA del sistema de inscripciones. Puede contener errores o funcionalidades incompletas. Por favor, utilícelo con precaución y reporte cualquier problema al desarrollador.");
-    document.title = 'Sistema de inscripciones - BETA';
+    console.warn("Esta es una versión BETA del Aula Virtual. Puede contener errores o funcionalidades incompletas. Por favor, utilícelo con precaución y reporte cualquier problema al desarrollador.");
+    document.title = 'Mi Aula de Enfermería - BETA';
     const faviconUrl = '/img/logo-beta.png';
     const link = document.createElement('link');
     link.rel = 'shortcut icon';
@@ -14,7 +14,7 @@ if (versionBeta == true) {
     document.head.appendChild(link);
     const h1 = document.querySelector('.header-text h1');
      if (h1) {
-        h1.textContent = 'Sistema de inscripciones - BETA';
+        h1.textContent = 'Mi Aula de Enfermería - BETA';
     }
     const footer = document.querySelector('footer');
     if (footer) {
@@ -23,7 +23,7 @@ if (versionBeta == true) {
     }
 }
 else {
-    document.title = 'Sistema de inscripciones';
+    document.title = 'Mi Aula de Enfermería';
     const faviconUrl = '/img/logo-oficial.png';
     const link = document.createElement('link');
     link.rel = 'shortcut icon';
@@ -35,7 +35,7 @@ else {
     document.head.appendChild(link);
     const h1 = document.querySelector('.header-text h1');
     if (h1) {
-        h1.textContent = 'Sistema de inscripciones';
+        h1.textContent = 'Mi Aula Virtual';
     }
     const footer = document.querySelector('footer');
     if (footer) {
@@ -43,7 +43,7 @@ else {
     }
 }
 
-// auth.js - Versión con modal de migración y scroll bloqueado
+// auth.js
 
 class AuthSystem {
     constructor() {
