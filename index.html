@@ -56,6 +56,9 @@
             <div class="loading-classes">Cargando clases disponibles...</div>
         </div>
 
+        <!-- CONTENEDOR PARA LA IMAGEN DE MALVINAS (SOLO 2 DE ABRIL) -->
+        <div id="malvinasContainer" class="classes-grid" style="display: none;"></div>
+
         <!-- Sección de Video -->
         <div class="video-section">
             <div class="video-container">
@@ -243,10 +246,8 @@
         if (versionBeta == true) {
             alert("Esta es una versión BETA del sistema de inscripciones. Puede contener errores o funcionalidades incompletas. Por favor, utilícelo con precaución y reporte cualquier problema al desarrollador.")
         }
-    </script>
+        // Script principal (con toda la lógica y hora sincronizada desde el servidor)
 
-    <!-- Script principal (con toda la lógica y hora sincronizada desde el servidor) -->
-    <script>
         // ============================================
         // Variables globales
         // ============================================
@@ -711,6 +712,57 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarCarteleraIndex();
     });
 });
+    </script>
+
+    <script>
+         // FUNCIÓN SIMPLE PARA MOSTRAR IMAGEN DE MALVINAS
+         async function mostrarImagenMalvinas() {
+            const container = document.getElementById('malvinasContainer');
+            if (!container) return;
+
+            try {
+                // Obtener fecha del servidor
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                const serverDate = new Date(data.timestamp);
+                const dia = serverDate.getDate();
+                const mes = serverDate.getMonth() + 1;
+
+                // Verificar si es 2 de abril
+                if (dia === 1 && mes === 4) {
+                    console.log('🇦🇷 2 de Abril - Mostrando imagen de Malvinas');
+                    
+                    // SOLO CAMBIA LA RUTA DE LA IMAGEN AQUÍ
+                    const rutaImagen = '/img/malvinas.png'; // 👈 CAMBIA ESTA RUTA POR LA QUE QUIERAS
+                    
+                    container.innerHTML = `
+                        <div class="class-card" style="
+                            background: linear-gradient(135deg, #1a472a 0%, #0a2a1a 100%);
+                            border: 2px solid #2e7d32;
+                            cursor: default;
+                            text-align: center;
+                            padding: 0;
+                            overflow: hidden;
+                        ">
+                            <img src="${rutaImagen}" 
+                                 alt="Día de las Islas Malvinas" 
+                                 style="
+                                    width: 100%;
+                                    height: 100%;
+                                    object-fit: cover;
+                                    display: block;
+                                 ">
+                        </div>
+                    `;
+                    container.style.display = 'grid';
+                } else {
+                    container.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error al mostrar imagen de Malvinas:', error);
+                container.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
