@@ -246,8 +246,10 @@
         if (versionBeta == true) {
             alert("Esta es una versión BETA del sistema de inscripciones. Puede contener errores o funcionalidades incompletas. Por favor, utilícelo con precaución y reporte cualquier problema al desarrollador.")
         }
-        // Script principal (con toda la lógica y hora sincronizada desde el servidor)
+    </script>
 
+    <!-- Script principal (con toda la lógica y hora sincronizada desde el servidor) -->
+    <script>
         // ============================================
         // Variables globales
         // ============================================
@@ -282,7 +284,7 @@
             }, 5000);
         }
 
-        // Funciones para ICS (usamos hora local para la creación del archivo)
+        // Funciones para ICS
         function generarICS(clase) {
             let inicio, fin;
             if (clase.fechaApertura) {
@@ -290,7 +292,7 @@
             } else if (clase.fechaClase) {
                 inicio = new Date(clase.fechaClase);
             } else {
-                inicio = new Date(); // fallback a hora local
+                inicio = new Date();
             }
 
             if (clase.fechaCierre) {
@@ -303,7 +305,7 @@
                 return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
             }
 
-            const now = new Date(); // hora local, no crítica
+            const now = new Date();
             const dtstamp = formatDateForICS(now);
             const dtstart = formatDateForICS(inicio);
             const dtend = formatDateForICS(fin);
@@ -351,7 +353,6 @@
             setTimeout(() => URL.revokeObjectURL(url), 100);
         }
 
-        // Función para obtener timestamps de apertura y cierre
         function obtenerTimestampsClase(clase) {
             let apertura = null;
             let cierre = null;
@@ -382,26 +383,23 @@
                 let clase = null;
                 let serverTime = null;
 
-                // Intentar obtener clase pública con serverTime
                 try {
                     const res = await fetch(`/api/clases-publicas/${claseId}`);
                     const data = await res.json();
                     if (data.success && data.data) {
                         clase = data.data;
-                        serverTime = data.serverTime; // Hora exacta del servidor
+                        serverTime = data.serverTime;
                     }
                 } catch (e) {}
 
-                // Si no se encontró, intentar con clase histórica (puede que no tenga serverTime)
                 if (!clase) {
                     try {
                         const res = await fetch(`/api/clases-historicas/${claseId}`);
                         const data = await res.json();
                         if (data.success && data.data) {
                             clase = data.data;
-                            // Si la API histórica devuelve serverTime, lo usamos; si no, usamos hora local con advertencia
                             serverTime = data.serverTime || Date.now();
-                            console.warn('⚠️ Usando hora local para clase histórica, puede haber diferencias.');
+                            console.warn('⚠️ Usando hora local para clase histórica');
                         }
                     } catch (e) {}
                 }
@@ -419,14 +417,13 @@
                     minute: '2-digit',
                     day: '2-digit',
                     month: '2-digit',
-                    year: 'numeric',
-                    hour12: false
+                    year: 'numeric'
                 };
 
                 modalFechaApertura.textContent = apertura ? new Date(apertura).toLocaleString('es-AR', opcionesFormato) : 'No especificada';
                 modalFechaCierre.textContent = cierre ? new Date(cierre).toLocaleString('es-AR', opcionesFormato) : 'No especificado';
 
-                const ahora = serverTime || Date.now(); // Usar serverTime si está disponible
+                const ahora = serverTime || Date.now();
 
                 if (apertura && ahora < apertura) {
                     estadoClase.textContent = '📅 La clase no comenzo. Agrega un recordatorio a tu calendario personal para ser notificado de su apertura.';
@@ -479,7 +476,7 @@
                     usuarioId: user._id,
                     clase: claseSeleccionada.nombre,
                     turno: user.turno,
-                    fecha: new Date().toISOString() // Hora local, no crítica
+                    fecha: new Date().toISOString()
                 };
                 if (claseSeleccionada._id) inscripcionData.claseId = claseSeleccionada._id;
 
@@ -524,199 +521,11 @@
             if (claseSeleccionada) descargarICS(claseSeleccionada);
         });
 
-        // Carga de clases en el grid
-        async function cargarClasesPublicas(forzar = false) {
-    const gridContainer = document.getElementById('dynamic-classes-grid');
-    if (!gridContainer) return;
-
-    if (clasesCargadas && !forzar) {
-        console.log('ℹ️ Clases ya cargadas previamente, omitiendo...');
-        return;
-    }
-
-    if (timeoutCarga) clearTimeout(timeoutCarga);
-
-    console.log('🔄 Iniciando carga de clases...');
-    gridContainer.innerHTML = '<div class="loading-classes">Cargando clases disponibles...</div>';
-
-    try {
-        const response = await fetch('/api/clases-publicas/publicadas');
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        const result = await response.json();
-        if (!result.success || !result.data) throw new Error(result.message || 'Error al cargar las clases');
-
-        let clases = result.data;
-        const ahora = result.serverTime;
-
-        console.log(`📊 Clases encontradas (sin filtrar): ${clases.length}`);
-        console.log(`🕒 Hora del servidor: ${new Date(ahora).toLocaleString()}`);
-
-        // Filtrar clases visibles
-        const clasesVisibles = clases.filter(clase => {
-            const { cierre } = obtenerTimestampsClase(clase);
-            if (!cierre) return true;
-            return ahora < cierre;
-        });
-
-        console.log(`📊 Clases visibles después de filtrar: ${clasesVisibles.length}`);
-
-        if (clasesVisibles.length === 0) {
-            gridContainer.innerHTML = '<div class="no-classes-message">No hay clases disponibles en este momento.</div>';
-            clasesCargadas = true;
-            return;
-        }
-
-        // Ordenar por fecha de apertura
-        clasesVisibles.sort((a, b) => {
-            const { apertura: aApertura } = obtenerTimestampsClase(a);
-            const { apertura: bApertura } = obtenerTimestampsClase(b);
-            return (aApertura || 0) - (bApertura || 0);
-        });
-
-        let htmlString = '';
-        clasesVisibles.forEach(clase => {
-            let fechaFormateada = 'Fecha no disponible';
-            let horaInicio = 'Hora no disponible';
-            
-            if (clase.fechaClase) {
-                const fecha = new Date(clase.fechaClase);
-                
-                fechaFormateada = fecha.toLocaleDateString('es-AR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-                
-                horaInicio = fecha.toLocaleTimeString('es-AR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                });
-            }
-
-            let instructoresTexto = 'Instructor no especificado';
-            if (clase.instructores && clase.instructores.length > 0) {
-                instructoresTexto = clase.instructores.join('<br>');
-            }
-
-            htmlString += `
-                <div class="class-card" onclick="abrirModalClase('${clase._id}')">
-                    <h3>${clase.nombre}</h3>
-                    <p>${instructoresTexto}</p>
-                    ${clase.lugar ? `<p><small class="class-lugar"> ${clase.lugar}</small></p>` : ''}
-                    <div class="class-datetime">
-                        <span class="class-date">📅 ${fechaFormateada}</span>
-                        <span class="class-time">⏰ ${horaInicio} hs</span>
-                    </div>
-                </div>
-            `;
-        });
-
-        gridContainer.innerHTML = htmlString;
-        clasesCargadas = true;
-
-    } catch (error) {
-        console.error('❌ Error cargando clases:', error);
-        gridContainer.innerHTML = '<div class="error-message">Error al cargar las clases. Por favor, recargue la página.</div>';
-    }
-}
-
-        function verificarClasesExpiradas() {
-            cargarClasesPublicas(true);
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM cargado, cargando clases...');
-            timeoutCarga = setTimeout(() => {
-                cargarClasesPublicas();
-                intervaloVerificacion = setInterval(verificarClasesExpiradas, 60000);
-            }, 100);
-        });
-
-        document.addEventListener('userLoggedIn', function() {
-            console.log('👤 Evento userLoggedIn detectado');
-            setTimeout(() => cargarClasesPublicas(true), 500);
-        });
-
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    const loginOverlay = document.querySelector('.login-overlay');
-                    if (!loginOverlay && clasesCargadas) {
-                        console.log('🔍 Modal de login cerrado');
-                    }
-                }
-            });
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-    </script>
-
-    <script>
-        // Función para cargar la cartelera en el index.html
-async function cargarCarteleraIndex() {
-    const container = document.getElementById('carteleraContainer');
-    if (!container) return;
-
-    if (!authSystem.isLoggedIn()) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/cartelera/activos');
-        const result = await response.json();
-        
-        if (result.success && result.data && result.data.length > 0) {
-            container.style.display = 'block';
-            
-            container.innerHTML = result.data.map(aviso => {
-                let icono = '';
-                switch(aviso.tipo) {
-                    case 'warning': icono = '⚠️'; break;
-                    case 'urgent': icono = '🔴'; break;
-                    case 'info': icono = 'ℹ️'; break;
-                }
-                
-                const fecha = new Date(aviso.fechaCreacion).toLocaleDateString('es-AR');
-                
-                return `
-                    <div class="cartelera-aviso ${aviso.tipo}">
-                        <h3>${icono} ${escapeHtml(aviso.titulo)}</h3>
-                        <p>${escapeHtml(aviso.mensaje)}</p>
-                        <div class="aviso-fecha">📅 Publicado: ${fecha}</div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            container.style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error cargando cartelera:', error);
-        container.style.display = 'none';
-    }
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Ejecutar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    cargarCarteleraIndex();
-    
-    // También cargar cuando se loguee un usuario
-    document.addEventListener('userLoggedIn', () => {
-        cargarCarteleraIndex();
-    });
-});
-    </script>
-
-    <script>
-         // FUNCIÓN SIMPLE PARA MOSTRAR IMAGEN DE MALVINAS
-         async function mostrarImagenMalvinas() {
+        // ============================================
+        // FUNCIÓN SIMPLE PARA MOSTRAR IMAGEN DE MALVINAS
+        // SOLO CAMBIA LA RUTA DE LA IMAGEN AQUÍ
+        // ============================================
+        async function mostrarImagenMalvinas() {
             const container = document.getElementById('malvinasContainer');
             if (!container) return;
 
@@ -728,9 +537,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dia = serverDate.getDate();
                 const mes = serverDate.getMonth() + 1;
 
-                // Verificar si es 2 de abril
+                // Verificar si es 1 de abril
                 if (dia === 1 && mes === 4) {
-                    console.log('🇦🇷 2 de Abril - Mostrando imagen de Malvinas');
+                    console.log('🇦🇷 1 de Abril - Mostrando imagen de Malvinas');
                     
                     // SOLO CAMBIA LA RUTA DE LA IMAGEN AQUÍ
                     const rutaImagen = '/img/malvinas.png'; // 👈 CAMBIA ESTA RUTA POR LA QUE QUIERAS
@@ -763,6 +572,188 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.style.display = 'none';
             }
         }
+
+        async function cargarClasesPublicas(forzar = false) {
+            const gridContainer = document.getElementById('dynamic-classes-grid');
+            if (!gridContainer) return;
+
+            if (clasesCargadas && !forzar) {
+                console.log('ℹ️ Clases ya cargadas previamente, omitiendo...');
+                return;
+            }
+
+            if (timeoutCarga) clearTimeout(timeoutCarga);
+
+            console.log('🔄 Iniciando carga de clases...');
+            gridContainer.innerHTML = '<div class="loading-classes">Cargando clases disponibles...</div>';
+
+            try {
+                const response = await fetch('/api/clases-publicas/publicadas');
+                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+                const result = await response.json();
+                if (!result.success || !result.data) throw new Error(result.message || 'Error al cargar las clases');
+
+                let clases = result.data;
+                const ahora = result.serverTime;
+
+                console.log(`📊 Clases encontradas (sin filtrar): ${clases.length}`);
+                console.log(`🕒 Hora del servidor: ${new Date(ahora).toLocaleString()}`);
+
+                const clasesVisibles = clases.filter(clase => {
+                    const { cierre } = obtenerTimestampsClase(clase);
+                    if (!cierre) return true;
+                    return ahora < cierre;
+                });
+
+                console.log(`📊 Clases visibles después de filtrar: ${clasesVisibles.length}`);
+
+                if (clasesVisibles.length === 0) {
+                    gridContainer.innerHTML = '<div class="no-classes-message">No hay clases disponibles en este momento.</div>';
+                    clasesCargadas = true;
+                    await mostrarImagenMalvinas();
+                    return;
+                }
+
+                clasesVisibles.sort((a, b) => {
+                    const { apertura: aApertura } = obtenerTimestampsClase(a);
+                    const { apertura: bApertura } = obtenerTimestampsClase(b);
+                    return (aApertura || 0) - (bApertura || 0);
+                });
+
+                let htmlString = '';
+                clasesVisibles.forEach(clase => {
+                    let fechaFormateada = 'Fecha no disponible';
+                    let horaInicio = 'Hora no disponible';
+                    
+                    if (clase.fechaClase) {
+                        const fecha = new Date(clase.fechaClase);
+                        fechaFormateada = fecha.toLocaleDateString('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                        horaInicio = fecha.toLocaleTimeString('es-AR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                    }
+
+                    let instructoresTexto = 'Instructor no especificado';
+                    if (clase.instructores && clase.instructores.length > 0) {
+                        instructoresTexto = clase.instructores.join('<br>');
+                    }
+
+                    htmlString += `
+                        <div class="class-card" onclick="abrirModalClase('${clase._id}')">
+                            <h3>${clase.nombre}</h3>
+                            <p>${instructoresTexto}</p>
+                            ${clase.lugar ? `<p><small class="class-lugar"> ${clase.lugar}</small></p>` : ''}
+                            <div class="class-datetime">
+                                <span class="class-date">📅 ${fechaFormateada}</span>
+                                <span class="class-time">⏰ ${horaInicio} hs</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                gridContainer.innerHTML = htmlString;
+                clasesCargadas = true;
+                await mostrarImagenMalvinas();
+
+            } catch (error) {
+                console.error('❌ Error cargando clases:', error);
+                gridContainer.innerHTML = '<div class="error-message">Error al cargar las clases. Por favor, recargue la página.</div>';
+            }
+        }
+
+        function verificarClasesExpiradas() {
+            cargarClasesPublicas(true);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM cargado, cargando clases...');
+            timeoutCarga = setTimeout(() => {
+                cargarClasesPublicas();
+                intervaloVerificacion = setInterval(verificarClasesExpiradas, 60000);
+            }, 100);
+        });
+
+        document.addEventListener('userLoggedIn', function() {
+            console.log('👤 Evento userLoggedIn detectado');
+            setTimeout(() => cargarClasesPublicas(true), 500);
+        });
+
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    const loginOverlay = document.querySelector('.login-overlay');
+                    if (!loginOverlay && clasesCargadas) {
+                        console.log('🔍 Modal de login cerrado');
+                    }
+                }
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+
+    <script>
+        async function cargarCarteleraIndex() {
+            const container = document.getElementById('carteleraContainer');
+            if (!container) return;
+
+            if (!authSystem.isLoggedIn()) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/cartelera/activos');
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.length > 0) {
+                    container.style.display = 'block';
+                    
+                    container.innerHTML = result.data.map(aviso => {
+                        let icono = '';
+                        switch(aviso.tipo) {
+                            case 'warning': icono = '⚠️'; break;
+                            case 'urgent': icono = '🔴'; break;
+                            case 'info': icono = 'ℹ️'; break;
+                        }
+                        
+                        const fecha = new Date(aviso.fechaCreacion).toLocaleDateString('es-AR');
+                        
+                        return `
+                            <div class="cartelera-aviso ${aviso.tipo}">
+                                <h3>${icono} ${escapeHtml(aviso.titulo)}</h3>
+                                <p>${escapeHtml(aviso.mensaje)}</p>
+                                <div class="aviso-fecha">📅 Publicado: ${fecha}</div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando cartelera:', error);
+                container.style.display = 'none';
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarCarteleraIndex();
+            document.addEventListener('userLoggedIn', () => {
+                cargarCarteleraIndex();
+            });
+        });
     </script>
 </body>
 </html>
