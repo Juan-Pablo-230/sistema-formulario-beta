@@ -522,8 +522,8 @@
         });
 
         // ============================================
-        // FUNCIÓN SIMPLE PARA MOSTRAR IMAGEN DE MALVINAS
-        // SOLO CAMBIA LA RUTA DE LA IMAGEN AQUÍ
+        // FUNCIÓN PARA MOSTRAR IMAGEN DE MALVINAS CON ENLACE CLICKEABLE
+        // SOLO CAMBIA LA RUTA DE LA IMAGEN Y EL ENLACE AQUÍ
         // ============================================
         async function mostrarImagenMalvinas() {
             const container = document.getElementById('malvinasContainer');
@@ -539,29 +539,38 @@
 
                 // Verificar si es 1 de abril
                 if (dia === 1 && mes === 4) {
-                    console.log('🇦🇷 1 de Abril - Mostrando imagen de Malvinas');
+                    console.log('🇦🇷 1 de Abril - Mostrando imagen de Malvinas clickeable');
                     
-                    // SOLO CAMBIA LA RUTA DE LA IMAGEN AQUÍ
-                    const rutaImagen = '/img/malvinas.png'; // 👈 CAMBIA ESTA RUTA POR LA QUE QUIERAS
+                    const rutaImagen = '/img/malvinas.png';           // 👈 Ruta de tu imagen
+                    const enlaceExterno = 'https://es.wikipedia.org/wiki/Islas_Malvinas'; // 👈 URL a donde quieres redirigir
                     
                     container.innerHTML = `
-                        <div class="class-card" style="
-                            background: linear-gradient(135deg, #1a472a 0%, #0a2a1a 100%);
-                            border: 2px solid #2e7d32;
-                            cursor: default;
-                            text-align: center;
-                            padding: 0;
-                            overflow: hidden;
-                        ">
-                            <img src="${rutaImagen}" 
-                                 alt="Día de las Islas Malvinas" 
-                                 style="
-                                    width: 100%;
-                                    height: 100%;
-                                    object-fit: cover;
-                                    display: block;
-                                 ">
-                        </div>
+                        <a href="${enlaceExterno}" 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           style="text-decoration: none; display: block;">
+                            <div class="class-card" style="
+                                background: linear-gradient(135deg, #1a472a 0%, #0a2a1a 100%);
+                                border: 2px solid #2e7d32;
+                                cursor: pointer;
+                                text-align: center;
+                                padding: 0;
+                                overflow: hidden;
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                            "
+                            onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.3)';"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                                <img src="${rutaImagen}" 
+                                     alt="Día de las Islas Malvinas - 2 de Abril" 
+                                     style="
+                                        width: 100%;
+                                        height: 100%;
+                                        object-fit: cover;
+                                        display: block;
+                                        pointer-events: none;
+                                     ">
+                            </div>
+                        </a>
                     `;
                     container.style.display = 'grid';
                 } else {
