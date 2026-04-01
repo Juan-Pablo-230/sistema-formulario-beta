@@ -132,6 +132,86 @@ textarea.form-control {
     line-height: 1.5;
 }
 
+/* ===== ESTILOS DE VISIBILIDAD (estilo estado-opciones) ===== */
+.visibilidad-opciones {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    margin-top: var(--spacing-xs);
+}
+
+.visibilidad-opcion {
+    flex: 1;
+    min-width: 180px;
+}
+
+.visibilidad-opcion input[type="radio"] {
+    display: none;
+}
+
+.estado-boton {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+    gap: var(--spacing-xs);
+}
+
+.estado-boton:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-md);
+}
+
+.estado-icono {
+    font-size: 1.5rem;
+}
+
+.estado-texto {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+}
+
+.estado-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+/* Estado Publicada */
+.estado-boton.publicada {
+    border-left-color: var(--success-500);
+}
+.estado-boton.publicada:hover {
+    background: rgba(52, 168, 83, 0.05);
+}
+.visibilidad-opcion input[type="radio"]:checked + .estado-boton.publicada {
+    background: rgba(52, 168, 83, 0.15);
+    border-color: var(--success-500);
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(52, 168, 83, 0.2);
+}
+
+/* Estado No Publicada / Inactiva */
+.estado-boton.inactiva {
+    border-left-color: var(--text-muted);
+}
+.estado-boton.inactiva:hover {
+    background: rgba(128, 128, 128, 0.05);
+}
+.visibilidad-opcion input[type="radio"]:checked + .estado-boton.inactiva {
+    background: rgba(128, 128, 128, 0.15);
+    border-color: var(--text-muted);
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(128, 128, 128, 0.2);
+}
+
 /* Selector de visibilidad */
 .visibilidad-selector {
     background: var(--bg-card);
@@ -139,31 +219,6 @@ textarea.form-control {
     border-radius: var(--border-radius-md);
     border: 1px solid var(--border-color);
     margin-top: var(--spacing-xs);
-}
-
-.visibilidad-opciones {
-    display: flex;
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-sm);
-}
-
-.visibilidad-opcion {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    cursor: pointer;
-}
-
-.visibilidad-opcion input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: var(--accent-color);
-}
-
-.visibilidad-opcion span {
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
 }
 
 /* Sección de enlaces */
@@ -471,7 +526,10 @@ textarea.form-control {
     
     .visibilidad-opciones {
         flex-direction: column;
-        gap: var(--spacing-sm);
+    }
+    
+    .visibilidad-opcion {
+        min-width: auto;
     }
 }
 

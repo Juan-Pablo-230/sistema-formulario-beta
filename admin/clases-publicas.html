@@ -83,18 +83,24 @@
                     </div>
                 </div>
                 
-                <!-- Visibilidad de la clase -->
+                <!-- Visibilidad de la clase - Estilo como estado-opciones de gestion-clases -->
                 <div class="form-group">
                     <label>Visibilidad en página principal <span class="required">*</span></label>
-                    <div class="visibilidad-selector">
-                        <div class="visibilidad-opciones">
-                            <label class="visibilidad-opcion">
-                                <input type="radio" name="visibilidad" value="true">
-                                <span>✅ Publicada - Visible para todos los usuarios</span>
+                    <div class="visibilidad-opciones">
+                        <div class="visibilidad-opcion">
+                            <input type="radio" id="visibilidadPublicada" name="visibilidad" value="true">
+                            <label for="visibilidadPublicada" class="estado-boton publicada">
+                                <span class="estado-icono">✅</span>
+                                <span class="estado-texto">Publicada</span>
+                                <small class="estado-desc">Visible para todos los usuarios en la página principal</small>
                             </label>
-                            <label class="visibilidad-opcion">
-                                <input type="radio" name="visibilidad" value="false" checked>
-                                <span>⏸️ No publicada - Solo visible en panel admin</span>
+                        </div>
+                        <div class="visibilidad-opcion">
+                            <input type="radio" id="visibilidadNoPublicada" name="visibilidad" value="false" checked>
+                            <label for="visibilidadNoPublicada" class="estado-boton inactiva">
+                                <span class="estado-icono">⏸️</span>
+                                <span class="estado-texto">No Publicada</span>
+                                <small class="estado-desc">Solo visible en el panel de administración</small>
                             </label>
                         </div>
                     </div>
