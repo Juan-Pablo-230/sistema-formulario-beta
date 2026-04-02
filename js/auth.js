@@ -50,7 +50,7 @@ class AuthSystem {
         console.log('AuthSystem MongoDB inicializado');
         this.apiBaseUrl = '';
         this.currentUser = null;
-        this.migrationModalActive = false; // Para evitar múltiples modales
+        this.migrationModalActive = false;
         this.init();
     }
 
@@ -60,8 +60,6 @@ class AuthSystem {
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
             console.log('Usuario encontrado en localStorage:', this.currentUser);
-            
-            // Verificar si necesita migración al cargar la página
             setTimeout(() => {
                 this.checkMigrationNeeded();
             }, 500);
@@ -70,7 +68,6 @@ class AuthSystem {
         }
     }
 
-    // Verificar si necesita migración
     async checkMigrationNeeded() {
         if (this.migrationModalActive) return;
         if (!this.isLoggedIn()) return;
@@ -243,7 +240,7 @@ class AuthSystem {
                 ">
                     <h2 style="text-align: center; margin-bottom: 20px; color: #fff;">Acciones Requeridas</h2>
                     <p style="text-align: center; margin-bottom: 20px;">
-                        Para reforsar la seguridad de tu cuenta, te pedimos que completes los siguientes pasos de tu perfil. Es obligatorio completar tu área de trabajo y configurar una nueva contraseña. Si no completas esta información, no podrás acceder al sistema. ¡Gracias por tu comprensión!:
+                        Para reforzar la seguridad de tu cuenta, te pedimos que completes los siguientes pasos de tu perfil. Es obligatorio completar tu área de trabajo y configurar una nueva contraseña. Si no completas esta información, no podrás acceder al sistema. ¡Gracias por tu comprensión!
                     </p>
             `;
             
@@ -388,16 +385,15 @@ class AuthSystem {
             overlay.innerHTML = modalHTML;
             document.body.appendChild(overlay);
             
-            // POBLAR EL SELECT DE ÁREAS usando area
+            // POBLAR EL SELECT DE ÁREAS usando poblarSelectAreas (CORREGIDO)
             const migrationAreaSelect = overlay.querySelector('#migrationArea');
-            if (migrationAreaSelect && window.area) {
-                window.area.poblarSelectAreas(migrationAreaSelect, '');
+            if (migrationAreaSelect && window.poblarSelectAreas) {
+                window.poblarSelectAreas(migrationAreaSelect, '');
             } else {
-                // Fallback: esperar a que area esté disponible
                 const checkInterval = setInterval(() => {
-                    if (window.area) {
+                    if (window.poblarSelectAreas) {
                         clearInterval(checkInterval);
-                        window.area.poblarSelectAreas(migrationAreaSelect, '');
+                        window.poblarSelectAreas(migrationAreaSelect, '');
                     }
                 }, 100);
                 setTimeout(() => clearInterval(checkInterval), 5000);
@@ -962,15 +958,15 @@ class AuthSystem {
             
             document.body.appendChild(overlay);
             
-            // POBLAR EL SELECT DE ÁREAS EN EL REGISTRO
+            // POBLAR EL SELECT DE ÁREAS EN EL REGISTRO usando poblarSelectAreas (CORREGIDO)
             const regAreaSelect = overlay.querySelector('#regArea');
-            if (regAreaSelect && window.area) {
-                window.area.poblarSelectAreas(regAreaSelect, '');
+            if (regAreaSelect && window.poblarSelectAreas) {
+                window.poblarSelectAreas(regAreaSelect, '');
             } else {
                 const checkInterval = setInterval(() => {
-                    if (window.area) {
+                    if (window.poblarSelectAreas) {
                         clearInterval(checkInterval);
-                        window.area.poblarSelectAreas(regAreaSelect, '');
+                        window.poblarSelectAreas(regAreaSelect, '');
                     }
                 }, 100);
                 setTimeout(() => clearInterval(checkInterval), 5000);
