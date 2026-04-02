@@ -150,13 +150,16 @@
                             <option value="Turno SADOFE">Turno Sábado, Domingo y feriado</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <div class="grupo-form">
-                            <label for="updateArea">Área de Trabajo:</label>
-                            <select id="updateArea" name="area">
-                                <option value="">Seleccione un área</option>
-                            </select>
-                        </div>
+                        <div class="form-group">
+                        <label for="updateArea">Área de Trabajo *</label>
+                        <select id="updateArea" name="area" required>
+                            <option value="">Seleccione área</option>
+                            <option value="Camilleros">Camilleros</option>
+                            <option value="Asistentes">Asistentes</option>
+                            <option value="Enfermeros">Enfermeros</option>
+                            <option value="Personal general del Sanatorio">Personal general del Sanatorio</option>
+                            <option value="Otros profesionales de la salud">Otros profesionales de la salud</option>
+                        </select>
                         <small class="field-info">Seleccione el área/departamento donde trabaja</small>
                     </div>
                     <div class="form-group">
@@ -237,7 +240,6 @@
     </div>
 
     <footer><p></p></footer>
-    <script src="/js/area.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/profile-updater.js"></script>
     <script>
@@ -705,85 +707,62 @@
     </script>
 
     <script>
-    async function cargarCarteleraIndex() {
-        const container = document.getElementById('carteleraContainer');
-        if (!container) return;
+        async function cargarCarteleraIndex() {
+            const container = document.getElementById('carteleraContainer');
+            if (!container) return;
 
-        if (!authSystem.isLoggedIn()) {
-            container.style.display = 'none';
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/cartelera/activos');
-            const result = await response.json();
+            if (!authSystem.isLoggedIn()) {
+                container.style.display = 'none';
+                return;
+            }
             
-            if (result.success && result.data && result.data.length > 0) {
-                container.style.display = 'block';
+            try {
+                const response = await fetch('/api/cartelera/activos');
+                const result = await response.json();
                 
-                // Función para convertir URLs en enlaces clickeables
-                function convertirUrlsEnEnlaces(texto) {
-                    if (!texto) return '';
-                    // Regex para detectar URLs (http, https, www)
-                    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-                    return texto.replace(urlRegex, (url) => {
-                        let href = url;
-                        if (!href.startsWith('http')) {
-                            href = 'https://' + href;
+                if (result.success && result.data && result.data.length > 0) {
+                    container.style.display = 'block';
+                    
+                    container.innerHTML = result.data.map(aviso => {
+                        let icono = '';
+                        switch(aviso.tipo) {
+                            case 'warning': icono = '⚠️'; break;
+                            case 'urgent': icono = '🔴'; break;
+                            case 'info': icono = 'ℹ️'; break;
                         }
-                        return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color: #4285f4; text-decoration: underline;">${url}</a>`;
-                    });
+                        
+                        const fecha = new Date(aviso.fechaCreacion).toLocaleDateString('es-AR');
+                        
+                        return `
+                            <div class="cartelera-aviso ${aviso.tipo}">
+                                <h3>${icono} ${escapeHtml(aviso.titulo)}</h3>
+                                <p>${escapeHtml(aviso.mensaje)}</p>
+                                <div class="aviso-fecha">📅 Publicado: ${fecha}</div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.style.display = 'none';
                 }
-
-                function escapeHtml(text) {
-                    if (!text) return '';
-                    const div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-                
-                container.innerHTML = result.data.map(aviso => {
-                    let icono = '';
-                    switch(aviso.tipo) {
-                        case 'warning': icono = '⚠️'; break;
-                        case 'urgent': icono = '🔴'; break;
-                        case 'info': icono = 'ℹ️'; break;
-                    }
-                    
-                    const fecha = new Date(aviso.fechaCreacion).toLocaleDateString('es-AR');
-                    const tituloEscapado = escapeHtml(aviso.titulo);
-                    const mensajeConEnlaces = convertirUrlsEnEnlaces(aviso.mensaje);
-                    
-                    return `
-                        <div class="cartelera-aviso ${aviso.tipo}">
-                            <h3>${icono} ${tituloEscapado}</h3>
-                            <p>${mensajeConEnlaces}</p>
-                            <div class="aviso-fecha">📅 Publicado: ${fecha}</div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
+            } catch (error) {
+                console.error('Error cargando cartelera:', error);
                 container.style.display = 'none';
             }
-        } catch (error) {
-            console.error('Error cargando cartelera:', error);
-            container.style.display = 'none';
         }
-    }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        cargarCarteleraIndex();
-        document.addEventListener('userLoggedIn', () => {
+        document.addEventListener('DOMContentLoaded', () => {
             cargarCarteleraIndex();
+            document.addEventListener('userLoggedIn', () => {
+                cargarCarteleraIndex();
+            });
         });
-    });
-</script>
+    </script>
 </body>
 </html>
