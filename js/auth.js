@@ -388,16 +388,16 @@ class AuthSystem {
             overlay.innerHTML = modalHTML;
             document.body.appendChild(overlay);
             
-            // POBLAR EL SELECT DE ÁREAS usando areaData
+            // POBLAR EL SELECT DE ÁREAS usando area
             const migrationAreaSelect = overlay.querySelector('#migrationArea');
-            if (migrationAreaSelect && window.areaData) {
-                window.areaData.poblarSelectAreas(migrationAreaSelect, '');
+            if (migrationAreaSelect && window.area) {
+                window.area.poblarSelectAreas(migrationAreaSelect, '');
             } else {
-                // Fallback: esperar a que areaData esté disponible
+                // Fallback: esperar a que area esté disponible
                 const checkInterval = setInterval(() => {
-                    if (window.areaData) {
+                    if (window.area) {
                         clearInterval(checkInterval);
-                        window.areaData.poblarSelectAreas(migrationAreaSelect, '');
+                        window.area.poblarSelectAreas(migrationAreaSelect, '');
                     }
                 }, 100);
                 setTimeout(() => clearInterval(checkInterval), 5000);

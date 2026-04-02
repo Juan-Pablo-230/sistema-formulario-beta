@@ -1,41 +1,31 @@
-// js/area.js - Áreas de trabajo del Sanatorio (FUENTE ÚNICA DE VERDAD)
+// js/area.js - Áreas de trabajo del Sanatorio
 const area = {
     "Personal de enfermeria": [
         "Enfermeros",
         "Camilleros",
         "Asistentes",
-        "Técnicos en prácticas cardiológicas",
-        "Supervisores/Coordinadores"
+        "Técnicos en prácticas cardiológicas"
     ],
-    "Supervisores/Coordinadores": [
+    "Profesionales": [
         "Medicos",
         "Kinesiólogos",
         "Nutricionistas",
-        "Obstétricas",
-        "Otros"
+        "Obstétricas"
     ],
     "Personal de apoyo y administrativo": [
         "Mucamas",
         "Camareras",
         "Personal de limpieza",
-        "Personal administrativo",
         "Personal administrativo"
     ],
 };
 
-// Función global para poblar cualquier select con las áreas
+// Función para poblar selects
 function poblarSelectAreas(selectElement, valorSeleccionado = '') {
     if (!selectElement) return;
     
-    selectElement.innerHTML = '';
+    selectElement.innerHTML = '<option value="">Seleccione un área</option>';
     
-    // Opción vacía
-    const emptyOption = document.createElement('option');
-    emptyOption.value = '';
-    emptyOption.textContent = 'Seleccione un área';
-    selectElement.appendChild(emptyOption);
-    
-    // Recorrer categorías y opciones
     for (const categoria in area) {
         const optgroup = document.createElement('optgroup');
         optgroup.label = categoria;
@@ -44,9 +34,7 @@ function poblarSelectAreas(selectElement, valorSeleccionado = '') {
             const option = document.createElement('option');
             option.value = areaName;
             option.textContent = areaName;
-            if (valorSeleccionado === areaName) {
-                option.selected = true;
-            }
+            if (valorSeleccionado === areaName) option.selected = true;
             optgroup.appendChild(option);
         });
         
@@ -54,20 +42,16 @@ function poblarSelectAreas(selectElement, valorSeleccionado = '') {
     }
 }
 
-// Función para obtener todas las áreas como array plano
-function obtenerTodasLasAreas() {
-    const todas = [];
-    for (const categoria in area) {
-        todas.push(...area[categoria]);
+// Exponer la función globalmente
+window.poblarSelectAreas = poblarSelectAreas;
+
+// Auto-poblar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    const updateAreaSelect = document.getElementById('updateArea');
+    if (updateAreaSelect) {
+        poblarSelectAreas(updateAreaSelect, '');
+        console.log('✅ Select de áreas poblado');
     }
-    return todas;
-}
+});
 
-// Exponer funciones globalmente
-window.areaData = {
-    area: area,
-    poblarSelectAreas: poblarSelectAreas,
-    obtenerTodasLasAreas: obtenerTodasLasAreas
-};
-
-console.log('✅ Áreas de trabajo cargadas:', obtenerTodasLasAreas().length, 'opciones');
+console.log('✅ Áreas de trabajo cargadas');
