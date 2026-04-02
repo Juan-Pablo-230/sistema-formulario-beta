@@ -323,8 +323,8 @@ class ProfileUpdater {
             
             // POBLAR EL SELECT DE ÁREAS usando area
             const updateAreaSelect = document.getElementById('updateArea');
-            if (updateAreaSelect && window.area) {
-                window.area.poblarSelectAreas(updateAreaSelect, user.area || '');
+            if (updateAreaSelect && window.poblarSelectAreas) {
+                window.poblarSelectAreas(updateAreaSelect, user.area || '');
             } else {
                 const checkInterval = setInterval(() => {
                     if (window.area) {
