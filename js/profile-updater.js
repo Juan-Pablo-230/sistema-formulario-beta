@@ -320,37 +320,17 @@ class ProfileUpdater {
             document.getElementById('updatePassword').value = '';
             document.getElementById('updateConfirmPassword').value = '';
             document.getElementById('deleteCurrentPassword').value = '';
-            
+
             // ========== POBLAR SELECT DE ÁREAS ==========
-            const updateAreaSelect = document.getElementById('updateArea');
-            if (updateAreaSelect) {
-                updateAreaSelect.innerHTML = '<option value="">Seleccione un área</option>';
-                
-                // Usar la función global poblarSelectAreas
-                if (typeof window.poblarSelectAreas === 'function') {
-                    window.poblarSelectAreas(updateAreaSelect, user.area || '');
-                    console.log('✅ Áreas pobladas con poblarSelectAreas');
-                }
-                // Fallback: usar window.area directamente
-                else if (window.area && typeof window.area === 'object') {
-                    console.log('📦 Usando window.area directamente');
-                    for (const categoria in window.area) {
-                        const optgroup = document.createElement('optgroup');
-                        optgroup.label = categoria;
-                        window.area[categoria].forEach(areaName => {
-                            const option = document.createElement('option');
-                            option.value = areaName;
-                            option.textContent = areaName;
-                            if (user.area === areaName) {
-                                option.selected = true;
-                            }
-                            optgroup.appendChild(option);
-                        });
-                        updateAreaSelect.appendChild(optgroup);
-                    }
-                }
-            }
-            // ========== FIN POBLAR SELECT DE ÁREAS ==========
+const updateAreaSelect = document.getElementById('updateArea');
+if (updateAreaSelect && window.poblarSelectAreas) {
+    // No borrar antes, dejar que poblarSelectAreas haga todo
+    window.poblarSelectAreas(updateAreaSelect, user.area || '');
+    console.log('✅ Áreas pobladas en modal, opciones:', updateAreaSelect.options.length);
+} else {
+    console.warn('⚠️ No se pudo poblar áreas');
+}
+// ========== FIN POBLAR SELECT DE ÁREAS ==========
             
             const deleteConfirmation = document.getElementById('deleteConfirmation');
             if (deleteConfirmation) deleteConfirmation.checked = false;
