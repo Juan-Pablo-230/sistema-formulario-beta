@@ -964,13 +964,13 @@ class AuthSystem {
             
             // POBLAR EL SELECT DE ÁREAS EN EL REGISTRO
             const regAreaSelect = overlay.querySelector('#regArea');
-            if (regAreaSelect && window.areaData) {
-                window.areaData.poblarSelectAreas(regAreaSelect, '');
+            if (regAreaSelect && window.area) {
+                window.area.poblarSelectAreas(regAreaSelect, '');
             } else {
                 const checkInterval = setInterval(() => {
-                    if (window.areaData) {
+                    if (window.area) {
                         clearInterval(checkInterval);
-                        window.areaData.poblarSelectAreas(regAreaSelect, '');
+                        window.area.poblarSelectAreas(regAreaSelect, '');
                     }
                 }, 100);
                 setTimeout(() => clearInterval(checkInterval), 5000);
